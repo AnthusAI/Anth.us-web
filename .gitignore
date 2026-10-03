@@ -1,0 +1,19 @@
+# Generated static site. Built by `python3 web/build_via_papyrus.py`; Amplify
+# builds it at deploy time. Never commit build output.
+web/dist-papyrus/
+web/dist-preview/
+
+# Markdown staging tree normalized from the MDX content submodule at build
+# time. Derived, never authored — never commit it.
+web/staging/
+
+# Amplify Hosting build cache (restored by Amplify, not committed)
+.amplify-cache/
+
+# Python / OS cruft
+__pycache__/
+*.pyc
+.DS_Store
+
+# Node tooling (not used by the build; local checks only)
+node_modules/
