@@ -190,6 +190,24 @@ pipeline is inconsistent. The wiring still to do:
   `/blog/` uses the formatted date in a `<p>`. Not a style choice — reproduce
   both.
 
+* **Open parity risk.** Production's
+  `.responsive-float-right-image{float:right;…width:40%}` targets the `<img>`
+  itself, but `anthus_dom.image_html()` puts `class_name` on the wrapping
+  `div.gatsby-image-wrapper`. Routing the about / ai-solutions images through
+  it changes the DOM shape — probably visually equivalent, definitely not
+  byte-identical. Check it with `bin/compare.py`.
+* `/ryan/` has **three** `index-module--list--fb407` lists, not two, and the
+  first two are adjacent with zero characters between them — so a single
+  `{portfolio}` hole has to span both. Matching the holes needs
+  `<ul>`/`</ul>` depth counting, because the lists contain nested plain
+  `<ul>`s.
+* On `/about/`, `/ai-solutions/`, `/ryan/` and `/404` the static regions
+  contain only **three** plain `<img>` elements in total (`ryan-porter.png`,
+  `ai-software-solutions.png`, `Anthus AI Application Lifecycle.png`, all
+  already in `web/assets/site/`); every gatsby-plugin-image block falls inside
+  a dynamic hole. Production srcs there are `/assets/images/…`, not
+  `/static/<hash>/…`.
+
 ## Not verified — do this first
 
 * **No page has been rendered or screenshotted on the new build.** Every
