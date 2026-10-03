@@ -36,6 +36,16 @@ frontend:
           # convert_fragment, _read_title, _css_version, _build_nav_items)
           # is what this script monkey-patches, and a silent upstream change
           # to it breaks the build with no commit here to blame.
+          #
+          # !! THIS PIN IS STALE FOR THIS BRANCH !!
+          # d0b00b3 predates the content-markup capabilities
+          # (ImagePipeline / CitationRendering, Papyrus PR #83), and the
+          # content submodule here is authored in that markup. `markus
+          # convert` fails a whole page on an unregistered directive, so with
+          # this pin EVERY article fails with `Unknown directive 'image'`.
+          # Bump it to the merge commit of Papyrus PR #83 on develop BEFORE
+          # deploying this branch. Order: PR #83 -> develop, bump here,
+          # then this branch and the content branch land.
           PAPYRUS_PIN=d0b00b398b89c55ca0c67efc4d017dd2a32c5a8a
           PAPYRUS_DIR="$PWD/.amplify-cache/papyrus-src"
           if [ ! -d "$PAPYRUS_DIR/.git" ]; then
@@ -46,14 +56,19 @@ frontend:
           git -C "$PAPYRUS_DIR" fetch --depth 1 origin "$PAPYRUS_PIN"
           git -C "$PAPYRUS_DIR" checkout "$PAPYRUS_PIN"
         - pip install --cache-dir "$PWD/.amplify-cache/pip" "git+https://github.com/AnthusAI/Markus@v0.5.1"
-        # Pillow downscales referenced content images at build time. Without
-        # it the build still succeeds but ships multi-megabyte originals (the
-        # content repo holds ~313 MB of them) — see anthus_content._copy_image.
+        # Pillow is REQUIRED, not optional: ImagePipeline imports it to
+        # generate the responsive renditions for every `::image{}` in the
+        # corpus, and `build_markus_site(images=…)` is what this build passes.
+        # It also downscales the listing thumbnails and site chrome, which do
+        # not go through the pipeline — see anthus_content._copy_image.
         - pip install --cache-dir "$PWD/.amplify-cache/pip" "Pillow>=10,<12"
         - pip install --cache-dir "$PWD/.amplify-cache/pip" "PyYAML>=6"
     build:
       commands:
         # Always rebuild HTML clean; never restore web/dist-papyrus from cache.
+        # web/.image-cache is deliberately NOT removed: it is restored from
+        # the Amplify cache below and is what keeps a rebuild from re-encoding
+        # ~230 sources at four widths in two formats (about five minutes).
         - rm -rf web/dist-papyrus web/staging
         - cd web && PAPYRUS_ROOT="$PWD/../.amplify-cache/papyrus-src" python3 build_via_papyrus.py
   artifacts:
@@ -63,3 +78,6 @@ frontend:
   cache:
     paths:
       - .amplify-cache/**/*
+      # Generated image renditions. Regenerated whenever a source is newer, so
+      # a stale entry self-heals; see ImagePipeline.cache_dir.
+      - web/.image-cache/**/*

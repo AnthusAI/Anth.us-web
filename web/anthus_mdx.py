@@ -20,20 +20,32 @@ three classes of construct a Markus static build cannot consume as-is:
 Everything here writes into the gitignored ``web/staging/`` tree. The content
 submodule is never written to.
 
-Pluggable seams for the Papyrus-side work in flight
----------------------------------------------------
-Two constructs are owned by concurrent Papyrus work (responsive images and an
-inline citation renderer). They are isolated behind single functions so the
-real authoring syntax can be dropped in without touching the rest of the
-pipeline:
+Images and citations: real Papyrus markup
+-----------------------------------------
+Responsive images and inline citations are Papyrus capabilities now (Papyrus
+``docs/markus-content-markup.md``), so this module emits the real authoring
+syntax rather than the flattened stand-ins it used to:
 
-* ``render_image_directive()`` — emits the Markus block for one image. Today a
-  plain ``:::figure{src= alt= caption=}``, one fixed-size file, no ``srcset``.
-  Replace the body with the responsive-image directive when it lands.
-* ``render_citation_marker()`` / ``render_references_block()`` — emit the inline
-  marker and the end-of-document reference list. Today plain text markers plus
-  a ``## References`` list. Replace with the inline citation directive when it
-  lands.
+* ``render_image_directive()`` — ``::image{src= layout= alt= …}``. Resolved by
+  ``ImagePipeline`` into a ``<picture>`` with ``srcset``/``sizes`` and the
+  source's intrinsic dimensions.
+* ``render_citation_marker()`` / ``render_citations_directive()`` — ``[@key]``
+  and ``::citations{format="apa"}``, backed by a front-matter ``citations:``
+  block of CSL-JSON that ``staged_markdown()`` re-emits.
+* ``render_static_figure()`` — plain ``:::figure{}`` for the one class of image
+  the pipeline cannot own: **site chrome** vendored in this repo under
+  ``web/assets/site/``. ``::image{}`` resolves ``src`` relative to the image
+  pipeline's source root (the content submodule) and rejects absolute paths,
+  so an asset that does not live in the submodule has no relative ``src``.
+
+The content corpus is now authored in this syntax directly
+(``AnthusAI/anthus-site-content``, branch ``content/markus-native-markup``), so
+for that branch the MDX conversion below is a no-op pass-through. It is kept
+working because the content repo has two dozen live feature branches that are
+still Gatsby MDX, and a build that silently dropped their citations would be
+worse than one that renders them. The translation is implemented once, in
+``mdx_codemod``, and used both to migrate the corpus and to render
+un-migrated branches.
 
 Nothing else in the build knows how images or citations are spelled.
 """
@@ -41,6 +53,7 @@ Nothing else in the build knows how images or citations are spelled.
 from __future__ import annotations
 
 import html as _html
+import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -49,6 +62,12 @@ from typing import Callable
 import yaml
 
 import anthus_dom
+from mdx_codemod import (
+    JSParseError,
+    assign_keys,
+    parse_citation_data,
+    render_citations_block,
+)
 
 # --------------------------------------------------------------------------
 # Front matter
@@ -112,7 +131,7 @@ def html_to_inline_markdown(value: str | None) -> str:
 
 
 # --------------------------------------------------------------------------
-# Pluggable seams: images and citations
+# Papyrus content markup: images and citations
 # --------------------------------------------------------------------------
 
 
@@ -120,68 +139,66 @@ def render_image_directive(
     *,
     src: str,
     alt: str = "",
+    layout: str | None = None,
     caption: str | None = None,
-    class_name: str = "",
-    figure_class: str = "",
-    eager: bool = False,
+    credit: str | None = None,
 ) -> str:
-    """Emit one image, as a sentinel that carries its authored CSS class.
+    """Emit Papyrus's responsive-image directive for one image.
 
-    ``:::figure{}`` -- Markus 0.5.1's only image construct -- renders
-    ``<figure class="markus-figure"><img src></figure>`` and has nowhere to put
-    a class. That matters more than it sounds: the corpus authors
-    ``<BlogImage className="right">`` 20 times, ``className="full"`` 114 times,
-    ``className="centered"`` 32 times, and wraps 89 more in
-    ``<figure className="center-full-image">``. Those classes are what
-    ``layout.scss`` floats, centres and sizes the images with, so losing them
-    reflows every illustrated article.
+    ``src`` must be **relative to the image pipeline's source root**, which
+    this build points at the content submodule, because
+    ``ImagePipeline`` rejects absolute paths and ``..`` traversal
+    (``images.assert_safe_asset_src``). ``layout`` is the Gatsby
+    ``className`` -- ``full``, ``centered``, ``right``,
+    ``center-small-image``, ``center-full-image``, ``right-aligned`` -- every
+    one of which is a known layout in ``DEFAULT_LAYOUT_SIZES``, so it carries
+    straight across and drives the CSS class and the ``sizes`` attribute.
 
-    So instead of a directive this emits an ``anthus_dom`` image sentinel,
-    decoded after conversion into ``gatsby-plugin-image``'s wrapper markup with
-    the authored class intact. ``anthus_dom.image_html`` is the single place
-    that shape is defined; swap this for a real responsive-image directive once
-    Papyrus/Markus ships one and the call sites stay unchanged.
+    Emitted on one line: the staging tree is generated, never read by a human.
     """
-    return anthus_dom.image_sentinel(
-        src=src,
-        alt=alt or "",
-        class_name=class_name or "",
-        figure=figure_class or "",
-        caption=caption or "",
-        eager=bool(eager),
-    )
+    attrs = [f'src="{_attr(src)}"']
+    if layout:
+        attrs.append(f'layout="{_attr(layout)}"')
+    attrs.append(f'alt="{_attr(alt)}"')
+    if caption:
+        attrs.append(f'caption="{_attr(caption)}"')
+    if credit:
+        attrs.append(f'credit="{_attr(credit)}"')
+    return "::image{" + " ".join(attrs) + "}"
 
 
-def render_citation_marker(index: int) -> str:
-    """Emit the inline marker that stands in for one ``<Citation>``.
+def render_static_figure(
+    *, src: str, alt: str = "", caption: str | None = None
+) -> str:
+    """Markus's own figure, for an image the responsive pipeline cannot own.
 
-    **Interim implementation.** ``gatsby-citation-manager`` rendered a numbered
-    inline marker wired to a hover/click popover and an auto-numbered
-    ``<CitationsList>``; there are 201 ``<Citation>`` and 25
-    ``<CitationsList>`` uses in the content. Markus has no inline-span
-    directive, so there is nothing to hang a popover on.
-
-    The closest static equivalent, used here, is a plain bracketed number plus
-    a generated ``## References`` section (see ``render_references_block``), so
-    attribution survives even though the interaction does not.
+    Site chrome (``/assets/site/…``) is vendored in **this** repo, not in the
+    content submodule, so it has no path relative to the pipeline's source
+    root and no responsive renditions. It is also already sized for its slot,
+    which is why this is a parity note rather than a parity gap.
     """
-    return f"[{index}]"
+    attrs = [f'src="{_attr(src)}"', f'alt="{_attr(alt)}"']
+    if caption:
+        attrs.append(f'caption="{_attr(caption)}"')
+    return ":::figure{" + " ".join(attrs) + "}\n:::"
 
 
-def render_references_block(references: list[str], *, heading: bool = True) -> str:
-    """Emit the end-of-document reference list standing in for CitationsList.
+def render_citation_marker(key: str) -> str:
+    """Emit the inline citation marker for one citation key.
 
-    ``heading`` is False when the source already wrote its own ``## References``
-    heading immediately above the ``<CitationsList>`` — which most of this
-    corpus does — so the page does not end up with the heading twice.
+    Papyrus numbers these by order of first appearance and links each to the
+    matching ``::citations{}`` entry, which is what ``gatsby-citation-manager``
+    did -- except that it keyed on the entry's *title* and so mis-numbered two
+    entries that shared one. See ``mdx_codemod.assign_keys``.
     """
-    if not references:
-        return ""
-    lines = ["", "## References", ""] if heading else [""]
-    for index, text in enumerate(references, start=1):
-        lines.append(f"{index}. {text}")
-    lines.append("")
-    return "\n".join(lines)
+    return f"[@{key}]"
+
+
+def render_citations_directive(citation_format: str | None) -> str:
+    """Emit the end-of-article bibliography directive for ``<CitationsList>``."""
+    if not citation_format:
+        return "::citations"
+    return f'::citations{{format="{_attr(citation_format)}"}}'
 
 
 # --------------------------------------------------------------------------
@@ -199,6 +216,7 @@ class ConversionReport:
     """
 
     images: int = 0
+    static_figures: int = 0
     citations: int = 0
     citation_lists: int = 0
     tables: int = 0
@@ -207,9 +225,16 @@ class ConversionReport:
     svgs: int = 0
     dropped_svg: int = 0
     dropped_html: list[str] = field(default_factory=list)
+    #: CSL-JSON lifted out of legacy ``<Citation>`` elements on **this page**,
+    #: key -> entry, in first-use order. Deliberately *not* merged by
+    #: ``merge()``: citation keys only have to be unique within a page, and a
+    #: site-wide union would be meaningless. ``stage_nodes`` reads it off the
+    #: per-file report before merging.
+    citation_entries: dict = field(default_factory=dict)
 
     def merge(self, other: "ConversionReport") -> None:
         self.images += other.images
+        self.static_figures += other.static_figures
         self.citations += other.citations
         self.citation_lists += other.citation_lists
         self.tables += other.tables
@@ -329,96 +354,74 @@ def _jsx_attr(inner: str, name: str) -> str | None:
 # Citations
 # --------------------------------------------------------------------------
 
-_CSL_KEYS = ("container-title", "title", "URL", "publisher", "issued", "accessed")
+def _convert_citations(text: str, report: ConversionReport) -> str:
+    """Rewrite legacy ``<Citation>``/``<CitationsList>`` to Papyrus markup.
 
+    A no-op on the converted corpus, which already carries ``[@key]`` and
+    ``::citations{}``. It exists for the content repo's un-migrated feature
+    branches: ``<Citation data={{…CSL…}} />`` becomes an inline ``[@key]`` plus
+    an entry in ``report.citation_entries``, which ``staged_markdown()`` writes
+    into the page's front-matter ``citations:`` block.
 
-def _citation_reference(inner: str) -> str:
-    """Build a human-readable reference string from a CSL-JSON-ish JS literal.
-
-    ``gatsby-citation-manager`` takes ``data={{ … }}`` holding a CSL-JSON
-    object. This is a deliberately tolerant field scrape, not a JS parser: the
-    goal is to preserve author/title/publication/URL attribution, and anything
-    it cannot find is simply omitted from the rendered reference.
+    Keys are assigned by ``mdx_codemod.assign_keys`` -- the same function that
+    migrated the corpus -- so a branch rendered here gets byte-identical keys
+    to the same branch once it is codemodded.
     """
+    elements: list[tuple[int, int, str, str]] = []
+    for tag in ("Citation", "CitationsList"):
+        pos = 0
+        while pos < len(text):
+            if text.startswith("<" + tag, pos):
+                after = pos + 1 + len(tag)
+                if after >= len(text) or not (text[after].isalnum() or text[after] == "_"):
+                    found = _find_jsx_element(text, pos, tag)
+                    if found:
+                        elements.append((found[0], found[1], tag, found[2]))
+                        pos = found[1]
+                        continue
+            pos += 1
+    if not elements:
+        return text
+    elements.sort(key=lambda item: item[0])
 
-    def field(name: str) -> str | None:
-        # The lookbehind matters: a bare `title` pattern also matches the
-        # `title` inside `"container-title"`, which silently swapped every
-        # citation's article title for its publication name.
-        match = re.search(
-            rf'(?<![\w-])["\']?{re.escape(name)}["\']?\s*:\s*(?:"([^"]*)"|\'([^\']*)\')',
-            inner,
-        )
-        if not match:
-            return None
-        return (match.group(1) or match.group(2) or "").strip() or None
+    # One key per distinct CSL object, numbered by first use -- the divergence
+    # from gatsby-citation-manager that fixes its duplicate-title bug.
+    signatures: list[str] = []
+    entries: list[dict] = []
+    slots: dict[int, int] = {}
+    for index, (start, _end, tag, inner) in enumerate(elements):
+        if tag != "Citation":
+            continue
+        try:
+            csl = parse_citation_data(inner)
+        except JSParseError as exc:
+            report.dropped_html.append(f"<Citation> unreadable ({exc})")
+            continue
+        signature = json.dumps(csl, sort_keys=True, ensure_ascii=False)
+        if signature in signatures:
+            slots[index] = signatures.index(signature)
+        else:
+            signatures.append(signature)
+            entries.append(csl)
+            slots[index] = len(entries) - 1
+    keys = assign_keys(entries)
+    report.citation_entries = dict(zip(keys, entries))
 
-    authors: list[str] = []
-    for block in re.findall(r"\{[^{}]*?(?:family|literal)[^{}]*?\}", inner):
-        family = re.search(r"family\s*:\s*[\"']([^\"']*)[\"']", block)
-        given = re.search(r"given\s*:\s*[\"']([^\"']*)[\"']", block)
-        literal = re.search(r"literal\s*:\s*[\"']([^\"']*)[\"']", block)
-        if literal:
-            authors.append(literal.group(1).strip())
-        elif family:
-            name = family.group(1).strip()
-            if given:
-                name = f"{given.group(1).strip()} {name}"
-            authors.append(name)
-
-    year = None
-    issued = re.search(r"issued\s*:\s*\{[^{}]*\[\s*\[\s*(\d{4})", inner)
-    if issued:
-        year = issued.group(1)
-
-    title = field("title")
-    container = field("container-title")
-    publisher = field("publisher")
-    url = field("URL") or field("url")
-
-    parts: list[str] = []
-    if authors:
-        parts.append(", ".join(authors) + ".")
-    if year:
-        parts.append(f"({year}).")
-    if title:
-        parts.append(f"*{title}*." if not container else f"“{title}.”")
-    if container:
-        parts.append(f"*{container}*.")
-    if publisher and publisher != container:
-        parts.append(f"{publisher}.")
-    text = " ".join(parts).strip()
-    if url:
-        text = f"{text} <{url}>".strip() if text else f"<{url}>"
-    return text or "Reference details unavailable in source."
-
-
-def _convert_citations(text: str, report: ConversionReport) -> tuple[str, list[str]]:
-    references: list[str] = []
-    out: list[str] = []
-    i = 0
-    n = len(text)
-    while i < n:
-        if text.startswith("<Citation", i) and (i + 9 >= n or not text[i + 9].isalnum()):
-            found = _find_jsx_element(text, i, "Citation")
-            if found:
-                _, end, inner = found
-                references.append(_citation_reference(inner))
-                out.append(render_citation_marker(len(references)))
-                report.citations += 1
-                i = end
-                continue
-        if text.startswith("<CitationsList", i):
-            found = _find_jsx_element(text, i, "CitationsList")
-            if found:
-                _, end, _inner = found
-                out.append("\x00REFS\x00")
-                report.citation_lists += 1
-                i = end
-                continue
-        out.append(text[i])
-        i += 1
-    return "".join(out), references
+    pieces = list(text)
+    for index in range(len(elements) - 1, -1, -1):
+        start, end, tag, inner = elements[index]
+        if tag == "CitationsList":
+            replacement = "\n\n" + render_citations_directive(
+                _jsx_attr(inner, "citationFormat")
+            ) + "\n\n"
+            report.citation_lists += 1
+        elif index in slots:
+            replacement = render_citation_marker(keys[slots[index]])
+            report.citations += 1
+        else:
+            replacement = ""
+        pieces[start:end] = [replacement]
+    return "".join(pieces)
 
 
 # --------------------------------------------------------------------------
@@ -426,12 +429,41 @@ def _convert_citations(text: str, report: ConversionReport) -> tuple[str, list[s
 # --------------------------------------------------------------------------
 
 
+def _emit_image(
+    report: ConversionReport,
+    *,
+    src: str,
+    alt: str = "",
+    layout: str | None = None,
+    caption: str | None = None,
+) -> str:
+    """Pick the responsive directive or the plain figure, by what ``src`` is.
+
+    A relative ``src`` lives under the image pipeline's source root (the
+    content submodule) and gets ``::image{}`` -- renditions, ``srcset``,
+    intrinsic dimensions. A site-absolute ``/assets/site/…`` or ``data:`` src
+    does not, and gets Markus's own ``:::figure``. See ``render_static_figure``.
+    """
+    if src.startswith("/") or src.startswith("data:"):
+        report.static_figures += 1
+        return render_static_figure(src=src, alt=alt, caption=caption)
+    report.images += 1
+    return render_image_directive(
+        src=src, alt=alt, layout=layout, caption=caption
+    )
+
+
 def _convert_blog_images(
     text: str,
     report: ConversionReport,
     resolve: Callable[[str], str | None],
 ) -> str:
-    """Rewrite ``<BlogImage … />`` into the image directive."""
+    """Rewrite legacy ``<BlogImage … />`` into ``::image{}``.
+
+    A no-op on the converted corpus. Kept for the content repo's un-migrated
+    branches; ``className`` carries across as ``layout`` unchanged, because
+    every class this corpus uses is a known Papyrus layout name.
+    """
     out: list[str] = []
     i = 0
     n = len(text)
@@ -442,17 +474,14 @@ def _convert_blog_images(
                 _, end, inner = found
                 name = _jsx_attr(inner, "name") or ""
                 alt = _jsx_attr(inner, "alt") or ""
-                class_name = _jsx_attr(inner, "className") or ""
+                layout = _jsx_attr(inner, "className")
                 src = resolve(name)
                 if src:
                     out.append(
                         "\n\n"
-                        + render_image_directive(
-                            src=src, alt=alt, class_name=class_name, eager=True
-                        )
+                        + _emit_image(report, src=src, alt=alt, layout=layout)
                         + "\n\n"
                     )
-                    report.images += 1
                 else:
                     report.dropped_html.append(f"BlogImage name={name!r} (no file found)")
                 i = end
@@ -496,8 +525,11 @@ def _convert_figures(
         if not resolved:
             report.dropped_html.append(f"<figure> src={src!r} (unresolved)")
             return ""
-        report.images += 1
-        return "\n\n" + render_image_directive(src=resolved, alt=alt, caption=caption) + "\n\n"
+        return (
+            "\n\n"
+            + _emit_image(report, src=resolved, alt=alt, caption=caption)
+            + "\n\n"
+        )
 
     text = _FIGURE_RE.sub(figure_repl, text)
 
@@ -509,8 +541,7 @@ def _convert_figures(
         if not resolved:
             report.dropped_html.append(f"<img> src={src!r} (unresolved)")
             return ""
-        report.images += 1
-        return "\n\n" + render_image_directive(src=resolved, alt=alt) + "\n\n"
+        return "\n\n" + _emit_image(report, src=resolved, alt=alt) + "\n\n"
 
     return _IMG_RE.sub(img_repl, text)
 
@@ -711,10 +742,15 @@ def normalize_body(
 ) -> tuple[str, ConversionReport]:
     """Convert one MDX body to Markus-safe Markdown.
 
-    ``resolve_image_name`` maps a bare ``BlogImage name=`` basename to a
-    staged asset path; ``resolve_image_path`` maps an authored ``src``
-    (relative or site-absolute) to the same. Both return ``None`` when the
-    file is not in the content submodule, which is recorded as a drop.
+    ``resolve_image_name`` maps a bare ``BlogImage name=`` basename to an
+    ``::image{src=}`` value; ``resolve_image_path`` maps an authored ``src``
+    (relative or site-absolute) to the same. Both return ``None`` when nothing
+    matches, which is recorded as a drop. See ``ImageIndex.content_src``.
+
+    Papyrus markup already in the body -- ``::image{}``, ``[@key]``,
+    ``::citations{}``, which is how the corpus is authored now -- passes
+    through untouched. ``_protect_code`` keeps it out of code samples, and
+    none of the HTML passes below match a directive line.
     """
     report = ConversionReport()
     text, code_blocks = _protect_code(body)
@@ -722,27 +758,10 @@ def normalize_body(
     text = _IMPORT_RE.sub("", text)
     text = _JSX_EXPR_RE.sub("", text)
 
-    text, references = _convert_citations(text, report)
+    text = _convert_citations(text, report)
     text = _convert_blog_images(text, report, resolve_image_name)
     text = _convert_figures(text, report, resolve_image_path)
     text = _convert_block_html(text, report)
-
-    marker = text.find("\x00REFS\x00")
-    if marker >= 0:
-        # Most sources already write their own `## References` heading right
-        # above <CitationsList>. Emitting ours too gave every such article the
-        # heading twice.
-        preceding = [line for line in text[:marker].splitlines() if line.strip()]
-        needs_heading = not preceding or not re.match(r"\s*#{1,6}\s", preceding[-1])
-        text = text.replace(
-            "\x00REFS\x00",
-            render_references_block(references, heading=needs_heading),
-            1,
-        )
-        text = text.replace("\x00REFS\x00", "")
-    elif references:
-        text = text.rstrip() + "\n" + render_references_block(references)
-
     text = _restore_code(text, code_blocks)
 
     # Collapse the blank-line churn the unwrapping above leaves behind.
@@ -758,6 +777,12 @@ def staged_markdown(front_matter: dict, body: str) -> str:
     scalars. Re-serializing the original Gatsby front matter wholesale would
     hand Markus YAML it has no schema for (and HTML-bearing excerpts it would
     then have to escape).
+
+    ``citations`` is the exception to "quoted scalars": it is a mapping of key
+    -> CSL-JSON that ``CitationRendering`` reads directly off the staged page,
+    so it is re-emitted as structured YAML by ``mdx_codemod``'s emitter -- the
+    same one that wrote it into the content repo, which is what keeps the two
+    byte-identical.
     """
     lines = ["---"]
     for key in ("title", "date", "description", "byline", "slug"):
@@ -765,6 +790,9 @@ def staged_markdown(front_matter: dict, body: str) -> str:
         if value in (None, ""):
             continue
         lines.append(f'{key}: "{str(value).replace(chr(34), chr(39))}"')
+    citations = front_matter.get("citations")
+    if citations:
+        lines.append(render_citations_block(citations))
     lines.append("---")
     lines.append("")
     return "\n".join(lines) + body
