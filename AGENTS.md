@@ -27,7 +27,7 @@ reader site. It is not the live marketing site.
 
 | Path | Rule |
 | --- | --- |
-| `content/anthus-site-content/` | **Read only.** Same repo the live Gatsby site renders from. A commit here can break production Anth.us. Content codemods are a separate, deliberate task in that repo. |
+| `content/anthus-site-content/` | **Read only.** Same repo the live Gatsby site renders from. A commit here can break production Anth.us. The submodule is pinned to branch `content/markus-native-markup` (native Papyrus markup); **that branch must never be merged to `main`** while anth.us builds from `main`. Converting another branch is a run of `web/mdx_codemod.py` against a fresh clone, never against this checkout. |
 | `../Papyrus` | **Read only** from this repo. Papyrus owns the renderer and `publications/anth_us/` (the `SiteBrand`). Changes there are Papyrus PRs on the `PPY` board. |
 | `../Anth.us` | **Read only.** Reference for chrome, copy, and design tokens. |
 | `../Pilobol.us` | **Read only.** The architectural template. |
@@ -72,20 +72,39 @@ listings. All of that lands in `web/staging/`. Then Papyrus's
 `build_via_papyrus.py` adds standalone pages, link rewriting, social meta,
 redirect stubs, `robots.txt` and `sitemap.xml`.
 
-### The two pluggable seams
+### Images and citations: Papyrus content markup
 
-Papyrus work is in flight for the two constructs Markus cannot express. Both
-are isolated behind single functions in `web/anthus_mdx.py` so the real
-authoring syntax drops in without touching anything else:
+Both constructs Markus cannot express are now Papyrus capabilities, opted into
+in `build_via_papyrus.py` via `build_markus_site(images=IMAGES,
+citations=CITATIONS)`. The authoring contract is Papyrus
+`docs/markus-content-markup.md`; read it before changing either.
 
-* `render_image_directive()` — responsive images (235 uses)
-* `render_citation_marker()` / `render_references_block()` — inline citations
-  (201 + 25 uses)
+* `::image{src= layout= alt=}` — responsive images, 232 uses. Emitted by
+  `anthus_mdx.render_image_directive()`.
+* `[@key]` + a front-matter `citations:` block of CSL-JSON + `::citations{}` —
+  201 markers over 197 entries, 25 bibliographies. Emitted by
+  `render_citation_marker()` / `render_citations_directive()`, with the block
+  re-emitted by `staged_markdown()`.
+* `:::figure{}` — `render_static_figure()`, for the three site-chrome images
+  that are vendored in **this** repo and so have no path under the pipeline's
+  source root (which is the content submodule). Not responsive, by design.
 
-**Do not pre-emptively emit a directive Markus does not register yet.**
-`markus convert` fails the whole page on an unknown directive, so the build
-would break until the Papyrus side lands. Swap these functions only once the
-directive exists in the pinned Papyrus/Markus versions.
+`markus convert` fails a whole page on an unregistered directive, so **the
+Papyrus pin in `amplify.yml` must include PR #83 before this branch deploys.**
+The pin committed on this branch does not. That is called out in `amplify.yml`
+itself; do not deploy until it is bumped.
+
+The content is authored in this markup directly, so the MDX conversion in
+`anthus_mdx` is a pass-through for the pinned content branch. It is kept
+working — and `mdx_codemod` is shared by both paths — because the content repo
+has two dozen un-migrated feature branches. Verified by building the submodule
+at `main` and at `content/markus-native-markup` and diffing
+`web/dist-papyrus`: byte-identical HTML.
+
+The build raises if a `<BlogImage>`/`<Citation>`/`<CitationsList>` survives
+into `web/staging/` (`audit_staging`). Leave that check in: without it a
+leftover component would be escaped into visible angle brackets rather than
+failing anything.
 
 ## Hosting
 
@@ -207,4 +226,17 @@ and skips submodules, and without that step the build has no content at all.
   what the author meant the reader to see.
 * **Only referenced images are staged.** The content repo holds ~313 MB of
   images, most unreferenced. Copying the tree wholesale would bloat the
-  artifact and serve multi-megabyte PNGs at thumbnail size.
+  artifact and serve multi-megabyte PNGs at thumbnail size. Article images no
+  longer go through that path at all — `ImagePipeline` reads them straight out
+  of the submodule and writes its own renditions.
+* **`upgrade_plain_images=False` is load-bearing.** `anthus_pages` emits
+  listing thumbnails and chrome as plain Markdown images with site-ABSOLUTE
+  hrefs, and `images.assert_safe_asset_src` rejects absolute paths by design.
+  Turning the upgrade on fails the build on the homepage.
+* **`web/.image-cache/` must stay outside `web/staging/` and
+  `web/dist-papyrus/`.** The build wipes both. Without the cache every build
+  re-encodes ~230 sources at four widths in two formats, about five minutes.
+* **Widths are capped at 1366 on purpose.** Every layout's `sizes` tops out at
+  48rem, and the source format is always emitted as the `<picture>` fallback —
+  this corpus is mostly photographic PNG, so the fallbacks are 193 MB against
+  27 MB of WebP. Raising the cap grows the artifact fast.

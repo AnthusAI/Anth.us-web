@@ -54,6 +54,8 @@ sys.path.insert(0, str(POD_ROOT))
 from papyrus_content.markus_renderer import build as markus_build  # noqa: E402
 from papyrus_content.markus_renderer import shell as markus_shell  # noqa: E402
 from papyrus_content.markus_renderer.build import build_markus_site  # noqa: E402
+from papyrus_content.markus_renderer.citations import CitationRendering  # noqa: E402
+from papyrus_content.markus_renderer.images import ImagePipeline  # noqa: E402
 from papyrus_content.markus_renderer.shell import NavItem, SiteChrome  # noqa: E402
 
 import anthus_pages as pages  # noqa: E402
@@ -71,6 +73,41 @@ CONTENT_SUBMODULE = REPO_ROOT / "content" / "anthus-site-content"
 SITE_ASSETS = POD_ROOT / "assets" / "site"
 STAGING = POD_ROOT / "staging"
 DIST = POD_ROOT / "dist-papyrus"
+#: Generated image renditions, kept OUTSIDE both `STAGING` and `DIST` because
+#: this script wipes the first and `build_markus_site` wipes the second. Put it
+#: on the CI cache path; a cold build is ~230 sources x 6 widths x 2 formats.
+IMAGE_CACHE = POD_ROOT / ".image-cache"
+
+# ---- Papyrus content-markup capabilities (docs/markus-content-markup.md) ---
+#
+# `source_dir` is the content submodule, not the staging tree: `::image{}` src
+# values in the corpus are repo-relative (`images/chart.png`) and the pipeline
+# reads the originals and writes its own derivatives, so nothing has to be
+# pre-copied or pre-downscaled.
+#
+# `upgrade_plain_images=False` is load-bearing. `anthus_pages` emits listing
+# thumbnails and site chrome as plain Markdown images with site-ABSOLUTE
+# hrefs (`/assets/content/…`, `/assets/site/…`), which `assert_safe_asset_src`
+# rejects by design. Those assets are staged and copied by `ImageIndex.stage`
+# instead, so `::image{}` is the only responsive path. Making them responsive
+# too would mean giving the pipeline a second source root.
+#
+# `widths`/`max_width` are capped at 1366 on purpose. Every layout's `sizes`
+# tops out at 48rem (768 CSS px), so a browser never asks for more than ~1536
+# px even at 2x DPR, and the pipeline otherwise also offers each source's own
+# intrinsic width -- the originals here run to 26 MB and several thousand
+# pixels. The cap matters more than it looks: the source format is always
+# emitted as the <picture> fallback, so each PNG rendition ships at PNG size
+# (290 MB of PNG against 38 MB of WebP for the same renditions at a 1920 cap),
+# and the artifact is uploaded as a zip.
+IMAGES = ImagePipeline(
+    source_dir=CONTENT_SUBMODULE,
+    cache_dir=IMAGE_CACHE,
+    widths=(480, 768, 1024, 1366),
+    max_width=1366,
+    upgrade_plain_images=False,
+)
+CITATIONS = CitationRendering()
 
 # Staging deployment. Deliberately NOT https://anth.us — canonical URLs and
 # og:url must not claim to be the production site while this is under review,
@@ -339,15 +376,14 @@ def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
     platform_dir = STAGING / "platform"
     platform_dir.mkdir(parents=True, exist_ok=True)
     for node in collections.platform:
-        _, body = split_front_matter(node.source.read_text(encoding="utf-8"))
+        front_matter, body = split_front_matter(node.source.read_text(encoding="utf-8"))
         text, node_report = normalize_body(
             body,
-            resolve_image_name=images.resolve_name,
-            resolve_image_path=lambda src, n=node: images.resolve_path(
+            resolve_image_name=images.content_src,
+            resolve_image_path=lambda src, n=node: images.content_src(
                 src, relative_to=n.source
             ),
         )
-        report.merge(node_report)
         document = (
             pages.platform_product_head(node)
             + text
@@ -355,8 +391,20 @@ def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
         )
         write_if_changed(
             platform_dir / f"{node.slug}.md",
-            staged_markdown({"title": node.title, "date": node.display_date}, document),
+            staged_markdown(
+                {
+                    "title": node.title,
+                    "date": node.display_date,
+                    # Read before merge(), which drops per-page citation keys.
+                    "citations": {
+                        **(front_matter.get("citations") or {}),
+                        **node_report.citation_entries,
+                    },
+                },
+                document,
+            ),
         )
+        report.merge(node_report)
         _register_meta(
             f"platform/{node.slug}.html",
             node.excerpt_text,
@@ -451,6 +499,42 @@ def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
 
 
 # --------------------------------------------------------------------------
+# Staging audit
+# --------------------------------------------------------------------------
+
+_MDX_LEFTOVER_RE = re.compile(r"<(?:BlogImage|Citation|CitationsList)\b")
+_IMAGE_DIRECTIVE_RE = re.compile(r"^[ \t]*::image\{", re.M)
+_CITATIONS_DIRECTIVE_RE = re.compile(r"^[ \t]*::citations\b", re.M)
+_CITE_MARKER_RE = re.compile(r"\[@[^\]\n]+\]")
+
+
+def audit_staging(staging: Path) -> tuple[int, int, int]:
+    """Count the Papyrus markup actually handed to the renderer, and refuse
+    to go on if a Gatsby component survived into it.
+
+    `markus convert` fails a whole page on an unregistered directive, so a
+    leftover `<BlogImage>` would not break the build -- it would be escaped
+    into visible angle brackets on a page nobody looks at. Counting here is
+    what makes "zero leftovers" an assertion rather than a hope.
+    """
+    images = markers = lists = 0
+    leftovers: list[str] = []
+    for path in sorted(staging.rglob("*.md")):
+        text = path.read_text(encoding="utf-8")
+        images += len(_IMAGE_DIRECTIVE_RE.findall(text))
+        lists += len(_CITATIONS_DIRECTIVE_RE.findall(text))
+        markers += len(_CITE_MARKER_RE.findall(text))
+        if _MDX_LEFTOVER_RE.search(text):
+            leftovers.append(path.relative_to(staging).as_posix())
+    if leftovers:
+        raise RuntimeError(
+            "Gatsby MDX components survived normalization into the staging "
+            f"tree: {', '.join(leftovers[:10])}"
+        )
+    return images, markers, lists
+
+
+# --------------------------------------------------------------------------
 # Standalone pages and redirects
 # --------------------------------------------------------------------------
 
@@ -465,7 +549,19 @@ def build_standalone(result, source: Path, href: str) -> None:
     if not source.is_file():
         raise RuntimeError(f"Standalone page source not found: {source}")
     css_version = markus_build._css_version(result.out_dir / "css", result.out_dir / "assets")
-    fragment = markus_build.convert_fragment(source, theme=None)
+    # Same capabilities as the collection pages. None of these four pages uses
+    # `::image{}` or `[@key]` today, but a build where "about.html" silently
+    # ignored a directive the articles honour would be a trap.
+    fragment = markus_build.render_fragment(
+        source,
+        theme=None,
+        depth=0,
+        images=IMAGES,
+        image_builder=markus_build.ImageBuilder(
+            IMAGES, content_dir=STAGING, out_dir=result.out_dir
+        ),
+        citations=CITATIONS,
+    )
     title = markus_build._read_title(source, href)
     page_path = result.out_dir / href
     page_path.parent.mkdir(parents=True, exist_ok=True)
@@ -589,6 +685,11 @@ def main() -> int:
     if STAGING.exists():
         shutil.rmtree(STAGING)
     report = stage(collections, images)
+    image_count, citation_count, citations_list_count = audit_staging(STAGING)
+    print(
+        f"  staged markup: {image_count} ::image{{}}, {citation_count} [@key], "
+        f"{citations_list_count} ::citations{{}}, 0 leftover MDX components"
+    )
 
     print("Rendering through Papyrus's Markus renderer…")
     result = build_markus_site(
@@ -598,6 +699,8 @@ def main() -> int:
         site_css=POD_ROOT / "css" / "anthus-theme.css",
         chrome=ANTHUS_CHROME,
         sections=("platform", "posts", "tags"),
+        images=IMAGES,
+        citations=CITATIONS,
     )
     for href in ("about.html", "ai-solutions.html", "ryan.html", "404.html"):
         build_standalone(result, STAGING / href.replace(".html", ".md"), href)
@@ -627,9 +730,12 @@ def main() -> int:
     print(f"\nBuilt Anth.us via Papyrus renderer: {result.out_dir}")
     print(f"  {len(result.pages)} pages, {redirects} redirect stubs")
     print("\nContent conversion report (parity accounting):")
-    print(f"  images converted to :::figure      {report.images}")
-    print(f"  <Citation> -> numbered reference    {report.citations}")
-    print(f"  <CitationsList> -> ## References    {report.citation_lists}")
+    print(f"  responsive ::image{{}} directives     {image_count}")
+    print(f"  plain :::figure (site chrome)       {report.static_figures}")
+    print(f"  inline [@key] citation markers      {citation_count}")
+    print(f"  ::citations{{}} bibliographies        {citations_list_count}")
+    print(f"  legacy <Citation> converted         {report.citations}")
+    print(f"  legacy <BlogImage> converted        {report.images}")
     print(f"  HTML tables -> GFM tables           {report.tables}")
     print(f"  <mark> -> bold (styling lost)        {report.marks}")
     print(f"  inline <svg> dropped                 {report.dropped_svg}")
