@@ -1,0 +1,672 @@
+[
+  {
+    "source": "/blog/",
+    "target": "/articles/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/page/<n>/",
+    "target": "/articles/",
+    "status": "301"
+  },
+  {
+    "source": "/posts/1/",
+    "target": "/posts/",
+    "status": "301"
+  },
+  {
+    "source": "/posts/page/1/",
+    "target": "/posts/",
+    "status": "301"
+  },
+  {
+    "source": "/posts/2/",
+    "target": "/posts/page-2/",
+    "status": "301"
+  },
+  {
+    "source": "/posts/3/",
+    "target": "/posts/page-3/",
+    "status": "301"
+  },
+  {
+    "source": "/posts/4/",
+    "target": "/posts/page-4/",
+    "status": "301"
+  },
+  {
+    "source": "/posts/page/<n>/",
+    "target": "/posts/page-<n>/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/AI/",
+    "target": "/tags/ai/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/AI%20commodification/",
+    "target": "/tags/ai-commodification/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/Grok%20Bot/",
+    "target": "/tags/grok-bot/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/HITL/",
+    "target": "/tags/hitl/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/LLMs/",
+    "target": "/tags/llms/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/NLP/",
+    "target": "/tags/nlp/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/Paytronix/",
+    "target": "/articles/paytronix/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/RLHF/",
+    "target": "/tags/rlhf/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/agents/",
+    "target": "/tags/agents/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/agile/",
+    "target": "/tags/agile/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/ai/",
+    "target": "/tags/ai/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/ai-coding/",
+    "target": "/tags/ai-coding/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/alignment/",
+    "target": "/tags/alignment/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/architecture/",
+    "target": "/tags/architecture/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/articles/",
+    "target": "/tags/articles/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/aws/",
+    "target": "/tags/aws/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/bdd/",
+    "target": "/tags/bdd/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/client-acquisition/",
+    "target": "/tags/client-acquisition/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/coding%20agents/",
+    "target": "/tags/coding-agents/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/devops/",
+    "target": "/tags/devops/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/economics/",
+    "target": "/tags/economics/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/emotional%20intelligence/",
+    "target": "/tags/emotional-intelligence/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/engagement/",
+    "target": "/tags/engagement/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/engineering/",
+    "target": "/tags/engineering/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/ephemeral%20software/",
+    "target": "/tags/ephemeral-software/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/experiment/",
+    "target": "/tags/experiment/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/explainer/",
+    "target": "/tags/explainer/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/featured/",
+    "target": "/tags/featured/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/fine-tuning/",
+    "target": "/tags/fine-tuning/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/how-to/",
+    "target": "/tags/how-to/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/integrations/",
+    "target": "/tags/integrations/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/jev-useful-decisions/",
+    "target": "/articles/making-decisions-instead-of-generating-text/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/knowledge-management/",
+    "target": "/tags/knowledge-management/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/llms/",
+    "target": "/tags/llms/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/machine%20learning/",
+    "target": "/tags/machine-learning/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/mathematics/",
+    "target": "/tags/mathematics/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/posts/",
+    "target": "/tags/posts/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/productivity/",
+    "target": "/tags/productivity/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/project/",
+    "target": "/tags/project/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/project%20management/",
+    "target": "/tags/project-management/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/reading/",
+    "target": "/tags/reading/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/research/",
+    "target": "/tags/research/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/rubrics/",
+    "target": "/tags/rubrics/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/security/",
+    "target": "/tags/security/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/serverless/",
+    "target": "/tags/serverless/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/simulation%20theory/",
+    "target": "/tags/simulation-theory/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/software%20development/",
+    "target": "/tags/software-development/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/solutions/",
+    "target": "/tags/solutions/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/statistical%20phenomena/",
+    "target": "/tags/statistical-phenomena/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/<slug>/",
+    "target": "/articles/<slug>/",
+    "status": "301"
+  },
+  {
+    "source": "/a-week-with-grok-bot/",
+    "target": "/articles/a-week-with-grok-bot/",
+    "status": "301"
+  },
+  {
+    "source": "/a-world-with-no-moats/",
+    "target": "/articles/a-world-with-no-moats/",
+    "status": "301"
+  },
+  {
+    "source": "/ai-agents/",
+    "target": "/articles/ai-agents/",
+    "status": "301"
+  },
+  {
+    "source": "/ai-coding-cost-collapse-2026/",
+    "target": "/articles/ai-coding-cost-collapse-2026/",
+    "status": "301"
+  },
+  {
+    "source": "/ai-project-planning/",
+    "target": "/articles/ai-project-planning/",
+    "status": "301"
+  },
+  {
+    "source": "/all-your-agents-are-belong-to-us/",
+    "target": "/articles/all-your-agents-are-belong-to-us/",
+    "status": "301"
+  },
+  {
+    "source": "/an-agent-skill-for-not-sounding-like-an-agent/",
+    "target": "/articles/an-agent-skill-for-not-sounding-like-an-agent/",
+    "status": "301"
+  },
+  {
+    "source": "/aws-lambda-for-ai-ml/",
+    "target": "/articles/aws-lambda-for-ai-ml/",
+    "status": "301"
+  },
+  {
+    "source": "/bugonomics-cheap-exploits-2026/",
+    "target": "/articles/bugonomics-cheap-exploits-2026/",
+    "status": "301"
+  },
+  {
+    "source": "/can-averaging-reduce-noise/",
+    "target": "/articles/can-averaging-reduce-noise/",
+    "status": "301"
+  },
+  {
+    "source": "/can-you-fix-it/",
+    "target": "/articles/can-you-fix-it/",
+    "status": "301"
+  },
+  {
+    "source": "/can-you-trust-jev-confidence/",
+    "target": "/articles/can-you-trust-jev-confidence/",
+    "status": "301"
+  },
+  {
+    "source": "/code-based-hill-climbing/",
+    "target": "/articles/code-based-hill-climbing/",
+    "status": "301"
+  },
+  {
+    "source": "/coding-agents-went-remote-2026/",
+    "target": "/articles/coding-agents-went-remote-2026/",
+    "status": "301"
+  },
+  {
+    "source": "/commodity-receipts/",
+    "target": "/articles/commodity-receipts/",
+    "status": "301"
+  },
+  {
+    "source": "/cybernetic-development/",
+    "target": "/articles/cybernetic-development/",
+    "status": "301"
+  },
+  {
+    "source": "/decision-models-are-not-calculators/",
+    "target": "/articles/decision-models-are-not-calculators/",
+    "status": "301"
+  },
+  {
+    "source": "/distilling-jev-into-a-classifier/",
+    "target": "/articles/distilling-jev-into-a-classifier/",
+    "status": "301"
+  },
+  {
+    "source": "/domain-specific-turn-detection/",
+    "target": "/articles/domain-specific-turn-detection/",
+    "status": "301"
+  },
+  {
+    "source": "/encoding-prejudice/",
+    "target": "/articles/encoding-prejudice/",
+    "status": "301"
+  },
+  {
+    "source": "/everything-as-code-integration/",
+    "target": "/articles/everything-as-code-integration/",
+    "status": "301"
+  },
+  {
+    "source": "/few-shot-learning-isnt-real/",
+    "target": "/articles/few-shot-learning-isnt-real/",
+    "status": "301"
+  },
+  {
+    "source": "/fine-tuned-classification-with-confidence/",
+    "target": "/articles/fine-tuned-classification-with-confidence/",
+    "status": "301"
+  },
+  {
+    "source": "/fine-tuning-jev/",
+    "target": "/articles/fine-tuning-jev/",
+    "status": "301"
+  },
+  {
+    "source": "/from-pair-programmer-to-executive/",
+    "target": "/articles/from-pair-programmer-to-executive/",
+    "status": "301"
+  },
+  {
+    "source": "/give-an-agent-a-tool/",
+    "target": "/articles/give-an-agent-a-tool/",
+    "status": "301"
+  },
+  {
+    "source": "/glide-decision-model-ten-seconds/",
+    "target": "/articles/glide-decision-model-ten-seconds/",
+    "status": "301"
+  },
+  {
+    "source": "/grok-bot-gave-my-coding-agents-a-boss/",
+    "target": "/articles/grok-bot-gave-my-coding-agents-a-boss/",
+    "status": "301"
+  },
+  {
+    "source": "/how-ai-agents-do-things/",
+    "target": "/articles/how-ai-agents-do-things/",
+    "status": "301"
+  },
+  {
+    "source": "/how-ai-agents-know-things/",
+    "target": "/articles/how-ai-agents-know-things/",
+    "status": "301"
+  },
+  {
+    "source": "/inspected-by-pudicus/",
+    "target": "/articles/inspected-by-pudicus/",
+    "status": "301"
+  },
+  {
+    "source": "/jev-useful-decisions/",
+    "target": "/articles/making-decisions-instead-of-generating-text/",
+    "status": "301"
+  },
+  {
+    "source": "/jev-vs-laya/",
+    "target": "/articles/jev-vs-laya/",
+    "status": "301"
+  },
+  {
+    "source": "/jevons-paradox-ai-slop/",
+    "target": "/articles/jevons-paradox-ai-slop/",
+    "status": "301"
+  },
+  {
+    "source": "/kanbus-project-management-as-code/",
+    "target": "/articles/kanbus-project-management-as-code/",
+    "status": "301"
+  },
+  {
+    "source": "/langchain-by-example/",
+    "target": "/articles/langchain-by-example/",
+    "status": "301"
+  },
+  {
+    "source": "/maximize-profit-not-intelligence/",
+    "target": "/articles/maximize-profit-not-intelligence/",
+    "status": "301"
+  },
+  {
+    "source": "/maximize-value-not-intelligence/",
+    "target": "/articles/maximize-value-not-intelligence/",
+    "status": "301"
+  },
+  {
+    "source": "/never-use-fast/",
+    "target": "/articles/never-use-fast/",
+    "status": "301"
+  },
+  {
+    "source": "/one-word-test/",
+    "target": "/articles/one-word-test/",
+    "status": "301"
+  },
+  {
+    "source": "/openai-decisions-api-preview/",
+    "target": "/articles/openai-decisions-api-preview/",
+    "status": "301"
+  },
+  {
+    "source": "/paradox-of-automation/",
+    "target": "/articles/paradox-of-automation/",
+    "status": "301"
+  },
+  {
+    "source": "/people-skills/",
+    "target": "/articles/people-skills-are-vital-for-leveraging-artificial-people/",
+    "status": "301"
+  },
+  {
+    "source": "/plexus-classifier-lab/",
+    "target": "/articles/plexus-classifier-lab/",
+    "status": "301"
+  },
+  {
+    "source": "/ralph-loops/",
+    "target": "/articles/ralph-loops/",
+    "status": "301"
+  },
+  {
+    "source": "/rethinking-ai-hallucination/",
+    "target": "/articles/rethinking-ai-hallucination/",
+    "status": "301"
+  },
+  {
+    "source": "/rubrics-for-ai-alignment/",
+    "target": "/articles/rubrics-for-ai-alignment/",
+    "status": "301"
+  },
+  {
+    "source": "/single-use-software/",
+    "target": "/articles/the-rise-of-single-use-software/",
+    "status": "301"
+  },
+  {
+    "source": "/solutions/B0rd/",
+    "target": "/articles/b0rd/",
+    "status": "301"
+  },
+  {
+    "source": "/solutions/Call%20Criteria/",
+    "target": "/articles/call-criteria/",
+    "status": "301"
+  },
+  {
+    "source": "/solutions/Checkout-Driver/",
+    "target": "/articles/checkout-driver/",
+    "status": "301"
+  },
+  {
+    "source": "/solutions/Classification-with-Confidence/",
+    "target": "/articles/classification-with-confidence/",
+    "status": "301"
+  },
+  {
+    "source": "/solutions/DataParade/",
+    "target": "/articles/dataparade/",
+    "status": "301"
+  },
+  {
+    "source": "/solutions/Marketo/",
+    "target": "/articles/marketo/",
+    "status": "301"
+  },
+  {
+    "source": "/solutions/Menu-Driver/",
+    "target": "/articles/menu-driver/",
+    "status": "301"
+  },
+  {
+    "source": "/solutions/Paytronix/",
+    "target": "/articles/paytronix/",
+    "status": "301"
+  },
+  {
+    "source": "/solutions/Plexus/",
+    "target": "/articles/plexus/",
+    "status": "301"
+  },
+  {
+    "source": "/solutions/SQLBot/",
+    "target": "/articles/sqlbot/",
+    "status": "301"
+  },
+  {
+    "source": "/solutions/Salesforce/",
+    "target": "/articles/salesforce/",
+    "status": "301"
+  },
+  {
+    "source": "/solutions/Salesforce-Marketing-Cloud/",
+    "target": "/articles/salesforce-marketing-cloud/",
+    "status": "301"
+  },
+  {
+    "source": "/solutions/Speaker-Role-Classifier/",
+    "target": "/articles/speaker-role-classifier/",
+    "status": "301"
+  },
+  {
+    "source": "/solutions/Store-Driver/",
+    "target": "/articles/store-driver/",
+    "status": "301"
+  },
+  {
+    "source": "/solutions/Ticket-Driver/",
+    "target": "/articles/ticket-driver/",
+    "status": "301"
+  },
+  {
+    "source": "/solutions/Ticket-Driver-Copilot/",
+    "target": "/articles/ticket-driver-copilot/",
+    "status": "301"
+  },
+  {
+    "source": "/solutions/Vault/",
+    "target": "/articles/vault/",
+    "status": "301"
+  },
+  {
+    "source": "/solutions/Venue-Driver/",
+    "target": "/articles/venue-driver/",
+    "status": "301"
+  },
+  {
+    "source": "/solutions/ticketing%20analysis/",
+    "target": "/articles/ticketing-analysis/",
+    "status": "301"
+  },
+  {
+    "source": "/teaching-via-data/",
+    "target": "/articles/teaching-via-data/",
+    "status": "301"
+  },
+  {
+    "source": "/text-classifier-cookbook/",
+    "target": "/articles/text-classifier-cookbook/",
+    "status": "301"
+  },
+  {
+    "source": "/the-dominance-of-ones/",
+    "target": "/articles/the-dominance-of-ones/",
+    "status": "301"
+  },
+  {
+    "source": "/the-simulation-told-them-they-would-win/",
+    "target": "/articles/the-simulation-told-them-they-would-win/",
+    "status": "301"
+  },
+  {
+    "source": "/thrifty-tokenmaxxing/",
+    "target": "/articles/thrifty-tokenmaxxing/",
+    "status": "301"
+  },
+  {
+    "source": "/vibe-coding-client/",
+    "target": "/articles/vibe-coding-client/",
+    "status": "301"
+  },
+  {
+    "source": "/who-is-responsible-after-you-deploy-a-decision-model/",
+    "target": "/articles/who-is-responsible-after-you-deploy-a-decision-model/",
+    "status": "301"
+  },
+  {
+    "source": "/wiki-that-only-gets-bigger/",
+    "target": "/articles/wiki-that-only-gets-bigger/",
+    "status": "301"
+  },
+  {
+    "source": "/<*>",
+    "target": "/404.html",
+    "status": "404"
+  }
+]

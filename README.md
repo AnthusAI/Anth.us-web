@@ -91,21 +91,40 @@ it. It is the honest record of what this port does not yet reproduce.
 
 ## Routing
 
-| Gatsby (production) | This build |
-| --- | --- |
-| `/` | `/index.html` |
-| `/blog/<slug>/` | `/articles/<slug>.html` (+ `/blog/<slug>.html` redirect stub) |
-| `/blog/` | `/articles/index.html` |
-| `/blog/<tag>` | `/tags/<tag>.html` |
-| `/posts/`, `/posts/2/` | `/posts/index.html`, `/posts/page-2.html` |
-| `/platform`, `/platform/<slug>` | `/platform/index.html`, `/platform/<slug>.html` |
-| `/ai-solutions`, `/about`, `/ryan`, `/404` | `/ai-solutions.html`, `/about.html`, `/ryan.html`, `/404.html` |
+`/articles/` is the canonical namespace, and URLs are **directory-style** to
+match production anth.us. `web/anthus_urls.py` is the single configuration
+point: `ANTHUS_URL_STYLE=html` switches the whole site back to
+`/articles/<slug>.html` without touching anything else.
 
-`/articles/` rather than `/blog/` because Papyrus's `build_markus_site`
-hard-requires the primary collection to live in `content/articles/`. In-content
-`/blog/…` links are rewritten to the canonical path, and meta-refresh stubs are
-emitted at `/blog/<slug>.html` (plus every `redirect_from:` slug) so inbound
-links still land.
+| Canonical here | Legacy Gatsby URLs that 301 onto it |
+| --- | --- |
+| `/` | — |
+| `/articles/<slug>/` | `/blog/<slug>/`, `/<file-stem>/`, `/solutions/<File-Stem>/`, `/blog/<redirect_from>/` |
+| `/articles/` | `/blog/`, `/blog/page/<n>/` |
+| `/tags/<tag>/` | `/blog/<tag>/` |
+| `/posts/`, `/posts/page-<n>/` | `/posts/<n>/`, `/posts/page/<n>/` |
+| `/platform/`, `/platform/<slug>/` | already this shape on production |
+| `/about/`, `/ai-solutions/`, `/ryan/` | already this shape on production |
+| `/404.html` | kept literal; it is Amplify's error document |
+
+The live Gatsby site publishes **four** shapes for the same corpus, not one.
+`/blog/<slug>/` and `/blog/<tag>/` come from `gatsby-node.js` and share a
+namespace — where a tag and an article slug collide, production serves the
+article, and so does the redirect map. `/<file-stem>/` and
+`/solutions/<File-Stem>/` come from `gatsby-plugin-page-creator`, which
+`gatsby-config.mjs` points at the content directory: **every** MDX file also
+gets a URL derived from its file path, with the authored capitalization and
+spaces intact. All four are in production's sitemap, so all four are published.
+
+Redirects are real **301**s, not meta-refresh HTML stubs: Amplify
+`customRules`, generated into `web/custom-rules.json` by the build and pushed
+with `bin/apply_custom_rules.py --apply`. They are app configuration rather
+than a repo file, which is why that is a separate step from the deploy.
+
+Every internal reference the build emits is normalized to the canonical URL in
+one pass over the rendered HTML, so no internal link lands on a redirect. That
+pass resolves *relative* references too, because the canonical shape moves each
+page into its own directory; see the comment above `_absolutize`.
 
 ## Hosting
 

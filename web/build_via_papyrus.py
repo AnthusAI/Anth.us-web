@@ -30,11 +30,13 @@ Pipeline
 
 from __future__ import annotations
 
+import json
 import os
+import posixpath
 import re
 import shutil
 import sys
-from html import escape
+from html import escape, unescape
 from pathlib import Path
 
 POD_ROOT = Path(__file__).resolve().parent
@@ -57,6 +59,7 @@ from papyrus_content.markus_renderer.build import build_markus_site  # noqa: E40
 from papyrus_content.markus_renderer.shell import NavItem, SiteChrome  # noqa: E402
 
 import anthus_pages as pages  # noqa: E402
+import anthus_urls as urls  # noqa: E402
 from anthus_content import (  # noqa: E402
     POSTS_PER_PAGE,
     Collections,
@@ -161,77 +164,85 @@ markus_build._build_nav_items = lambda articles: [
 # Link rewriting
 # --------------------------------------------------------------------------
 
-# Gatsby-absolute paths as authored across the content and the page copy.
-_LINK_MAP = (
-    (re.compile(r"^/blog/?$"), "/articles/index.html"),
-    (re.compile(r"^/blog/([A-Za-z0-9._-]+)/?$"), r"/articles/\1.html"),
-    (re.compile(r"^/platform/?$"), "/platform/index.html"),
-    (re.compile(r"^/platform/([A-Za-z0-9._-]+)/?$"), r"/platform/\1.html"),
-    (re.compile(r"^/posts/?$"), "/posts/index.html"),
-    (re.compile(r"^/posts/(\d+)/?$"), r"/posts/page-\1.html"),
-    (re.compile(r"^/ai-solutions/?$"), "/ai-solutions.html"),
-    (re.compile(r"^/about/?$"), "/about.html"),
-    (re.compile(r"^/ryan/?$"), "/ryan.html"),
-    (re.compile(r"^/$"), "/index.html"),
-)
+# Every internal reference the build emits is normalized here, in one pass over
+# the rendered HTML, to the canonical site-absolute URL from `anthus_urls`.
+#
+# Site-absolute AND relative references both go through it. Relative ones have
+# to, because the canonical output shape moves a page: Papyrus renders
+# `articles/<slug>.md` to `articles/<slug>.html` at depth 1 and links its
+# chrome with `../`, but the page is written to `articles/<slug>/index.html`,
+# where `../css/site-theme.css` would resolve to `/articles/css/...`. Resolving
+# every reference against the page's *Papyrus* location and re-emitting it
+# absolute makes the output independent of where the file ends up, which is
+# what lets `ANTHUS_URL_STYLE` be a single switch.
+_REF_RE = re.compile(r'\b(?P<attr>href|src)="(?P<url>[^"]*)"')
+_SRCSET_RE = re.compile(r'\bsrcset="(?P<value>[^"]*)"')
+_SKIP_PREFIXES = ("//", "#", "?", "data:", "mailto:", "tel:", "http://", "https://")
 
-_HREF_RE = re.compile(r'(?P<attr>\bhref=")(?P<url>/[^"]*)(?P<close>")')
-
-# Populated from the discovered corpus before rendering. Lets a bare `/<slug>`
-# (several articles cross-link each other without the `/blog/` prefix — broken
-# on production too) and a capitalized `/blog/<Slug>` resolve to a real page.
-_KNOWN_SLUGS: dict[str, str] = {}
+#: Papyrus hrefs this build renders, and the authored-name tables that map a
+#: live-site URL onto one of them. Both are populated from the staged corpus
+#: before the first page renders; see `main`.
+_SITE_URLS = urls.SiteUrls()
 _UNRESOLVED_LINKS: dict[str, int] = {}
 
 
-def _map_path(path: str) -> str:
-    # Already a built path. Without this guard `/platform/index.html` matched
-    # the `/platform/<slug>` rule and became `/platform/index.html.html` —
-    # 185 broken links across the site.
-    if path.endswith(".html"):
-        return path
-    for pattern, replacement in _LINK_MAP:
-        match = pattern.match(path)
-        if not match:
-            continue
-        mapped = pattern.sub(replacement, path)
-        # Slugs are normalized to lowercase at discovery (Papyrus only renders
-        # lowercase collection slugs), so a link written against the authored
-        # capitalization — e.g. /blog/Paytronix — has to be folded too.
-        folded = re.sub(
-            r"^/(articles|platform)/([^/]+)\.html$",
-            lambda m: f"/{m.group(1)}/{m.group(2).lower()}.html",
-            mapped,
-        )
-        return folded
-    # A bare `/<slug>` that names a real article.
-    bare = path.strip("/").lower()
-    if bare and "/" not in bare and bare in _KNOWN_SLUGS:
-        return f"/articles/{_KNOWN_SLUGS[bare]}.html"
-    if path != "/":
+def _absolutize(url: str, *, base_dir: str) -> str:
+    """Canonicalize one reference from one page.
+
+    ``base_dir`` is the page's *Papyrus* output directory, which is what the
+    authored relative references were written against.
+    """
+    if not url or url.startswith(_SKIP_PREFIXES):
+        return url
+    path, sep, tail = url.partition("#")
+    if not sep:
+        path, sep, tail = url.partition("?")
+    if not path:
+        return url
+    if path.startswith("/"):
+        absolute = path
+    else:
+        absolute = "/" + posixpath.normpath(posixpath.join(base_dir, path))
+    if urls.is_non_page(absolute):
+        return absolute + sep + tail
+    href = _SITE_URLS.resolve(absolute)
+    if href is not None:
+        return urls.page_url(href) + sep + tail
+    # No page here, on this site or on production: a content bug. Report it and
+    # leave the reference exactly as authored. Reshaping it would hide the bug
+    # behind a different broken URL -- which is what happened to the
+    # scheme-less `arxiv.org/abs/...` link when this pass first absolutized
+    # everything it touched.
+    if absolute != "/":
         _UNRESOLVED_LINKS[path] = _UNRESOLVED_LINKS.get(path, 0) + 1
-    return path
+    return url
 
 
-def _rewrite_internal_links(html: str) -> str:
-    """Rewrite site-absolute Gatsby routes to this build's static paths.
+def _rewrite_internal_links(html: str, *, active_href: str) -> str:
+    """Rewrite every internal reference on one page to its canonical URL.
 
     Done on rendered HTML rather than on Markdown so it also catches links
-    that came out of front matter (``authors: <a href="/ryan">…</a>``) and out
-    of the generated page copy, in one place.
+    that came out of front matter (``authors: <a href="/ryan">…</a>``), out of
+    the generated page copy, and out of Papyrus's own page shell, in one place.
     """
+    base_dir = posixpath.dirname(active_href.lstrip("/"))
 
-    def repl(match: re.Match[str]) -> str:
-        url = match.group("url")
-        if url.startswith("//") or url.startswith("/assets/"):
-            return match.group(0)
-        path, sep, tail = url.partition("#")
-        if not sep:
-            path, sep, tail = url.partition("?")
-        mapped = _map_path(path)
-        return f'{match.group("attr")}{mapped}{sep}{tail}{match.group("close")}'
+    def one(match: re.Match[str]) -> str:
+        url = unescape(match.group("url"))
+        resolved = _absolutize(url, base_dir=base_dir)
+        return f'{match.group("attr")}="{escape(resolved, quote=True)}"'
 
-    return _HREF_RE.sub(repl, html)
+    def many(match: re.Match[str]) -> str:
+        out = []
+        for candidate in unescape(match.group("value")).split(","):
+            parts = candidate.strip().split(None, 1)
+            if not parts:
+                continue
+            resolved = _absolutize(parts[0], base_dir=base_dir)
+            out.append(" ".join([resolved] + parts[1:]))
+        return f'srcset="{escape(", ".join(out), quote=True)}"'
+
+    return _SRCSET_RE.sub(many, _REF_RE.sub(one, html))
 
 
 # --------------------------------------------------------------------------
@@ -243,10 +254,7 @@ _PAGE_META: dict[str, tuple[str, str]] = {}  # active_href -> (description, imag
 
 
 def _canonical_url(active_href: str) -> str:
-    href = (active_href or "index.html").lstrip("/")
-    if href in ("", "index.html"):
-        return f"{SITE_ORIGIN}/"
-    return f"{SITE_ORIGIN}/{href}"
+    return f"{SITE_ORIGIN}{urls.page_url(active_href)}"
 
 
 def _absolute(src: str) -> str:
@@ -304,7 +312,7 @@ def render_page_anthus(**kwargs):
     """Anthus chrome pass over Papyrus's rendered page."""
     html = _orig_render_page(**kwargs)
     active_href = kwargs.get("active_href") or "index.html"
-    html = _rewrite_internal_links(html)
+    html = _rewrite_internal_links(html, active_href=active_href)
     html = _inject_social_meta(
         html, title=kwargs.get("title") or "", active_href=active_href
     )
@@ -484,72 +492,86 @@ def build_standalone(result, source: Path, href: str) -> None:
     result.pages.append(page_path)
 
 
-_REDIRECT_TEMPLATE = """<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>Moved</title>
-<link rel="canonical" href="{canonical}">
-<meta name="robots" content="noindex, nofollow">
-<meta http-equiv="refresh" content="0;url={target}">
-</head>
-<body>
-<p>This page moved to <a href="{target}">{target}</a>.</p>
-</body>
-</html>
-"""
+# --------------------------------------------------------------------------
+# Canonical output shape
+# --------------------------------------------------------------------------
+
+#: Papyrus's collection discovery filter. A staged file it rejects is a page
+#: that silently never renders, so link resolution has to apply the same test.
+_PAPYRUS_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]*\.md$")
+_STANDALONE_HREFS = ("about.html", "ai-solutions.html", "ryan.html", "404.html")
+_RENDERED_DIRS = ("articles", "platform", "posts", "tags")
 
 
-def write_redirects(out_dir: Path, collections: Collections) -> int:
-    """Emit meta-refresh stubs for the live site's URL shapes.
+def staged_page_hrefs() -> set[str]:
+    """Predict the Papyrus hrefs this build renders, from the staged tree.
 
-    Two sources:
-
-    * ``/blog/<slug>`` — every article's production path. The canonical path
-      here is ``/articles/<slug>.html`` (see anthus_content), so inbound links
-      and bookmarks need a landing page.
-    * ``redirect_from:`` front matter — the legacy slugs ``gatsby-node.js``
-      turns into ``createRedirect`` calls.
-
-    A meta refresh is the static equivalent of an Amplify redirect rule.
-    Amplify ``customRules`` would be better (301 rather than 200 + refresh) but
-    they are app configuration, not a repo file, and this build does not edit
-    the Amplify app's rules.
+    `build_markus_site` walks `articles/` plus the named sections and accepts
+    only `_PAGE_SLUG`-shaped filenames; `build_standalone` adds the four
+    depth-0 pages. Predicting the set here lets every internal link be
+    resolved against real pages during rendering, and `main` then asserts the
+    prediction against what was actually written -- which is how a staged page
+    that Papyrus quietly skipped would now fail the build instead of becoming
+    a 404 behind a successful deploy.
     """
-    count = 0
-    blog_dir = out_dir / "blog"
-    blog_dir.mkdir(parents=True, exist_ok=True)
-    for node in collections.blog:
-        target = f"/articles/{node.slug}.html"
-        # Both the normalized slug and the authored one, which may differ in
-        # case (`Paytronix`). Gatsby serves the authored spelling.
-        for name in {node.slug, re.sub(r"[^A-Za-z0-9._-]", "", node.authored_slug)}:
-            if not name:
-                continue
-            (blog_dir / f"{name}.html").write_text(
-                _REDIRECT_TEMPLATE.format(canonical=_absolute(target), target=target),
-                encoding="utf-8",
-            )
-            count += 1
-        legacy = node.front_matter.get("redirect_from") or []
-        if isinstance(legacy, str):
-            legacy = [legacy]
-        for slug in legacy:
-            safe = re.sub(r"[^A-Za-z0-9._-]", "", str(slug))
-            if not safe or safe == node.slug:
-                continue
-            (blog_dir / f"{safe}.html").write_text(
-                _REDIRECT_TEMPLATE.format(canonical=_absolute(target), target=target),
-                encoding="utf-8",
-            )
-            count += 1
-    (blog_dir / "index.html").write_text(
-        _REDIRECT_TEMPLATE.format(
-            canonical=_absolute("/articles/index.html"), target="/articles/index.html"
-        ),
-        encoding="utf-8",
+    hrefs = {"index.html", *_STANDALONE_HREFS}
+    for directory in _RENDERED_DIRS:
+        for path in sorted((STAGING / directory).glob("*.md")):
+            if _PAPYRUS_SLUG_RE.match(path.name):
+                hrefs.add(f"{directory}/{path.stem}.html")
+    return hrefs
+
+
+
+def relocate_pages(result) -> int:
+    """Move Papyrus's rendered pages to their canonical output locations.
+
+    Papyrus writes `articles/<slug>.html`; the canonical URL is
+    `/articles/<slug>/`, so the file belongs at `articles/<slug>/index.html`.
+    Every reference on the page was already rewritten to a site-absolute
+    canonical URL by `_rewrite_internal_links`, so moving the file cannot break
+    a stylesheet, a script, or a link. `result.pages` is updated in place so the
+    sitemap describes where the pages actually are.
+    """
+    moved = 0
+    for index, page in enumerate(result.pages):
+        href = page.relative_to(result.out_dir).as_posix()
+        target = result.out_dir / urls.page_output(href)
+        if target == page:
+            continue
+        if target.exists():
+            raise RuntimeError(f"canonical output collision: {href} -> {target}")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        page.replace(target)
+        result.pages[index] = target
+        moved += 1
+    return moved
+
+
+# --------------------------------------------------------------------------
+# Legacy URL redirects
+# --------------------------------------------------------------------------
+
+#: Where the generated Amplify rules are written. Not part of the deployed
+#: artifact: `customRules` is Amplify *app* configuration, not a repo file, so
+#: `bin/apply_custom_rules.py` reads this and calls `amplify update-app`.
+CUSTOM_RULES = POD_ROOT / "custom-rules.json"
+
+
+def write_custom_rules(site_urls: urls.SiteUrls) -> urls.RuleSet:
+    """Generate the Amplify `customRules` that 301 every legacy URL shape.
+
+    Replaces the ~120 meta-refresh HTML stubs this build used to emit under
+    `/blog/`. A meta refresh is a 200 carrying a client-side hop: search
+    engines treat it as a weak signal at best, it does not consolidate link
+    equity the way a 301 does, and it costs a full page load. These are real
+    301s, served by Amplify before it touches the filesystem.
+    """
+    ruleset = urls.legacy_rules(site_urls)
+    CUSTOM_RULES.write_text(
+        json.dumps(ruleset.rules, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
-    return count + 1
+    return ruleset
 
 
 # --------------------------------------------------------------------------
@@ -574,21 +596,21 @@ def main() -> int:
         f"{len(collections.platform)} platform, {len(collections.tags)} tags"
     )
 
-    # Link rewriting needs the slug set before any page renders.
-    _KNOWN_SLUGS.update({node.slug: node.slug for node in collections.blog})
-    for node in collections.blog:
-        legacy = node.front_matter.get("redirect_from") or []
-        if isinstance(legacy, str):
-            legacy = [legacy]
-        for old in legacy:
-            _KNOWN_SLUGS.setdefault(str(old).strip().lower(), node.slug)
-
     images = ImageIndex.build(CONTENT_SUBMODULE, SITE_ASSETS)
 
     print("Staging Markus Markdown…")
     if STAGING.exists():
         shutil.rmtree(STAGING)
     report = stage(collections, images)
+
+    # Link rewriting needs the full URL map before any page renders: the
+    # canonical page set, plus every name the live Gatsby site answers to.
+    global _SITE_URLS
+    _SITE_URLS = urls.SiteUrls.from_collections(
+        collections, pages=staged_page_hrefs(), posts_per_page=POSTS_PER_PAGE
+    )
+    sample = next(iter(sorted(_SITE_URLS.pages - {"index.html"})), "index.html")
+    print(f"  canonical URL style: {urls.URL_STYLE} (e.g. {urls.page_url(sample)})")
 
     print("Rendering through Papyrus's Markus renderer…")
     result = build_markus_site(
@@ -599,10 +621,22 @@ def main() -> int:
         chrome=ANTHUS_CHROME,
         sections=("platform", "posts", "tags"),
     )
-    for href in ("about.html", "ai-solutions.html", "ryan.html", "404.html"):
+    for href in _STANDALONE_HREFS:
         build_standalone(result, STAGING / href.replace(".html", ".md"), href)
 
-    redirects = write_redirects(result.out_dir, collections)
+    rendered = {page.relative_to(result.out_dir).as_posix() for page in result.pages}
+    if rendered != _SITE_URLS.pages:
+        missing = sorted(_SITE_URLS.pages - rendered)
+        extra = sorted(rendered - _SITE_URLS.pages)
+        raise RuntimeError(
+            "staged pages and rendered pages disagree; internal links were "
+            f"resolved against the wrong set. staged-but-not-rendered={missing} "
+            f"rendered-but-not-staged={extra}"
+        )
+
+    moved = relocate_pages(result)
+    ruleset = write_custom_rules(_SITE_URLS)
+    redirects = len(ruleset.rules)
 
     (result.out_dir / "robots.txt").write_text(
         # Staging: refuse every crawler. Flip this when, and only when, the
@@ -610,13 +644,15 @@ def main() -> int:
         "User-agent: *\nDisallow: /\n",
         encoding="utf-8",
     )
-    urls = sorted(
+    sitemap_urls = sorted(
         {
             _canonical_url(page.relative_to(result.out_dir).as_posix())
             for page in result.pages
         }
     )
-    body = "\n".join(f"  <url><loc>{escape(url, quote=True)}</loc></url>" for url in urls)
+    body = "\n".join(
+        f"  <url><loc>{escape(url, quote=True)}</loc></url>" for url in sitemap_urls
+    )
     (result.out_dir / "sitemap.xml").write_text(
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
@@ -625,7 +661,17 @@ def main() -> int:
     )
 
     print(f"\nBuilt Anth.us via Papyrus renderer: {result.out_dir}")
-    print(f"  {len(result.pages)} pages, {redirects} redirect stubs")
+    print(f"  {len(result.pages)} pages, {redirects} redirect rules")
+    print(f"  {moved} page(s) relocated to canonical {urls.URL_STYLE}-style paths")
+    print(f"\nLegacy URL redirects (Amplify customRules -> {CUSTOM_RULES}):")
+    for group, count in sorted(ruleset.counts.items(), key=lambda kv: -kv[1]):
+        print(f"    {count:5d}  {group}")
+    print(f"    {1:5d}  catch-all 404 (pre-existing, kept last)")
+    if ruleset.skipped:
+        print(
+            f"  {len(ruleset.skipped)} legacy URL(s) need no rule of their own; "
+            "a pattern or a canonical page already covers them."
+        )
     print("\nContent conversion report (parity accounting):")
     print(f"  images converted to :::figure      {report.images}")
     print(f"  <Citation> -> numbered reference    {report.citations}")
