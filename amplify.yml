@@ -29,24 +29,22 @@ frontend:
         # pinned source clone is enough — no need to install Papyrus itself.
         # Reuse the checkout whenever the Amplify build cache restores it.
         - |
-          # AnthusAI/Papyrus develop @ 2026-10-03 — the exact commit this
-          # build was developed and verified against locally. Bump
-          # deliberately, never float to a branch name: the renderer's
-          # public surface (build_markus_site, SiteChrome, render_page,
-          # convert_fragment, _read_title, _css_version, _build_nav_items)
-          # is what this script monkey-patches, and a silent upstream change
-          # to it breaks the build with no commit here to blame.
+          # AnthusAI/Papyrus develop @ 3fdd6fd (2026-10-03) -- the exact
+          # commit this build was developed and verified against locally.
+          # Bump deliberately, never float to a branch name: the renderer's
+          # public surface (build_markus_site, SiteChrome and its
+          # render_masthead/render_body hooks, FragmentTransform and the
+          # sentinel helpers, ImagePipeline.wrap, shell.render_page,
+          # _read_title, _css_version) is what this script builds on, and a
+          # silent upstream change to it breaks the build with no commit here
+          # to blame.
           #
-          # !! THIS PIN IS STALE FOR THIS BRANCH !!
-          # d0b00b3 predates the content-markup capabilities
-          # (ImagePipeline / CitationRendering, Papyrus PR #83), and the
-          # content submodule here is authored in that markup. `markus
-          # convert` fails a whole page on an unregistered directive, so with
-          # this pin EVERY article fails with `Unknown directive 'image'`.
-          # Bump it to the merge commit of Papyrus PR #83 on develop BEFORE
-          # deploying this branch. Order: PR #83 -> develop, bump here,
-          # then this branch and the content branch land.
-          PAPYRUS_PIN=d0b00b398b89c55ca0c67efc4d017dd2a32c5a8a
+          # This pin includes the content-markup capabilities (ImagePipeline /
+          # CitationRendering, Papyrus PR #83) the content submodule is authored
+          # in, plus the page-shell seams and fragment transforms the exact
+          # design-parity build needs. Anything older fails every article with
+          # `Unknown directive 'image'` or lacks the SiteChrome hooks.
+          PAPYRUS_PIN=3fdd6fd8b819adf88a7c026bd362a0f3719e8ebd
           PAPYRUS_DIR="$PWD/.amplify-cache/papyrus-src"
           if [ ! -d "$PAPYRUS_DIR/.git" ]; then
             git clone --depth 1 https://github.com/AnthusAI/Papyrus.git "$PAPYRUS_DIR"
