@@ -1,0 +1,65 @@
+# Amplify Hosting — platform WEB (static Markus publication).
+#
+# Derived from AnthusAI/Papyrus `docs/hosting/amplify-static.yml.example`
+# (the amplify-static + markus pairing), with the Papyrus-source clone and
+# pip/cache handling from the proven AnthusAI/Pilobol.us build.
+#
+# Do NOT add a `backend:` phase. Do NOT run `ampx pipeline-deploy` or
+# `npm run build` — this is a static WEB app, not the SSR/WEB_COMPUTE shape
+# used by Papyrus's own root amplify.yml. See Papyrus docs/site-hosting.md.
+#
+# STAGING: this app serves a review copy of the Anth.us port on its default
+# *.amplifyapp.com hostname. No custom domain is attached and none should be.
+
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        # The content submodule (AnthusAI/anthus-site-content) holds every MDX
+        # source and image. Amplify's default clone is shallow and skips
+        # submodules, so fetch it explicitly or the build has no content.
+        - git submodule sync --recursive
+        - git submodule update --init --recursive --depth 1
+        # Cache lives under the project root (Amplify rejects absolute paths
+        # like /tmp). Cache tool inputs only, never the finished HTML.
+        - mkdir -p .amplify-cache/pip
+        - export PIP_CACHE_DIR="$PWD/.amplify-cache/pip"
+        # Papyrus's markus_renderer imports only the standard library, so a
+        # pinned source clone is enough — no need to install Papyrus itself.
+        # Reuse the checkout whenever the Amplify build cache restores it.
+        - |
+          # AnthusAI/Papyrus develop @ 2026-10-03 — the exact commit this
+          # build was developed and verified against locally. Bump
+          # deliberately, never float to a branch name: the renderer's
+          # public surface (build_markus_site, SiteChrome, render_page,
+          # convert_fragment, _read_title, _css_version, _build_nav_items)
+          # is what this script monkey-patches, and a silent upstream change
+          # to it breaks the build with no commit here to blame.
+          PAPYRUS_PIN=d0b00b398b89c55ca0c67efc4d017dd2a32c5a8a
+          PAPYRUS_DIR="$PWD/.amplify-cache/papyrus-src"
+          if [ ! -d "$PAPYRUS_DIR/.git" ]; then
+            git clone --depth 1 https://github.com/AnthusAI/Papyrus.git "$PAPYRUS_DIR"
+          fi
+          # `git -C`, not `cd`: Amplify phases share one shell and a bare `cd`
+          # leaks into the build phase.
+          git -C "$PAPYRUS_DIR" fetch --depth 1 origin "$PAPYRUS_PIN"
+          git -C "$PAPYRUS_DIR" checkout "$PAPYRUS_PIN"
+        - pip install --cache-dir "$PWD/.amplify-cache/pip" "git+https://github.com/AnthusAI/Markus@v0.5.1"
+        # Pillow downscales referenced content images at build time. Without
+        # it the build still succeeds but ships multi-megabyte originals (the
+        # content repo holds ~313 MB of them) — see anthus_content._copy_image.
+        - pip install --cache-dir "$PWD/.amplify-cache/pip" "Pillow>=10,<12"
+        - pip install --cache-dir "$PWD/.amplify-cache/pip" "PyYAML>=6"
+    build:
+      commands:
+        # Always rebuild HTML clean; never restore web/dist-papyrus from cache.
+        - rm -rf web/dist-papyrus web/staging
+        - cd web && PAPYRUS_ROOT="$PWD/../.amplify-cache/papyrus-src" python3 build_via_papyrus.py
+  artifacts:
+    baseDirectory: web/dist-papyrus
+    files:
+      - "**/*"
+  cache:
+    paths:
+      - .amplify-cache/**/*

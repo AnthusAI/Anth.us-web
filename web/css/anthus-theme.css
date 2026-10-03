@@ -1,0 +1,521 @@
+/* Anth.us site theme over Papyrus's vendored Markus CSS.
+ *
+ * Markus's own stylesheet is emitted wrapped in `@layer markus`; this file is
+ * unlayered, so every rule here wins over it without needing !important.
+ *
+ * Tokens are lifted verbatim from the live Gatsby site
+ * (Anth.us/src/styles/variables.scss) and the chrome rules are ported from
+ * Anth.us/src/components/layout.scss. Do not invent brand values here — if a
+ * colour, font, or measure is wrong, fix it against those two files.
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Jersey+25&family=Montserrat:wght@400;500;600;900&family=Geist+Mono:wght@400;500&display=block");
+
+:root {
+  /* Anth.us/src/styles/variables.scss */
+  --color-layout-bg: #f1f9fe;
+  --color-wrapper-bg: #ffffff;
+  --color-hamburger: #fedded;
+  --color-active-highlight: #ff57b4;
+  --color-text: #333333;
+  --color-inverted-text: #ffffff;
+  --color-primary: #dc5497;
+  --color-primary-shadow: #620e32;
+  --color-button: #ff87c3;
+  --color-active: #ff57b4;
+  --color-code-bg: #9b165d10;
+  --color-code: #8a6534;
+  --color-gradient-start: #d03382;
+  --color-gradient-mid: #9b165d;
+  --color-gradient-end: #0389d7;
+  --color-footer-bg: #d03382;
+  --color-mark-start: #d0338221;
+  --color-mark-end: #d033820c;
+
+  --font-serif: "Jersey 25", serif;
+  --font-sans: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Helvetica, Arial, sans-serif;
+  --font-mono: "Geist Mono", SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+
+  --base-unit: 4px;
+  --border-radius: var(--base-unit);
+  --base-line-height: calc(6 * var(--base-unit));
+  --font-size: calc(4 * var(--base-unit));
+  --font-xl: calc(8 * var(--base-unit));
+  --font-lg: calc(7 * var(--base-unit));
+  --size-content: 940px;
+  --size-gutter: var(--base-line-height);
+}
+
+/* ------------------------------------------------------------------ page */
+
+html {
+  font-size: var(--font-size);
+  line-height: var(--base-line-height);
+  background-color: var(--color-gradient-start);
+  -webkit-text-size-adjust: 100%;
+  box-sizing: border-box;
+}
+
+body.markus-body.markus-site {
+  margin: 0;
+  color: var(--color-text);
+  background-color: var(--color-layout-bg);
+  font-family: var(--font-sans);
+  font-size: var(--font-size);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  word-wrap: break-word;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+body.markus-site > main {
+  flex: 1;
+  width: 100%;
+  background-color: var(--color-wrapper-bg);
+  padding: 0 var(--size-gutter) var(--size-gutter) var(--size-gutter);
+  box-sizing: border-box;
+}
+
+body.markus-site > main > * {
+  max-width: var(--size-content);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* --------------------------------------------------------------- masthead */
+
+.markus-site-masthead {
+  margin: 0;
+  width: 100%;
+  min-height: calc(2 * var(--base-line-height));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0 1.5em;
+  padding: 0.6em var(--size-gutter);
+  box-sizing: border-box;
+  color: var(--color-inverted-text);
+  font-family: var(--font-serif);
+  /* layout.scss header: the pink-to-blue diagonal wash. */
+  background: linear-gradient(
+    174deg,
+    var(--color-gradient-start) 0%,
+    var(--color-gradient-start) 45%,
+    var(--color-gradient-end) 88%,
+    #85cefa 97%,
+    #fff 100%
+  );
+}
+
+.markus-site-masthead,
+.markus-site-masthead * {
+  border: 0;
+}
+
+.markus-site-wordmark {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: calc(7 * var(--base-unit));
+  font-weight: 900;
+  line-height: 1.1;
+  flex: 0 0 auto;
+}
+
+.markus-site-wordmark a,
+.markus-site-nav a {
+  color: var(--color-inverted-text);
+  text-decoration: none;
+  display: inline-block;
+  position: relative;
+  z-index: 1;
+  border-radius: 8px;
+  padding: 0 0.25em;
+}
+
+.markus-site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.5em;
+  align-items: center;
+  font-family: var(--font-serif);
+  font-size: calc(5.5 * var(--base-unit));
+  flex: 1 1 auto;
+  justify-content: flex-end;
+}
+
+.markus-site-nav a:hover,
+.markus-site-wordmark a:hover {
+  background-color: var(--color-active);
+}
+
+/* layout.scss marks the current page with a blue underline. */
+.markus-site-nav a[aria-current="page"] {
+  box-shadow: inset 0 -4px 0 0 var(--color-gradient-end);
+}
+
+/* ----------------------------------------------------------- typography */
+
+.markus-document h1,
+.markus-document h2,
+.markus-header h1 {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-align: left;
+  margin: 0;
+  padding: calc(2 * var(--base-line-height)) 0
+    calc(0.5 * var(--base-line-height)) 0;
+  line-height: 1.1;
+}
+
+.markus-document h1,
+.markus-header h1 {
+  font-size: calc(1.5 * var(--font-xl));
+}
+
+.markus-document h2 {
+  font-size: calc(1.3 * var(--font-lg));
+}
+
+.markus-document h3,
+.markus-document h4,
+.markus-document h5,
+.markus-document h6 {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  padding: calc(0.75 * var(--base-line-height)) 0 0 0;
+  margin: 0;
+}
+
+.markus-document h1 > strong,
+.markus-document h2 > strong {
+  color: var(--color-primary);
+}
+
+.markus-document p,
+.markus-document li {
+  font-family: var(--font-sans);
+  line-height: var(--base-line-height);
+}
+
+.markus-document a {
+  color: var(--color-primary);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 2px;
+}
+
+.markus-document a:hover {
+  color: var(--color-active);
+  text-decoration: none;
+}
+
+.markus-document code,
+.markus-document kbd,
+.markus-document pre,
+.markus-document samp {
+  font-family: var(--font-mono);
+}
+
+.markus-document :not(pre) > code {
+  background-color: var(--color-code-bg);
+  border-radius: var(--border-radius);
+  padding: 0.1em 0.3em;
+}
+
+.markus-document pre {
+  background-color: var(--color-code-bg);
+  border-radius: var(--border-radius);
+  padding: var(--base-line-height);
+  overflow-x: auto;
+}
+
+.markus-document blockquote {
+  border-left: 4px solid var(--color-primary);
+  margin-left: 0;
+  padding-left: var(--base-line-height);
+  color: #555;
+}
+
+.markus-document table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: calc(3.5 * var(--base-unit));
+  display: block;
+  overflow-x: auto;
+}
+
+.markus-document th,
+.markus-document td {
+  border-bottom: 1px solid #e3e8ec;
+  padding: 0.5em 0.75em;
+  text-align: left;
+  vertical-align: top;
+}
+
+.markus-document thead th {
+  background: var(--color-mark-start);
+  font-family: var(--font-sans);
+  font-weight: 600;
+}
+
+/* Byline, as rendered by _article_header: a single italic paragraph directly
+ * under the Markus header. */
+.markus-header + p em,
+.markus-document > p:first-of-type em {
+  font-style: normal;
+  color: #666;
+  font-size: calc(3.5 * var(--base-unit));
+}
+
+/* ------------------------------------------------------------- figures */
+
+.markus-figure {
+  margin: var(--base-line-height) 0;
+}
+
+.markus-figure img,
+.markus-document img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--border-radius);
+  display: block;
+}
+
+.markus-figure figcaption {
+  font-family: var(--font-sans);
+  font-size: calc(3.25 * var(--base-unit));
+  color: #666;
+  padding-top: 0.5em;
+}
+
+/* --------------------------------------------------------------- cards */
+
+.markus-card-grid {
+  display: grid;
+  gap: var(--base-line-height);
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  margin: var(--base-line-height) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.markus-card {
+  background: var(--color-layout-bg);
+  border-radius: calc(2 * var(--border-radius));
+  padding: calc(0.75 * var(--base-line-height));
+  box-sizing: border-box;
+}
+
+.markus-card h3 {
+  padding-top: 0;
+}
+
+.markus-card img {
+  width: 100%;
+}
+
+/* A `span="full"` card is a full-width list row (the Articles archive and the
+ * solutions lists use it), so it should not be boxed like a tile. */
+.markus-card[style*="full"],
+.markus-card--full {
+  background: transparent;
+  padding: 0;
+  border-bottom: 1px solid #e3e8ec;
+  padding-bottom: var(--base-line-height);
+}
+
+/* ------------------------------------------------------ callouts, quotes */
+
+.markus-callout {
+  border-left: 4px solid var(--color-primary);
+  background: var(--color-mark-end);
+  border-radius: var(--border-radius);
+  padding: calc(0.75 * var(--base-line-height));
+  margin: var(--base-line-height) 0;
+}
+
+.markus-callout--warning {
+  border-left-color: #c75100;
+  background: #fff6ee;
+}
+
+.markus-callout-title {
+  font-family: var(--font-serif);
+  font-size: calc(5 * var(--base-unit));
+  margin: 0 0 0.25em 0;
+}
+
+.markus-pull-quote {
+  font-family: var(--font-serif);
+  font-size: calc(6 * var(--base-unit));
+  line-height: 1.2;
+  text-align: center;
+  color: var(--color-gradient-mid);
+  margin: calc(1.5 * var(--base-line-height)) 0;
+}
+
+.markus-metric {
+  text-align: center;
+}
+
+.markus-metric-value {
+  font-family: var(--font-serif);
+  font-size: calc(2 * var(--font-xl));
+  color: var(--color-primary);
+  line-height: 1;
+}
+
+.markus-two-up {
+  display: grid;
+  gap: var(--base-line-height);
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 640px) {
+  .markus-two-up {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* -------------------------------------------------------------- footer */
+
+.markus-site-footer {
+  background: var(--color-footer-bg);
+  color: var(--color-inverted-text);
+  padding: calc(1.5 * var(--base-line-height)) var(--size-gutter);
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: calc(3.5 * var(--base-unit));
+}
+
+.anthus-footer {
+  max-width: var(--size-content);
+  margin: 0 auto;
+}
+
+.anthus-footer-blurb {
+  margin: 0 0 var(--base-line-height) 0;
+  max-width: 48em;
+}
+
+.anthus-footer-cols {
+  display: grid;
+  gap: var(--base-line-height);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.anthus-footer-col h2 {
+  font-family: var(--font-serif);
+  font-size: calc(5 * var(--base-unit));
+  margin: 0 0 0.4em 0;
+  padding: 0;
+}
+
+.anthus-footer-col ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.anthus-footer-col li {
+  padding: 0.15em 0;
+}
+
+.markus-site-footer a {
+  color: var(--color-inverted-text);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.markus-site-footer a:hover {
+  color: var(--color-hamburger);
+}
+
+/* Staging marker. This build is not the production anth.us site, and a
+ * reviewer should never have to guess which one they are looking at. */
+.anthus-footer-staging {
+  margin: var(--base-line-height) 0 0 0;
+  padding-top: 0.75em;
+  border-top: 1px solid rgba(255, 255, 255, 0.35);
+  font-size: calc(3 * var(--base-unit));
+  opacity: 0.85;
+}
+
+body.markus-site::before {
+  content: "STAGING — Papyrus/Markus port of anth.us. Not production.";
+  display: block;
+  background: #1d1d1d;
+  color: #ffd166;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-align: center;
+  padding: 4px 8px;
+}
+
+/* ------------------------------------------------------------ responsive */
+
+@media (max-width: 720px) {
+  .markus-site-masthead {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .markus-site-nav {
+    justify-content: flex-start;
+    font-size: calc(5 * var(--base-unit));
+  }
+
+  .markus-document h1,
+  .markus-header h1 {
+    font-size: calc(1.1 * var(--font-xl));
+  }
+}
+
+/* ------------------------------------------------- nav toggle (site-nav.js) */
+
+.anthus-nav-toggle {
+  background: transparent;
+  border: 0;
+  padding: 0.25em 0.5em;
+  cursor: pointer;
+  display: none;
+}
+
+.anthus-nav-toggle:not([hidden]) {
+  display: inline-flex;
+}
+
+.anthus-nav-toggle .hamburger {
+  width: 1.1em;
+  height: 1.1em;
+  display: block;
+  background: linear-gradient(
+    to bottom,
+    var(--color-hamburger),
+    var(--color-hamburger) 20%,
+    transparent 20%,
+    transparent 40%,
+    var(--color-hamburger) 40%,
+    var(--color-hamburger) 60%,
+    transparent 60%,
+    transparent 80%,
+    var(--color-hamburger) 80%,
+    var(--color-hamburger) 100%
+  );
+}
+
+/* Only honored once site-nav.js has marked the nav; with JS off the attribute
+ * is never set and the nav stays visible. */
+.markus-site-nav[data-collapsed] {
+  display: none;
+}
