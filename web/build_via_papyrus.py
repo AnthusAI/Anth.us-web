@@ -57,9 +57,22 @@ from papyrus_content.markus_renderer import build as markus_build  # noqa: E402
 from papyrus_content.markus_renderer import shell as markus_shell  # noqa: E402
 from papyrus_content.markus_renderer.build import build_markus_site  # noqa: E402
 from papyrus_content.markus_renderer.citations import CitationRendering  # noqa: E402
-from papyrus_content.markus_renderer.images import ImagePipeline  # noqa: E402
-from papyrus_content.markus_renderer.shell import NavItem, SiteChrome  # noqa: E402
+from papyrus_content.markus_renderer.images import (  # noqa: E402
+    DEFAULT_LAYOUT_SIZES,
+    ImagePipeline,
+)
+from papyrus_content.markus_renderer.shell import (  # noqa: E402
+    BodyParts,
+    PageContext,
+    SiteChrome,
+)
+from papyrus_content.markus_renderer.transforms import (  # noqa: E402
+    FragmentTransform,
+    block_sentinel,
+)
 
+import anthus_dom as dom  # noqa: E402
+import anthus_page_html  # noqa: E402
 import anthus_pages as pages  # noqa: E402
 import anthus_urls as urls  # noqa: E402
 from anthus_content import (  # noqa: E402
@@ -109,6 +122,10 @@ IMAGES = ImagePipeline(
     widths=(480, 768, 1024, 1366),
     max_width=1366,
     upgrade_plain_images=False,
+    # gatsby-plugin-image's constrained DOM, which the production stylesheet
+    # positions absolutely; see anthus_dom.anthus_image_wrap.
+    wrap=dom.anthus_image_wrap,
+    layout_sizes=dom.anthus_layout_sizes(DEFAULT_LAYOUT_SIZES),
 )
 CITATIONS = CitationRendering()
 
@@ -126,75 +143,57 @@ else:
 
 
 # --------------------------------------------------------------------------
-# Chrome
+# Chrome and fragment transform
 # --------------------------------------------------------------------------
 
-_FOOTER_ANTHUS_LINKS = (
-    ("AI Solutions", "/ai-solutions.html"),
-    ("Anthus Platform", "/platform/index.html"),
-    ("Articles", "/articles/index.html"),
-    ("About", "/about.html"),
-    ("Posts", "/posts/index.html"),
-)
-
-# anthus-footer `getPlatformLinks()` — the live platform properties. The real
-# footer is a React component from a separate GitHub package
-# (github:AnthusAI/anthus-footer); a static build cannot mount it, so the same
-# canonical link set is reproduced here as markup.
-_FOOTER_PLATFORM_LINKS = (
-    ("Plexus", "https://plexus.anth.us/", "MLOps platform for agent evaluation and iteration."),
-    ("Tactus", "https://tactus.anth.us/", "Durable runtime for agent procedures."),
-    ("Korporus", "https://korpor.us/", "Agent operating system and federated shell."),
-    ("Biblicus", "https://github.com/AnthusAI/Biblicus", "Corpus analysis for extraction and retrieval."),
-    ("Babulus", "https://babul.us/", "Marketing automation built around VideoML."),
-    ("Kanbus", "https://kanb.us/", "Durable multi-agent task management."),
-    ("Caducus", "https://caduc.us/", "Monitoring, alerts, and operator support."),
-)
-
-# anthus-footer `defaultCommunityLinks`.
-_FOOTER_COMMUNITY_LINKS = (
-    ("Contact us", pages.CONTACT_URL),
-    ("GitHub", "https://github.com/AnthusAI"),
-    ("LinkedIn", "https://www.linkedin.com/in/ryanalynporter/"),
-    ("Discord", "https://discord.gg/uStyWraJ2M"),
-)
+#: Papyrus hrefs whose production route differs from the one derived from the
+#: path: the articles index is `/blog/` on production, and it is what the
+#: "Articles" nav item matches.
+_ROUTE_OVERRIDES = {"articles/index.html": "/blog/"}
 
 
-def _footer_html() -> str:
-    def column(title: str, items) -> str:
-        links = "".join(
-            f'<li><a href="{escape(href, quote=True)}">{escape(label)}</a></li>'
-            for label, href, *_rest in items
-        )
-        return f'<div class="anthus-footer-col"><h2>{escape(title)}</h2><ul>{links}</ul></div>'
+def _route(active_href: str) -> str:
+    return _ROUTE_OVERRIDES.get(active_href, dom.route_for(active_href))
 
-    return (
-        '<div class="anthus-footer">'
-        '<p class="anthus-footer-blurb">Anthus builds AI-native systems with durable '
-        "procedures, operational guardrails, and reusable platform components.</p>"
-        '<div class="anthus-footer-cols">'
-        + column("Anthus", _FOOTER_ANTHUS_LINKS)
-        + column("Platform", _FOOTER_PLATFORM_LINKS)
-        + column("Community", _FOOTER_COMMUNITY_LINKS)
-        + "</div>"
-        '<p class="anthus-footer-staging">Staging preview of the Papyrus/Markus port. '
-        "Not the production anth.us site.</p>"
-        "</div>"
+
+def _render_masthead(ctx: PageContext) -> str:
+    return dom.render_masthead(_route(ctx.active_href))
+
+
+def _render_body(ctx: PageContext, parts: BodyParts) -> str:
+    return dom.render_envelope(
+        fragment=ctx.fragment, route=_route(ctx.active_href), scripts=parts.scripts
     )
 
 
 ANTHUS_CHROME = SiteChrome(
     site_name=pages.SITE_TITLE,
     tagline=None,
-    footer_html=_footer_html(),
-    scripts=("assets/site-nav.js",),
+    scripts=("assets/priority-plus.js", "assets/site-nav.js"),
+    lang="en",
+    # Production's <body> has no class. An empty value renders `class=""`
+    # through Papyrus's shell; `_finish_page` removes the empty attribute.
+    body_class="",
+    # `build_markus_site(site_css=web/css/anthus-theme.css)` copies the file to
+    # `css/site-theme.css`; the destination name is fixed by Papyrus.
+    stylesheets=("css/site-theme.css",),
+    head_html=dom.HEAD_HTML,
+    title_template="{title} | Anthus",
+    same_title_template="Anthus",
+    asset_root="/",
+    render_masthead=_render_masthead,
+    render_body=_render_body,
 )
 
-# gatsby-config.mjs siteMetadata.menuLinks is the nav contract, not one link
-# per article (Papyrus's default would flood the header with 130 entries).
-markus_build._build_nav_items = lambda articles: [
-    NavItem(label, href) for label, href in pages.MENU
-]
+#: Markus -> production class vocabulary for converted content bodies.
+#: `<article class="markus-document">` becomes plain `<article>`, which is what
+#: production has. Block passthrough carries the heading, svgs and span tables.
+ANTHUS_TRANSFORM = FragmentTransform(
+    strip_header=True,
+    allow_block_passthrough=True,
+    class_map=dom.CLASS_MAP,
+    drop_unmapped_classes=dom.DROP_PREFIXES,
+)
 
 
 # --------------------------------------------------------------------------
@@ -300,7 +299,9 @@ def _absolute(src: str) -> str:
     return f"{SITE_ORIGIN}/{src.lstrip('/')}"
 
 
-def _inject_social_meta(html: str, *, title: str, active_href: str) -> str:
+def _inject_social_meta(html: str, *, active_href: str) -> str:
+    title_match = re.search(r"<title>(.*?)</title>", html, re.S)
+    title = unescape(title_match.group(1)) if title_match else ""
     description, image = _PAGE_META.get(
         active_href, (pages.SITE_DESCRIPTION, _DEFAULT_COVER)
     )
@@ -342,24 +343,6 @@ def _inject_social_meta(html: str, *, title: str, active_href: str) -> str:
     return html2
 
 
-_orig_render_page = markus_shell.render_page
-
-
-def render_page_anthus(**kwargs):
-    """Anthus chrome pass over Papyrus's rendered page."""
-    html = _orig_render_page(**kwargs)
-    active_href = kwargs.get("active_href") or "index.html"
-    html = _rewrite_internal_links(html, active_href=active_href)
-    html = _inject_social_meta(
-        html, title=kwargs.get("title") or "", active_href=active_href
-    )
-    return html
-
-
-markus_shell.render_page = render_page_anthus
-markus_build.render_page = render_page_anthus
-
-
 # --------------------------------------------------------------------------
 # Staging
 # --------------------------------------------------------------------------
@@ -369,8 +352,26 @@ def _register_meta(href: str, description: str, image: str | None) -> None:
     _PAGE_META[href] = (description, image or _DEFAULT_COVER)
 
 
+#: Pages whose body is generated HTML and bypasses Markus entirely:
+#: Papyrus href -> (title, `<main>` inner HTML). Filled by `stage`.
+GENERATED: dict[str, tuple[str, str]] = {}
+
+
+def _page_title(plain: str) -> str:
+    """`PAGE_META` titles carry the ` | Anthus` suffix the shell adds itself."""
+    return plain.removesuffix(" | Anthus")
+
+
+def _generated(href: str, title: str, fragment: str, *, meta_key: str | None = None) -> None:
+    GENERATED[href] = (title, fragment)
+    meta = anthus_page_html.PAGE_META.get(meta_key) if meta_key else None
+    if meta:
+        _register_meta(href, meta["description"], None)
+
+
 def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
     STAGING.mkdir(parents=True, exist_ok=True)
+    GENERATED.clear()
     report = ConversionReport()
 
     # The blog corpus. `build_markus_site` hard-requires `articles/`, which is
@@ -380,7 +381,8 @@ def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
         stage_nodes(collections.blog, staging=STAGING, directory="articles", images=images)
     )
 
-    # Platform products carry the platform-product.jsx chrome around the body.
+    # Platform products: Markus renders the MDX body; the production template's
+    # heading and "where this fits" section are block sentinels around it.
     platform_dir = STAGING / "platform"
     platform_dir.mkdir(parents=True, exist_ok=True)
     for node in collections.platform:
@@ -392,10 +394,12 @@ def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
                 src, relative_to=n.source
             ),
         )
+        tail = pages.platform_product_tail(node)
         document = (
-            pages.platform_product_head(node)
+            block_sentinel(pages.platform_product_head(node))
+            + "\n\n"
             + text
-            + pages.platform_product_tail(node)
+            + ("\n\n" + block_sentinel(tail) + "\n" if tail else "")
         )
         write_if_changed(
             platform_dir / f"{node.slug}.md",
@@ -424,35 +428,76 @@ def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
             f"articles/{node.slug}.html", node.excerpt_text, pages._preview(node, images)
         )
 
-    # Listings and bespoke pages.
-    write_if_changed(
-        STAGING / "index.md",
+    # Generated pages: HTML in the production DOM, never through Markus.
+    meta = anthus_page_html.PAGE_META
+    _generated(
+        "index.html",
+        "Home",
         pages.homepage(
-            articles=collections.articles, posts=collections.posts, images=images
+            articles=collections.articles,
+            posts=collections.posts,
+            images=images,
+            blog=collections.blog,
         ),
     )
-    write_if_changed(
-        STAGING / "articles" / "index.md",
-        pages.articles_index(collections.articles, images),
+    _generated("articles/index.html", "Blog", pages.articles_index(collections.articles, images))
+    _generated("platform/index.html", "Anthus Platform", pages.platform_index(collections.platform))
+    _register_meta(
+        "platform/index.html",
+        "Explore the Anthus Platform: the runtime, orchestration, MLOps, knowledge, "
+        "observability, and media systems behind our AI-native delivery work.",
+        None,
     )
-    write_if_changed(STAGING / "platform" / "index.md", pages.platform_index(collections.platform))
-    write_if_changed(STAGING / "about.md", pages.about_page())
-    write_if_changed(
-        STAGING / "ai-solutions.md",
+    _generated(
+        "about.html", _page_title(meta["/about/"]["title"]), pages.about_page(), meta_key="/about/"
+    )
+    _generated(
+        "ai-solutions.html",
+        _page_title(meta["/ai-solutions/"]["title"]),
         pages.ai_solutions_page(collections.solutions, images),
+        meta_key="/ai-solutions/",
     )
-    write_if_changed(STAGING / "ryan.md", pages.ryan_page(collections.solutions, images))
-    write_if_changed(STAGING / "404.md", pages.not_found_page())
+    _generated(
+        "ryan.html",
+        _page_title(meta["/ryan/"]["title"]),
+        pages.ryan_page(collections.solutions, images),
+        meta_key="/ryan/",
+    )
+    _generated(
+        "404.html",
+        _page_title(meta["/404.html"]["title"]),
+        pages.not_found_page(),
+        meta_key="/404.html",
+    )
+    _generated(
+        "engage.html", _page_title(meta["/engage/"]["title"]), pages.engage_page(), meta_key="/engage/"
+    )
+    _generated(
+        "decision-models.html",
+        _page_title(meta["/decision-models/"]["title"]),
+        pages.decision_models_page(),
+        meta_key="/decision-models/",
+    )
+    _generated(
+        "reading.html",
+        _page_title(meta["/reading/"]["title"]),
+        pages.reading_page(collections.blog, images),
+        meta_key="/reading/",
+    )
+    _generated(
+        "research.html",
+        _page_title(meta["/research/"]["title"]),
+        pages.research_page(collections.blog, images),
+        meta_key="/research/",
+    )
 
-    posts_dir = STAGING / "posts"
-    posts_dir.mkdir(parents=True, exist_ok=True)
     for name, text in pages.posts_pages(collections.posts, images, POSTS_PER_PAGE).items():
-        write_if_changed(posts_dir / name, text)
+        page = 1 if name == "index" else int(name.removeprefix("page-"))
+        title = "Posts" if page == 1 else f"Posts \u2014 Page {page}"
+        _generated(f"posts/{name}.html", title, text)
 
-    tags_dir = STAGING / "tags"
-    tags_dir.mkdir(parents=True, exist_ok=True)
-    for name, text in pages.tag_pages(collections.tags).items():
-        write_if_changed(tags_dir / name, text)
+    for slug, (label, text) in pages.tag_pages(collections.tags).items():
+        _generated(f"tags/{slug}.html", label if slug != "index" else "Tags", text)
 
     # Images: only what pages actually reference, downscaled.
     copied, downscaled = images.stage(STAGING / "assets")
@@ -466,11 +511,9 @@ def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
     # so Papyrus's `_copy_tree(content/assets -> dist/assets)` picks them up.
     #
     # `web/assets/site/` is copied WHOLESALE rather than through ImageIndex.
-    # The generated page copy in anthus_pages hard-codes `/assets/site/…`
-    # paths (the hero, the four capability tiles, the lifecycle diagram), so
-    # those files are never "resolved" and never land in `used_site` — relying
-    # on the index left every one of them a 404 while the build reported
-    # success.
+    # The generated page copy hard-codes `/assets/site/...` paths (the hero,
+    # the capability tiles, the lifecycle diagram), so those files are never
+    # "resolved" and never land in `used_site`.
     staging_assets = STAGING / "assets"
     staging_assets.mkdir(parents=True, exist_ok=True)
     if SITE_ASSETS.is_dir():
@@ -481,21 +524,17 @@ def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
                 target = dest / path.relative_to(SITE_ASSETS)
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(path, target)
-    if (POD_ROOT / "assets" / "site-nav.js").is_file():
-        shutil.copy2(POD_ROOT / "assets" / "site-nav.js", staging_assets / "site-nav.js")
+    for script in ("site-nav.js", "priority-plus.js"):
+        shutil.copy2(POD_ROOT / "assets" / script, staging_assets / script)
 
     # Fail loudly on a chrome image the generated pages reference but that is
-    # not committed — a silently broken hero is worse than a failed build.
+    # not committed -- a silently broken hero is worse than a failed build.
     referenced = {
         match
-        for text in (
-            (STAGING / "index.md").read_text(encoding="utf-8"),
-            (STAGING / "about.md").read_text(encoding="utf-8"),
-            (STAGING / "ai-solutions.md").read_text(encoding="utf-8"),
-        )
+        for _title, fragment in GENERATED.values()
         # Filenames contain spaces ("Anthus AI Application Lifecycle.png"),
         # so stop only at the closing quote or paren, never at whitespace.
-        for match in re.findall(r"/assets/site/([^\"')]+)", text)
+        for match in re.findall(r"/assets/site/([^\"')]+)", fragment)
     }
     absent = sorted(name for name in referenced if not (staging_assets / "site" / name).is_file())
     if absent:
@@ -547,45 +586,53 @@ def audit_staging(staging: Path) -> tuple[int, int, int]:
 # --------------------------------------------------------------------------
 
 
-def build_standalone(result, source: Path, href: str) -> None:
-    """Render one depth-0 page that is not part of a discovered collection.
+def write_generated(result) -> None:
+    """Render every generated page through the same shell, bypassing Markus.
 
-    ``build_markus_site`` only walks ``articles/`` plus the named ``sections``,
-    so the bespoke pages (``about``, ``ai-solutions``, ``ryan``, ``404``) need
-    their own write. Same pattern as Pilobol.us's ``_build_standalone_page``.
+    ``markus_shell.render_page`` is called directly with the generated
+    `<main>` HTML as the fragment; the chrome hooks do the rest. Pages Papyrus
+    already wrote (`index.html`, `articles/index.html`, a placeholder from its
+    fallback) are overwritten and keep their entry in ``result.pages``.
     """
-    if not source.is_file():
-        raise RuntimeError(f"Standalone page source not found: {source}")
     css_version = markus_build._css_version(result.out_dir / "css", result.out_dir / "assets")
-    # Same capabilities as the collection pages. None of these four pages uses
-    # `::image{}` or `[@key]` today, but a build where "about.html" silently
-    # ignored a directive the articles honour would be a trap.
-    fragment = markus_build.render_fragment(
-        source,
-        theme=None,
-        depth=0,
-        images=IMAGES,
-        image_builder=markus_build.ImageBuilder(
-            IMAGES, content_dir=STAGING, out_dir=result.out_dir
-        ),
-        citations=CITATIONS,
-    )
-    title = markus_build._read_title(source, href)
-    page_path = result.out_dir / href
-    page_path.parent.mkdir(parents=True, exist_ok=True)
-    page_path.write_text(
-        markus_build.render_page(
-            title=title,
-            fragment=fragment,
-            active_href=href,
-            nav_items=markus_build._build_nav_items([]),
-            depth=0,
-            chrome=ANTHUS_CHROME,
-            css_version=css_version,
-        ),
-        encoding="utf-8",
-    )
-    result.pages.append(page_path)
+    known = {page.relative_to(result.out_dir).as_posix() for page in result.pages}
+    for href, (title, fragment) in sorted(GENERATED.items()):
+        page_path = result.out_dir / href
+        page_path.parent.mkdir(parents=True, exist_ok=True)
+        page_path.write_text(
+            markus_shell.render_page(
+                title=title,
+                fragment=fragment,
+                active_href=href,
+                nav_items=[],
+                depth=href.count("/"),
+                chrome=ANTHUS_CHROME,
+                css_version=css_version,
+            ),
+            encoding="utf-8",
+        )
+        if href not in known:
+            result.pages.append(page_path)
+
+
+def finish_pages(result) -> None:
+    """Post-pass over every rendered page, before relocation to canonical paths.
+
+    Link canonicalization, social meta and the staging `noindex` guard are
+    applied to Markus-rendered and generated pages alike, keyed by each file's
+    Papyrus href. Then the output gate: no `markus-`/`papyrus-` class may
+    survive, because the production stylesheet has no rule for either.
+    """
+    for page in result.pages:
+        active_href = page.relative_to(result.out_dir).as_posix()
+        text = page.read_text(encoding="utf-8")
+        text = _rewrite_internal_links(text, active_href=active_href)
+        text = _inject_social_meta(text, active_href=active_href)
+        text = text.replace('<body class="">', "<body>", 1)
+        dom.assert_no_markus_classes(text, active_href)
+        if 'name="robots" content="noindex, nofollow"' not in text:
+            raise RuntimeError(f"{active_href}: staging noindex guard missing")
+        page.write_text(text, encoding="utf-8")
 
 
 # --------------------------------------------------------------------------
@@ -595,28 +642,26 @@ def build_standalone(result, source: Path, href: str) -> None:
 #: Papyrus's collection discovery filter. A staged file it rejects is a page
 #: that silently never renders, so link resolution has to apply the same test.
 _PAPYRUS_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]*\.md$")
-_STANDALONE_HREFS = ("about.html", "ai-solutions.html", "ryan.html", "404.html")
-_RENDERED_DIRS = ("articles", "platform", "posts", "tags")
+_RENDERED_DIRS = ("articles", "platform")
 
 
 def staged_page_hrefs() -> set[str]:
-    """Predict the Papyrus hrefs this build renders, from the staged tree.
+    """Predict the Papyrus hrefs this build renders.
 
-    `build_markus_site` walks `articles/` plus the named sections and accepts
-    only `_PAGE_SLUG`-shaped filenames; `build_standalone` adds the four
-    depth-0 pages. Predicting the set here lets every internal link be
-    resolved against real pages during rendering, and `main` then asserts the
-    prediction against what was actually written -- which is how a staged page
-    that Papyrus quietly skipped would now fail the build instead of becoming
-    a 404 behind a successful deploy.
+    `build_markus_site` walks `articles/` plus the `platform` section and
+    accepts only `_PAGE_SLUG`-shaped filenames; everything in `GENERATED` is
+    written by `write_generated`. Predicting the set here lets every internal
+    link be resolved against real pages during rendering, and `main` then
+    asserts the prediction against what was actually written -- which is how a
+    staged page that Papyrus quietly skipped would fail the build instead of
+    becoming a 404 behind a successful deploy.
     """
-    hrefs = {"index.html", *_STANDALONE_HREFS}
+    hrefs = set(GENERATED)
     for directory in _RENDERED_DIRS:
         for path in sorted((STAGING / directory).glob("*.md")):
             if _PAPYRUS_SLUG_RE.match(path.name):
                 hrefs.add(f"{directory}/{path.stem}.html")
     return hrefs
-
 
 
 def relocate_pages(result) -> int:
@@ -693,6 +738,9 @@ def main() -> int:
     )
 
     images = ImageIndex.build(CONTENT_SUBMODULE, SITE_ASSETS)
+    dom.set_asset_roots(
+        {"/assets/content/": CONTENT_SUBMODULE, "/assets/site/": SITE_ASSETS}
+    )
 
     print("Staging Markus Markdown…")
     if STAGING.exists():
@@ -720,12 +768,13 @@ def main() -> int:
         theme=None,
         site_css=POD_ROOT / "css" / "anthus-theme.css",
         chrome=ANTHUS_CHROME,
-        sections=("platform", "posts", "tags"),
+        sections=("platform",),
         images=IMAGES,
         citations=CITATIONS,
+        transform=ANTHUS_TRANSFORM,
+        vendor_css=False,
     )
-    for href in _STANDALONE_HREFS:
-        build_standalone(result, STAGING / href.replace(".html", ".md"), href)
+    write_generated(result)
 
     rendered = {page.relative_to(result.out_dir).as_posix() for page in result.pages}
     if rendered != _SITE_URLS.pages:
@@ -737,6 +786,7 @@ def main() -> int:
             f"rendered-but-not-staged={extra}"
         )
 
+    finish_pages(result)
     moved = relocate_pages(result)
     ruleset = write_custom_rules(_SITE_URLS)
     redirects = len(ruleset.rules)
@@ -783,8 +833,10 @@ def main() -> int:
     print(f"  legacy <Citation> converted         {report.citations}")
     print(f"  legacy <BlogImage> converted        {report.images}")
     print(f"  HTML tables -> GFM tables           {report.tables}")
-    print(f"  <mark> -> bold (styling lost)        {report.marks}")
-    print(f"  inline <svg> dropped                 {report.dropped_svg}")
+    print(f"  <mark> preserved                     {report.marks}")
+    print(f"  inline <svg> preserved               {report.svgs}")
+    print(f"  colspan/rowspan tables preserved     {report.span_tables}")
+    print(f"  JSX blockDiagram trees preserved     {report.diagrams}")
     if _UNRESOLVED_LINKS:
         total = sum(_UNRESOLVED_LINKS.values())
         print(

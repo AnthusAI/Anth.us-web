@@ -84,17 +84,34 @@ RESERVED_SEGMENTS = frozenset(
         "assets",
         "blog",
         "css",
+        "decision-models",
+        "engage",
         "favicon.ico",
         "index",
         "index.html",
         "platform",
         "posts",
+        "reading",
+        "research",
         "robots.txt",
         "ryan",
         "sitemap.xml",
         "solutions",
         "tags",
     }
+)
+
+#: Top-level generated pages, one Papyrus href each (``<name>.html``).
+STANDALONE_PAGES = (
+    "about",
+    "ai-solutions",
+    "ryan",
+    "404",
+    "index",
+    "engage",
+    "reading",
+    "research",
+    "decision-models",
 )
 
 _NON_PAGE_PREFIXES = ("/assets/", "/css/")
@@ -317,7 +334,7 @@ class SiteUrls:
                 return f"tags/{tag_slug(rest[0])}.html"
             return None
 
-        if not rest and head in ("about", "ai-solutions", "ryan", "404", "index"):
+        if not rest and head in STANDALONE_PAGES:
             return f"{head}.html"
 
         # gatsby-plugin-page-creator paths: the authored file path, at any
