@@ -364,8 +364,10 @@ def tag_pages(tags: dict[str, list[ContentNode]]) -> dict[str, str]:
     """``blog-tag.jsx`` equivalents.
 
     Gatsby mounts these at ``/blog/<tag>``, which shares a namespace with post
-    slugs; this build uses ``/tags/<tag>.html`` so a tag can never shadow an
-    article.
+    slugs; this build uses its own ``tags/`` collection so a tag can never
+    shadow an article. ``anthus_urls.legacy_rules`` 301s ``/blog/<tag>/`` here,
+    except where a tag name collides with an article slug — production serves
+    the article at that URL, so the redirect does too.
     """
     # Papyrus's collection discovery only accepts lowercase slugs, and the
     # corpus tags both `AI` and `ai` (plus other case variants). Those are the

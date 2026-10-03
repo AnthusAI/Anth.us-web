@@ -18,15 +18,14 @@ module reads it and writes a derived Markdown tree into ``web/staging/``
       assets/content/…      referenced images, downscaled
       assets/site/…         committed site-chrome images
 
-Routing note (parity gap, deliberate)
--------------------------------------
-Gatsby serves every non-platform MDX node at ``/blog/<slug>/``. Papyrus's
-``build_markus_site`` hard-requires the primary collection to live in
-``content/articles/``, so the canonical path here is ``/articles/<slug>.html``.
-``build_via_papyrus.py`` emits ``/blog/<slug>.html`` redirect stubs so inbound
-links to the live site's URLs still resolve, and rewrites in-content
-``/blog/…`` links to the canonical path. Changing the collection directory name
-would be a change to Papyrus, which this repo does not own.
+Routing note
+------------
+Gatsby serves every non-platform MDX node at ``/blog/<slug>/``; this build
+serves it at ``/articles/<slug>/``, which is both what Papyrus's
+``build_markus_site`` requires (the primary collection must live in
+``content/articles/``) and the namespace Anth.us is moving to. Every legacy URL
+shape 301s onto it. ``anthus_urls`` owns that map and the URL shape itself;
+nothing here concatenates a URL.
 """
 
 from __future__ import annotations
