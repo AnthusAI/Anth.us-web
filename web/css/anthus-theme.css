@@ -519,3 +519,114 @@ body.markus-site::before {
 .markus-site-nav[data-collapsed] {
   display: none;
 }
+
+/* ------------------------------------------- responsive images (::image{}) */
+
+/* Papyrus's ImagePipeline emits structure, not style: a <figure> carrying
+ * `papyrus-image` plus `papyrus-image--<layout>`, where <layout> is the
+ * Gatsby `className` the content was authored with. These rules are the
+ * layout.scss `.gatsby-image-wrapper.<class>` rules, ported. */
+
+.papyrus-image {
+  margin: var(--base-line-height) 0;
+}
+
+.papyrus-image picture,
+.papyrus-image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--border-radius);
+}
+
+.papyrus-image figcaption {
+  font-family: var(--font-sans);
+  font-size: calc(3.25 * var(--base-unit));
+  color: #666;
+  padding-top: 0.5em;
+}
+
+.papyrus-image-credit {
+  font-style: italic;
+}
+
+.papyrus-image--full {
+  margin: 0 0 var(--base-line-height) 0;
+}
+
+.papyrus-image--centered,
+.papyrus-image--center-full-image,
+.papyrus-image--center-small-image {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.papyrus-image--right,
+.papyrus-image--right-aligned {
+  float: right;
+  width: 40%;
+  margin: 0 0 var(--base-line-height) calc(2 * var(--base-line-height));
+}
+
+/* Narrow screens: a 40%-wide float leaves two-word lines beside it, and the
+ * `centered` widths below only make sense once there is room for them. */
+@media only screen and (max-width: 600px) {
+  .papyrus-image--right,
+  .papyrus-image--right-aligned {
+    float: none;
+    width: 100%;
+    margin: var(--base-line-height) 0;
+  }
+  .papyrus-image--centered,
+  .papyrus-image--center-small-image {
+    width: 100%;
+  }
+}
+
+@media only screen and (min-width: 601px) {
+  .papyrus-image--centered {
+    width: 60%;
+  }
+  .papyrus-image--center-small-image {
+    width: 60%;
+  }
+}
+
+/* --------------------------------------------------- citations ([@key]) */
+
+/* The brackets are CSS, not markup, so the number is the only text in the
+ * DOM — a text selection or a screen reader is not fighting punctuation.
+ * Ported from layout.scss, which did the same. */
+
+.citation {
+  display: inline;
+  vertical-align: baseline;
+  font-size: 0.75em;
+}
+
+.citation::before {
+  content: "[";
+}
+
+.citation::after {
+  content: "]";
+}
+
+.citation a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.citationslist {
+  text-align: left;
+  word-break: break-word;
+}
+
+.citationslist li {
+  margin-bottom: var(--base-line-height);
+}
+
+/* The anchor a marker jumps to must not land under the sticky header. */
+.citationslist li:target {
+  scroll-margin-top: calc(2 * var(--base-line-height));
+}

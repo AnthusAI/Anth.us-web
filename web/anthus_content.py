@@ -223,6 +223,17 @@ class ImageIndex:
       (``/assets/images/…``, ``/images/…``) pointing at files that live in the
       **Anth.us** repo's ``static/`` directory rather than the content repo.
       Those are vendored into ``web/assets/site/`` in this repo.
+
+    And two *output* modes, because there are now two image paths:
+
+    * ``content_src()`` returns a path **relative to the content submodule**,
+      which is what ``::image{}`` needs: Papyrus's ``ImagePipeline`` is pointed
+      at the submodule as its source root and generates the renditions itself,
+      so nothing has to be copied or pre-downscaled. Used for article bodies.
+    * ``resolve_name()`` / ``resolve_path()`` return a **staged asset URL**
+      (``/assets/content/…``) and record the file for ``stage()`` to copy.
+      Used for listing-card thumbnails and site chrome, which are emitted as
+      plain Markdown images by ``anthus_pages`` and are not responsive.
     """
 
     content_root: Path
@@ -267,6 +278,39 @@ class ImageIndex:
             self.used_site.add(site)
             return "/assets/site/" + site.relative_to(self.site_assets).as_posix()
         self.missing.add(name)
+        return None
+
+    def content_src(self, src: str, *, relative_to: Path | None = None) -> str | None:
+        """A ``::image{src=}`` value: relative to the content submodule root.
+
+        Falls back to a staged ``/assets/site/…`` URL for the handful of
+        site-chrome images the content references by absolute path
+        (``<img src="/images/sqlbot-arch-1.png">``), which live in the Anth.us
+        repo rather than here and so have no path under the pipeline's source
+        root. ``anthus_mdx`` emits those as a plain ``:::figure`` instead.
+        """
+        src = (src or "").strip()
+        if not src:
+            return None
+        if src.startswith(("http://", "https://", "data:")):
+            return src
+        if relative_to is not None and not src.startswith("/"):
+            candidate = (relative_to.parent / src).resolve()
+            try:
+                rel = candidate.relative_to(self.content_root.resolve()).as_posix()
+            except ValueError:
+                rel = None
+            if rel and rel in self.by_relpath:
+                return rel
+        base = src.split("/")[-1]
+        path = self.by_basename.get(base)
+        if path:
+            return path.relative_to(self.content_root).as_posix()
+        site = self.site_by_name.get(base)
+        if site:
+            self.used_site.add(site)
+            return "/assets/site/" + site.relative_to(self.site_assets).as_posix()
+        self.missing.add(src)
         return None
 
     def resolve_path(self, src: str, *, relative_to: Path | None = None) -> str | None:
@@ -416,11 +460,11 @@ def stage_nodes(
     out_dir = staging / directory
     out_dir.mkdir(parents=True, exist_ok=True)
     for node in nodes:
-        _, body = split_front_matter(node.source.read_text(encoding="utf-8"))
+        front_matter, body = split_front_matter(node.source.read_text(encoding="utf-8"))
         text, report = normalize_body(
             body,
-            resolve_image_name=images.resolve_name,
-            resolve_image_path=lambda src, n=node: images.resolve_path(
+            resolve_image_name=images.content_src,
+            resolve_image_path=lambda src, n=node: images.content_src(
                 src, relative_to=n.source
             ),
         )
@@ -428,6 +472,13 @@ def stage_nodes(
         front = {
             "title": node.title,
             "date": node.display_date,
+            # Native `citations:` from the converted corpus, plus anything
+            # lifted out of legacy `<Citation>` elements on an un-migrated
+            # branch. Read before `merge()`, which deliberately drops it.
+            "citations": {
+                **(front_matter.get("citations") or {}),
+                **report.citation_entries,
+            },
         }
         header = _article_header(node, images)
         write_if_changed(out_dir / f"{node.slug}.md", staged_markdown(front, header + text))

@@ -38,6 +38,8 @@ web/
   build_via_papyrus.py          The build. Chrome, link rewriting, social meta, redirects
   anthus_content.py             Discovery, classification, image index, staging
   anthus_mdx.py                 MDX/JSX/raw-HTML -> Markus-safe Markdown
+  mdx_codemod.py                Gatsby MDX -> Papyrus markup. Also the one-shot
+                                content codemod CLI (see below)
   anthus_pages.py               Markus equivalents of the bespoke pages and templates
   css/anthus-theme.css          Anthus brand theme over Papyrus's vendored Markus CSS
   assets/site/                  Site-chrome imagery (committed; see note below)
@@ -62,6 +64,33 @@ git submodule update --init --recursive
 Drafts under `Anth.us/src/drafts` are *not* in that repository, so this port
 cannot and does not publish them.
 
+### The submodule tracks a converted branch, not `main`
+
+The submodule is pinned to `anthus-site-content` branch
+**`content/markus-native-markup`**, which is `main` with the three Gatsby MDX
+components rewritten as native Papyrus markup — `::image{}`, `[@key]` plus a
+front-matter `citations:` block, and `::citations{}`. See
+[Papyrus `docs/markus-content-markup.md`][markup] for the authoring contract.
+
+That branch is **not** renderable by Gatsby's component set and must never be
+merged to `main` while anth.us builds from it. The reader build still converts
+Gatsby MDX on the fly (`anthus_mdx` + `mdx_codemod`), so pointing the submodule
+at `main` or at any of the repo's un-migrated feature branches produces
+byte-identical HTML — verified by diffing both builds.
+
+To migrate another content branch:
+
+```bash
+git clone git@github.com:AnthusAI/anthus-site-content.git /tmp/content
+cd /tmp/content && git checkout -b my-branch-markus origin/my-branch
+python3 /path/to/Anth.us-Papyrus/web/mdx_codemod.py --check /tmp/content   # dry run
+python3 /path/to/Anth.us-Papyrus/web/mdx_codemod.py /tmp/content
+```
+
+It refuses to run on `main`.
+
+[markup]: https://github.com/AnthusAI/Papyrus/blob/develop/docs/markus-content-markup.md
+
 ### Why `web/assets/site/` is committed
 
 Hero and capability imagery lives in the **Anth.us** repo (`src/images`,
@@ -84,6 +113,16 @@ pip install "git+https://github.com/AnthusAI/Markus@v0.5.1" "Pillow>=10,<12" "Py
 ```
 
 Output is `web/dist-papyrus/`. `PAPYRUS_ROOT` defaults to `../Papyrus`.
+
+It also needs a Papyrus that has the content-markup capabilities
+(`ImagePipeline`, `CitationRendering`). Those landed in Papyrus PR #83; a
+Papyrus without them fails every page with `Unknown directive 'image'`, which
+is deliberate — see the note in `amplify.yml` about the pin.
+
+Image renditions are cached in `web/.image-cache/` (gitignored), **outside**
+both generated trees because the build wipes those. A cold build encodes ~230
+sources at four widths in two formats and takes about five minutes; a warm one
+is seconds. Put that directory on the CI cache path.
 
 The build prints a **parity accounting** report at the end — how many images,
 citations, tables and `<mark>` spans were converted, and what was dropped. Read
@@ -119,19 +158,20 @@ See [AGENTS.md](AGENTS.md) for the deploy runbook and the AWS profile to use.
 
 ## Known parity gaps
 
-Tracked honestly rather than quietly. The first two are blocked on
-Papyrus-side work already in flight.
+Tracked honestly rather than quietly.
 
 | Gap | Status |
 | --- | --- |
-| **Responsive images.** Gatsby's `BlogImage`/`gatsby-plugin-sharp` emitted AVIF/WebP/fallback derivative sets with blurred placeholders. 235 images here render as a single `:::figure` `<img>`, downscaled to 1600 px at build time — no `srcset`, no `sizes`, no intrinsic dimensions (so layout shifts on load). | **Blocked** on the Papyrus responsive-image pipeline. Swap `anthus_mdx.render_image_directive()` when it lands. |
-| **Inline citations.** `gatsby-citation-manager` rendered numbered inline markers with popovers plus an auto-numbered `<CitationsList>`. 201 citations here become plain `[n]` text plus a generated `## References` list; 25 `<CitationsList>` become that list. No popover — Markus has no inline-span directive. | **Blocked** on the Papyrus inline citation renderer. Swap `anthus_mdx.render_citation_marker()` / `render_references_block()`. |
+| **Citation popovers.** `gatsby-citation-manager` wired each marker to a hover/click popover showing the formatted entry. The numbered marker, the link and the bibliography are all reproduced; the popover is not — it was runtime JavaScript. | Acceptable static equivalent. A reader can follow the link. |
+| **Citation formatting is not citeproc.** `format_apa` in Papyrus is an APA-7-*shaped* hand-rolled formatter. It formats all 197 entries without error but is not byte-identical to `citation-js` + `@citation-js/plugin-csl`, which the Gatsby site ran in the browser. Nothing has diffed the two renderings. | `CitationRendering(formatters={"apa": …})` accepts a real processor if exact fidelity is wanted. |
+| **PNG `<picture>` fallbacks dominate the artifact.** The pipeline always emits the source format as the `<img>` fallback, and most of this corpus is photographic AI art saved as PNG: 193 MB of PNG renditions against 27 MB of WebP for the same images. Widths are capped at 1366 (`sizes` tops out at 48rem) to hold that down. | A Papyrus-side improvement: let a publication choose a JPEG fallback for photographic sources. |
+| **Listing thumbnails and site chrome are not responsive.** `anthus_pages` emits them as plain Markdown images with site-absolute hrefs, which the pipeline rejects by design, so `upgrade_plain_images` is off and they keep the old 1600-px downscale path. They are already sized for their slot. | Needs a second source root, or relative hrefs in the generated pages. |
 | **`<mark>` brand highlight.** 204 uses. The pink gradient wash behind a phrase has no Markus target (no inline-span directive, no `==highlight==` plugin). Rendered as bold. | Needs a Markus inline-highlight feature. |
 | **Hero overlay.** The homepage hero is an absolutely-positioned text overlay on a full-bleed image. Rendered as headline + subhead above the image. | Needs a Markus hero/overlay primitive, or accept the static form. |
 | **`priority-plus` nav.** The production header measures itself and moves overflow into a dropdown. Replaced with a breakpoint hamburger (`web/assets/site-nav.js`). | Acceptable static equivalent. |
 | **Inline SVG diagrams.** 2 dropped — Markus runs without `--allow-html` by design, so raw SVG cannot pass through. | Needs the diagrams re-authored as image files. |
 | **`sqlbot-screen.gif`** (11 MB) not vendored; one `<img>` reference unresolved. | Deliberate: too large to commit without a derivative pipeline. |
-| **Two `BlogImage` names** (`ai-agent-RAG-sequence-diagram.png`, `ai-agent-RAG-with-no-RAG.png`) have no matching file in the content repo. | Pre-existing content bug, not introduced here. |
+| **Two RAG sequence diagrams** (`ai-agent-RAG-sequence-diagram.png`, `ai-agent-RAG-with-no-RAG.png`) have no matching file in the content repo; `how-ai-agents-know-things` renders "No image found for:" on the live site today. The codemod removed the two dead references rather than carry them over. | Pre-existing content bug. Fixed by restoring the two files and re-adding two `::image{}` lines. |
 | **HTML table spans.** `colspan`/`rowspan` have no GFM equivalent; those cells flatten into their first column. | Needs the tables re-authored, or a Markus table directive. |
 | **Tag case collisions.** The corpus tags both `AI` and `ai`; Gatsby gives them separate pages, this build merges them (Papyrus only accepts lowercase collection slugs). | Intentional; arguably a content fix. |
 | **Redirects are meta-refresh, not 301.** Amplify `customRules` would be better but are app configuration, not a repo file. | Set `customRules` on the app if the port is promoted. |
