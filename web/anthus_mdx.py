@@ -61,7 +61,7 @@ from typing import Callable
 
 import yaml
 
-import anthus_dom
+from papyrus_content.markus_renderer.transforms import block_sentinel, inline_sentinel
 from mdx_codemod import (
     JSParseError,
     assign_keys,
@@ -223,6 +223,7 @@ class ConversionReport:
     span_tables: int = 0
     marks: int = 0
     svgs: int = 0
+    diagrams: int = 0
     dropped_svg: int = 0
     dropped_html: list[str] = field(default_factory=list)
     #: CSL-JSON lifted out of legacy ``<Citation>`` elements on **this page**,
@@ -240,6 +241,7 @@ class ConversionReport:
         self.tables += other.tables
         self.span_tables += other.span_tables
         self.svgs += other.svgs
+        self.diagrams += other.diagrams
         self.marks += other.marks
         self.dropped_svg += other.dropped_svg
         self.dropped_html.extend(other.dropped_html)
@@ -491,6 +493,162 @@ def _convert_blog_images(
     return "".join(out)
 
 
+_WRAPPER_RE = re.compile(
+    r"<(?P<tag>div|figure|p)\b(?P<attrs>[^>]*)>\s*"
+    r"(?P<image>::image\{[^}]*\})\s*"
+    r"(?:<figcaption\b[^>]*>(?P<caption>.*?)</figcaption>\s*)?"
+    r"</(?P=tag)>",
+    re.S,
+)
+_FLOAT_STYLES = {
+    # JSX `style={{ float: "right", width: "260px", ... }}`, by its width.
+    "260px": "float-260",
+    "300px": "float-300",
+}
+
+
+def _wrapper_key(tag: str, attrs: str) -> str | None:
+    """Which production wrapper an authored element is, or ``None``.
+
+    ``None`` leaves the element for the generic unwrap. The ``<p>`` wrapper is
+    ``None`` on purpose: see ``anthus_dom.IMAGE_WRAPPERS``.
+    """
+    cls = re.search(r'class(?:Name)?\s*=\s*"([^"]*)"', attrs)
+    classes = cls.group(1).split() if cls else []
+    if tag == "div" and "center-full-image" in classes:
+        return "div-cfi"
+    if tag == "figure" and "center-full-image" in classes:
+        return "figure-cfi"
+    if tag == "div" and "center-small-image" in classes:
+        return "div-csi"
+    if tag == "div" and "style=" in attrs and "float" in attrs:
+        width = re.search(r'width:\s*"([^"]+)"', attrs)
+        key = _FLOAT_STYLES.get(width.group(1)) if width else None
+        if key is None:
+            raise ValueError(f"unrecognised floated image wrapper: {attrs!r}")
+        return key
+    return None
+
+
+def _convert_image_wrappers(text: str) -> str:
+    """Carry an authored wrapper around ``::image{}`` into its ``layout``.
+
+    ``<div className="center-full-image">::image{...}</div>`` is DOM the
+    production stylesheet targets, and the wrapper is otherwise lost to the
+    generic div/figure unwrap. It is encoded as ``layout="<layout>@<key>"`` --
+    ``::image{}`` has no other channel -- and a ``<figcaption>`` becomes the
+    ``caption`` attribute. ``anthus_dom.anthus_image_wrap`` decodes both.
+    """
+
+    def repl(match: re.Match[str]) -> str:
+        key = _wrapper_key(match.group("tag"), match.group("attrs"))
+        if key is None:
+            return match.group(0)
+        directive = match.group("image")
+        layout = re.search(r'layout="([^"]*)"', directive)
+        base = layout.group(1) if layout else "full"
+        if layout:
+            directive = directive.replace(layout.group(0), f'layout="{base}@{key}"')
+        else:
+            directive = directive[:-1] + f' layout="{base}@{key}"}}'
+        caption = match.group("caption")
+        if caption:
+            caption = re.sub(r"\s+", " ", html_to_text(caption)).replace('"', "'")
+            directive = directive[:-1].rstrip() + f' caption="{_attr(caption)}"}}'
+        return directive
+
+    return _WRAPPER_RE.sub(repl, text)
+
+
+# --------------------------------------------------------------------------
+# JSX comments and hand-authored JSX diagrams
+# --------------------------------------------------------------------------
+
+_JSX_COMMENT_RE = re.compile(r"[ \t]*\{/\*.*?\*/\}[ \t]*\n?", re.S)
+_DIAGRAM_OPEN_RE = re.compile(r'^<div\s+className="[^"]*\bblockDiagram\b[^"]*"[^>]*>', re.M)
+_DIV_TAG_RE = re.compile(r"<(/?)div\b[^>]*>")
+_JSX_STYLE_RE = re.compile(r"style=\{\{(.*?)\}\}", re.S)
+_JSX_STYLE_ENTRY_RE = re.compile(r"""(\w+)\s*:\s*(?:"([^"]*)"|'([^']*)'|`([^`]*)`|([\d.]+))""")
+_JSX_MAP_RE = re.compile(
+    r"\{\[(?P<rows>.*?)\]\.map\(\(\[(?P<names>[^\]]*)\]\)\s*=>\s*\((?P<body>.*?)\)\)\}",
+    re.S,
+)
+_JSX_ROW_RE = re.compile(r"\[([^\[\]]*)\]")
+
+
+def _jsx_style_to_css(match: re.Match[str]) -> str:
+    entries = []
+    for name, dq, sq, tpl, num in _JSX_STYLE_ENTRY_RE.findall(match.group(1)):
+        value = dq or sq or tpl or num
+        prop = re.sub(r"([A-Z])", lambda m: "-" + m.group(1).lower(), name)
+        entries.append(f"{prop}:{value}")
+    return 'style="' + ";".join(entries) + '"'
+
+
+def _expand_jsx_map(match: re.Match[str]) -> str:
+    """Expand ``{[[...], ...].map(([a, b]) => ( <jsx/> ))}`` into its rows.
+
+    The corpus has exactly one of these (the "Context Snowball" bars), so this
+    handles that shape -- array-of-literal-rows, a destructured parameter list,
+    ``{name}`` and ``${name}`` substitutions, ``key=`` -- and refuses anything
+    else rather than guessing at JavaScript.
+    """
+    names = [n.strip() for n in match.group("names").split(",")]
+    out = []
+    for row in _JSX_ROW_RE.findall(match.group("rows")):
+        values = [v.strip().strip("\"'") for v in re.split(r",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", row)]
+        if len(values) != len(names):
+            raise ValueError(f"cannot expand JSX map row {row!r}")
+        body = re.sub(r"\s+key=\{\w+\}", "", match.group("body"))
+        for name, value in zip(names, values):
+            body = body.replace("${" + name + "}", value).replace("{" + name + "}", value)
+        out.append(body.strip())
+    return "\n".join(out)
+
+
+def _convert_jsx_diagrams(text: str, report: ConversionReport) -> str:
+    """Re-emit hand-authored JSX diagram blocks as the HTML they render to.
+
+    `<div className="blockDiagram ...">` trees (about 45 across the corpus:
+    stacked-box diagrams, request/response transcripts) are raw markup the
+    production stylesheet targets. Markus runs without ``--allow-html``, so
+    they go through as Papyrus block sentinels. Only the JSX spellings are
+    translated: ``className`` -> ``class`` and ``style={{ a: 'b' }}`` -> CSS.
+    The closing tag is found by counting ``<div>`` depth, which is exact here
+    because these trees contain no ``<div>`` inside text or code.
+    """
+    text = _JSX_COMMENT_RE.sub("", text)
+    out: list[str] = []
+    pos = 0
+    while True:
+        match = _DIAGRAM_OPEN_RE.search(text, pos)
+        if not match:
+            out.append(text[pos:])
+            break
+        depth = 0
+        end = None
+        for tag in _DIV_TAG_RE.finditer(text, match.start()):
+            depth += -1 if tag.group(1) else 1
+            if depth == 0:
+                end = tag.end()
+                break
+        if end is None:
+            raise ValueError("unbalanced <div> in a blockDiagram")
+        markup = text[match.start() : end]
+        markup = _JSX_MAP_RE.sub(_expand_jsx_map, markup)
+        markup = re.sub(r"<(span|div|p|b|i|br)\b([^>]*?)\s*/>", lambda m: f"<{m.group(1)}{m.group(2)}></{m.group(1)}>" if m.group(1) != "br" else "<br>", markup)
+        markup = _JSX_STYLE_RE.sub(_jsx_style_to_css, markup)
+        markup = re.sub(r"\bclassName=", "class=", markup)
+        if "{" in markup.replace("var(", ""):
+            raise ValueError(f"JSX expression left in diagram markup: {markup[:200]!r}")
+        out.append(text[pos : match.start()])
+        out.append("\n\n" + block_sentinel(markup) + "\n\n")
+        report.diagrams += 1
+        report.svgs += len(re.findall(r"<svg\b", markup, re.I))
+        pos = end
+    return "".join(out)
+
+
 _IMG_RE = re.compile(r"<img\b([^>]*?)/?>", re.I)
 _FIGURE_RE = re.compile(r"<figure\b[^>]*>(.*?)</figure>", re.I | re.S)
 
@@ -576,12 +734,12 @@ def _convert_tables(text: str, report: ConversionReport) -> str:
         body = match.group(1)
         if re.search(r"\b(colspan|rowspan)\s*=", body, re.I):
             report.span_tables += 1
-            return "\n\n" + anthus_dom.raw_sentinel(match.group(0)) + "\n\n"
+            return "\n\n" + block_sentinel(match.group(0)) + "\n\n"
         rows: list[list[str]] = []
         for row_match in _ROW_RE.finditer(body):
             cells: list[str] = []
             for cell in _CELL_RE.finditer(row_match.group(1)):
-                inline = _convert_inline_html(cell.group(3))
+                inline = _convert_inline_html(cell.group(3), report)
                 inline = re.sub(r"<[^>]+>", "", inline)
                 inline = re.sub(r"\s+", " ", _html.unescape(inline)).strip()
                 cells.append(inline.replace("|", "\\|"))
@@ -606,19 +764,49 @@ def _convert_tables(text: str, report: ConversionReport) -> str:
 # Inline and block HTML
 # --------------------------------------------------------------------------
 
+_MARK_PAIR_RE = re.compile(r"<mark\b[^>]*>(.*?)</mark\s*>", re.I | re.S)
+_MARK_TAG_RE = re.compile(r"</?mark\b[^>]*>", re.I)
+_SENTINEL_CHARS_RE = re.compile("[\ue010-\ue01f]")
+
+
+def _convert_marks(text: str, report: "ConversionReport | None") -> str:
+    """``<mark>x</mark>`` -> Papyrus ``inline_sentinel("mark", "x")``.
+
+    Pairs are matched non-greedily, so a nested ``<mark>`` inside a mark keeps
+    only the outermost element (the inner tags are stripped). A ``<mark>`` or
+    ``</mark>`` left without a partner is dropped and recorded rather than
+    emitted unbalanced; an inline sentinel cannot contain another sentinel, so
+    a pair whose text already holds one (a block sentinel) is also unwrapped.
+    """
+
+    def pair(match: re.Match[str]) -> str:
+        inner = _MARK_TAG_RE.sub("", match.group(1))
+        if not inner.strip() or _SENTINEL_CHARS_RE.search(inner):
+            if report is not None:
+                report.dropped_html.append("<mark> unwrapped (empty or holds a sentinel)")
+            return inner
+        return inline_sentinel("mark", inner)
+
+    text = _MARK_PAIR_RE.sub(pair, text)
+    stray = len(_MARK_TAG_RE.findall(text))
+    if stray:
+        if report is not None:
+            report.dropped_html.extend(["<mark> unbalanced tag dropped"] * stray)
+        text = _MARK_TAG_RE.sub("", text)
+    return text
+
+
 _SVG_RE = re.compile(r"<svg\b.*?</svg>", re.I | re.S)
 
 
-def _convert_inline_html(text: str) -> str:
+def _convert_inline_html(text: str, report: "ConversionReport | None" = None) -> str:
     """Rewrite inline HTML to Markdown equivalents.
 
-    ``<mark>`` becomes a pair of private-use sentinel characters which
-    ``anthus_dom.decode_sentinels`` turns back into real ``<mark>``/``</mark>``
-    after conversion. Markus 0.5.1 has neither an ``==highlight==`` plugin nor
-    an inline-span directive, and raw HTML is disabled, so this is the only way
-    to keep the Anth.us brand highlight -- a pink gradient wash behind the
-    phrase, 204 uses across the corpus, and one of the most visible things on
-    the page. Bold was the previous stand-in and was visibly wrong.
+    ``<mark>`` becomes a Papyrus inline sentinel (``_convert_marks``), which
+    ``FragmentTransform`` decodes back into a real ``<mark>`` after conversion.
+    Markus 0.5.1 has neither an ``==highlight==`` plugin nor an inline-span
+    directive and raw HTML is disabled; this is how the Anth.us brand
+    highlight (204 uses) survives.
     """
     text = re.sub(
         r'<a\b[^>]*?\bhref\s*=\s*"([^"]*)"[^>]*>(.*?)</a>',
@@ -635,8 +823,7 @@ def _convert_inline_html(text: str) -> str:
     text = re.sub(r"<code\b[^>]*>(.*?)</code>", lambda m: f"`{m.group(1)}`", text, flags=re.I | re.S)
     text = re.sub(r"</?(strong|b)\b[^>]*>", "**", text, flags=re.I)
     text = re.sub(r"</?(em|i)\b[^>]*>", "*", text, flags=re.I)
-    text = re.sub(r"<mark\b[^>]*>", anthus_dom.MARK_OPEN, text, flags=re.I)
-    text = re.sub(r"</mark\s*>", anthus_dom.MARK_CLOSE, text, flags=re.I)
+    text = _convert_marks(text, report)
     text = re.sub(r"<br\s*/?>", "  \n", text, flags=re.I)
     return text
 
@@ -670,7 +857,7 @@ def _convert_block_html(text: str, report: ConversionReport) -> str:
     if svg_count:
         report.svgs += svg_count
         text = _SVG_RE.sub(
-            lambda m: "\n\n" + anthus_dom.raw_sentinel(m.group(0)) + "\n\n", text
+            lambda m: "\n\n" + block_sentinel(m.group(0)) + "\n\n", text
         )
 
     # <picture>/<source> negotiation has no Markus equivalent; keep whatever
@@ -679,7 +866,7 @@ def _convert_block_html(text: str, report: ConversionReport) -> str:
     text = re.sub(r"<source\b[^>]*/?>", "", text, flags=re.I)
 
     text = _convert_tables(text, report)
-    text = _convert_inline_html(text)
+    text = _convert_inline_html(text, report)
 
     # List markup -> Markdown bullets. Done after inline conversion so link and
     # emphasis text inside list items survives.
@@ -758,8 +945,10 @@ def normalize_body(
     text = _IMPORT_RE.sub("", text)
     text = _JSX_EXPR_RE.sub("", text)
 
+    text = _convert_jsx_diagrams(text, report)
     text = _convert_citations(text, report)
     text = _convert_blog_images(text, report, resolve_image_name)
+    text = _convert_image_wrappers(text)
     text = _convert_figures(text, report, resolve_image_path)
     text = _convert_block_html(text, report)
     text = _restore_code(text, code_blocks)

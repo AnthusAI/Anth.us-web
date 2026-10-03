@@ -36,6 +36,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+import anthus_dom
+from papyrus_content.markus_renderer.transforms import block_sentinel
 from anthus_mdx import (
     ConversionReport,
     html_to_inline_markdown,
@@ -479,32 +481,17 @@ def stage_nodes(
                 **report.citation_entries,
             },
         }
-        header = _article_header(node, images)
+        header = _article_header(node)
         write_if_changed(out_dir / f"{node.slug}.md", staged_markdown(front, header + text))
     return total
 
 
-def _article_header(node: ContentNode, images: ImageIndex) -> str:
-    """Byline, draft banner, and cover image, above the article body.
+def _article_header(node: ContentNode) -> str:
+    """The production `.heading` block, as a Papyrus block sentinel.
 
-    Reproduces ``blog-post.jsx``'s ``.heading`` block: title (emitted by
-    Markus from front matter), date, ``by <authors>``, plus the DRAFT overlay
-    the template renders for anything not ``state: published``.
+    `blog-post.jsx` renders title, date, authors, assistants and (for anything
+    not published) the `.draft-overlay` watermark. The block is emitted by
+    `anthus_dom.ArticleHeading` and re-emitted verbatim by `FragmentTransform`
+    -- no Markus byline or DRAFT callout, which production does not have.
     """
-    parts: list[str] = []
-    if not node.published:
-        parts.append(
-            ':::callout{kind="warning" title="DRAFT"}\n'
-            "This article is not published. It has a live URL for review only.\n:::\n"
-        )
-    parts.append(f"*by {node.byline}*\n")
-    assistants = node.front_matter.get("assistants") or []
-    names = [
-        html_to_inline_markdown(entry.get("assistant"))
-        for entry in assistants
-        if isinstance(entry, dict) and entry.get("assistant")
-    ]
-    names = [name for name in names if name]
-    if names:
-        parts.append(f"*with assistance from {', '.join(names)}*\n")
-    return "\n".join(parts) + "\n"
+    return block_sentinel(anthus_dom.article_heading(node).html()) + "\n\n"
