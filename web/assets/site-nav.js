@@ -1,57 +1,40 @@
-/* Anth.us masthead nav: collapse to a hamburger on narrow viewports.
+/* Anth.us masthead nav.
  *
- * The Gatsby site uses `priority-plus`, which measures the rendered nav and
- * moves whatever overflows into a dropdown. Papyrus's Markus shell decides
- * geometry before render and this build ships no measurement library, so the
- * static equivalent is a plain breakpoint toggle: below 720px the links
- * collapse behind a hamburger, above it they lay out inline. The links are in
- * the markup either way, so this is progressive enhancement only — with
- * JavaScript off, CSS wraps the nav onto a second line and everything stays
- * reachable.
+ * The production Gatsby site runs `priority-plus` over the `.js-p-target`
+ * nav list (src/components/header.js), which measures the rendered nav with
+ * IntersectionObserver and moves whatever overflows into a dropdown behind a
+ * hamburger toggle. That library is vendored verbatim beside this file as
+ * `priority-plus.js` (ISC, priority-plus 1.5.1, jayfreestone) and its CSS is
+ * already part of the compiled theme — layout.scss @imports it, so the
+ * `.p-plus*` rules in web/css/anthus-theme.css are the real ones.
+ *
+ * Initialising it here with the same `innerToggleTemplate` is what makes the
+ * narrow-viewport nav behave identically to production instead of being
+ * approximated by a CSS breakpoint.
  */
 (function () {
   "use strict";
 
-  var BREAKPOINT = 720;
-
   function init() {
-    var nav = document.querySelector(".markus-site-nav");
-    if (!nav || nav.dataset.anthusNav === "ready") {
+    var target = document.querySelector(".js-p-target");
+    if (!target || target.dataset.pPlus === "ready") {
       return;
     }
-    nav.dataset.anthusNav = "ready";
-
-    var toggle = document.createElement("button");
-    toggle.type = "button";
-    toggle.className = "anthus-nav-toggle";
-    toggle.setAttribute("aria-label", "Toggle site navigation");
-    toggle.setAttribute("aria-expanded", "false");
-    toggle.innerHTML = '<span class="hamburger"></span>';
-    nav.parentNode.insertBefore(toggle, nav);
-
-    function apply() {
-      var narrow = window.innerWidth < BREAKPOINT;
-      toggle.hidden = !narrow;
-      if (!narrow) {
-        nav.removeAttribute("data-collapsed");
-        toggle.setAttribute("aria-expanded", "false");
-      } else if (!nav.hasAttribute("data-collapsed")) {
-        nav.setAttribute("data-collapsed", "");
+    if (typeof window.priorityPlus !== "function") {
+      // Vendored script missing or blocked: the <ul> is plain markup, so every
+      // link stays reachable and CSS wraps it. Fail quiet, not broken.
+      return;
+    }
+    target.dataset.pPlus = "ready";
+    try {
+      window.priorityPlus(target, {
+        innerToggleTemplate: '<div class="hamburger"></div>',
+      });
+    } catch (error) {
+      if (window.console && window.console.error) {
+        window.console.error("Error initializing priorityPlus:", error);
       }
     }
-
-    toggle.addEventListener("click", function () {
-      var collapsed = nav.hasAttribute("data-collapsed");
-      if (collapsed) {
-        nav.removeAttribute("data-collapsed");
-      } else {
-        nav.setAttribute("data-collapsed", "");
-      }
-      toggle.setAttribute("aria-expanded", collapsed ? "true" : "false");
-    });
-
-    apply();
-    window.addEventListener("resize", apply);
   }
 
   if (document.readyState === "loading") {

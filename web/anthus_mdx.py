@@ -48,6 +48,8 @@ from typing import Callable
 
 import yaml
 
+import anthus_dom
+
 # --------------------------------------------------------------------------
 # Front matter
 # --------------------------------------------------------------------------
@@ -119,25 +121,35 @@ def render_image_directive(
     src: str,
     alt: str = "",
     caption: str | None = None,
-    credit: str | None = None,
+    class_name: str = "",
+    figure_class: str = "",
+    eager: bool = False,
 ) -> str:
-    """Emit the Markus block for one image.
+    """Emit one image, as a sentinel that carries its authored CSS class.
 
-    **Interim implementation.** Markus 0.5.1 ships only ``:::figure``, which
-    renders a single ``<img src>`` with no ``srcset``, no ``sizes``, no
-    width/height, and no format negotiation. Gatsby's ``BlogImage`` /
-    ``gatsby-plugin-sharp`` produced AVIF/WebP/fallback derivative sets with a
-    blurred placeholder; there are 234 ``<BlogImage>`` uses in the content.
+    ``:::figure{}`` -- Markus 0.5.1's only image construct -- renders
+    ``<figure class="markus-figure"><img src></figure>`` and has nowhere to put
+    a class. That matters more than it sounds: the corpus authors
+    ``<BlogImage className="right">`` 20 times, ``className="full"`` 114 times,
+    ``className="centered"`` 32 times, and wraps 89 more in
+    ``<figure className="center-full-image">``. Those classes are what
+    ``layout.scss`` floats, centres and sizes the images with, so losing them
+    reflows every illustrated article.
 
-    Replace the body of this function (only) with the responsive-image
-    directive once it exists in Papyrus/Markus. Call sites do not care.
+    So instead of a directive this emits an ``anthus_dom`` image sentinel,
+    decoded after conversion into ``gatsby-plugin-image``'s wrapper markup with
+    the authored class intact. ``anthus_dom.image_html`` is the single place
+    that shape is defined; swap this for a real responsive-image directive once
+    Papyrus/Markus ships one and the call sites stay unchanged.
     """
-    attrs = [f'src="{_attr(src)}"', f'alt="{_attr(alt)}"']
-    if caption:
-        attrs.append(f'caption="{_attr(caption)}"')
-    if credit:
-        attrs.append(f'credit="{_attr(credit)}"')
-    return ":::figure{" + " ".join(attrs) + "}\n:::"
+    return anthus_dom.image_sentinel(
+        src=src,
+        alt=alt or "",
+        class_name=class_name or "",
+        figure=figure_class or "",
+        caption=caption or "",
+        eager=bool(eager),
+    )
 
 
 def render_citation_marker(index: int) -> str:
@@ -190,7 +202,9 @@ class ConversionReport:
     citations: int = 0
     citation_lists: int = 0
     tables: int = 0
+    span_tables: int = 0
     marks: int = 0
+    svgs: int = 0
     dropped_svg: int = 0
     dropped_html: list[str] = field(default_factory=list)
 
@@ -199,6 +213,8 @@ class ConversionReport:
         self.citations += other.citations
         self.citation_lists += other.citation_lists
         self.tables += other.tables
+        self.span_tables += other.span_tables
+        self.svgs += other.svgs
         self.marks += other.marks
         self.dropped_svg += other.dropped_svg
         self.dropped_html.extend(other.dropped_html)
@@ -426,9 +442,16 @@ def _convert_blog_images(
                 _, end, inner = found
                 name = _jsx_attr(inner, "name") or ""
                 alt = _jsx_attr(inner, "alt") or ""
+                class_name = _jsx_attr(inner, "className") or ""
                 src = resolve(name)
                 if src:
-                    out.append("\n\n" + render_image_directive(src=src, alt=alt) + "\n\n")
+                    out.append(
+                        "\n\n"
+                        + render_image_directive(
+                            src=src, alt=alt, class_name=class_name, eager=True
+                        )
+                        + "\n\n"
+                    )
                     report.images += 1
                 else:
                     report.dropped_html.append(f"BlogImage name={name!r} (no file found)")
@@ -512,19 +535,21 @@ _CELL_RE = re.compile(r"<(t[hd])\b([^>]*)>(.*?)</\1>", re.I | re.S)
 def _convert_tables(text: str, report: ConversionReport) -> str:
     """Convert raw HTML tables to GFM pipe tables.
 
-    ``colspan``/``rowspan`` have no GFM equivalent; those cells are emitted in
-    their first column and the span is recorded as a dropped construct so the
-    loss is counted rather than invisible.
+    ``colspan``/``rowspan`` have no GFM equivalent at all, so a table that uses
+    either is passed through as a raw sentinel and emitted verbatim instead of
+    being flattened into the wrong shape. Everything else becomes a pipe table,
+    which is what the production site's own Markdown tables render as.
     """
 
     def repl(match: re.Match[str]) -> str:
         body = match.group(1)
+        if re.search(r"\b(colspan|rowspan)\s*=", body, re.I):
+            report.span_tables += 1
+            return "\n\n" + anthus_dom.raw_sentinel(match.group(0)) + "\n\n"
         rows: list[list[str]] = []
         for row_match in _ROW_RE.finditer(body):
             cells: list[str] = []
             for cell in _CELL_RE.finditer(row_match.group(1)):
-                if re.search(r"\b(colspan|rowspan)\s*=", cell.group(2), re.I):
-                    report.dropped_html.append("<table> cell span (no GFM equivalent)")
                 inline = _convert_inline_html(cell.group(3))
                 inline = re.sub(r"<[^>]+>", "", inline)
                 inline = re.sub(r"\s+", " ", _html.unescape(inline)).strip()
@@ -556,10 +581,13 @@ _SVG_RE = re.compile(r"<svg\b.*?</svg>", re.I | re.S)
 def _convert_inline_html(text: str) -> str:
     """Rewrite inline HTML to Markdown equivalents.
 
-    ``<mark>`` becomes ``**bold**``: Markus 0.5.1 enables neither an inline
-    ``==highlight==`` plugin nor any inline-span directive, so the Anth.us
-    brand highlight (a pink gradient wash behind the phrase) has no faithful
-    target. Bold is the closest structural stand-in; the count is reported.
+    ``<mark>`` becomes a pair of private-use sentinel characters which
+    ``anthus_dom.decode_sentinels`` turns back into real ``<mark>``/``</mark>``
+    after conversion. Markus 0.5.1 has neither an ``==highlight==`` plugin nor
+    an inline-span directive, and raw HTML is disabled, so this is the only way
+    to keep the Anth.us brand highlight -- a pink gradient wash behind the
+    phrase, 204 uses across the corpus, and one of the most visible things on
+    the page. Bold was the previous stand-in and was visibly wrong.
     """
     text = re.sub(
         r'<a\b[^>]*?\bhref\s*=\s*"([^"]*)"[^>]*>(.*?)</a>',
@@ -576,7 +604,8 @@ def _convert_inline_html(text: str) -> str:
     text = re.sub(r"<code\b[^>]*>(.*?)</code>", lambda m: f"`{m.group(1)}`", text, flags=re.I | re.S)
     text = re.sub(r"</?(strong|b)\b[^>]*>", "**", text, flags=re.I)
     text = re.sub(r"</?(em|i)\b[^>]*>", "*", text, flags=re.I)
-    text = re.sub(r"</?mark\b[^>]*>", "**", text, flags=re.I)
+    text = re.sub(r"<mark\b[^>]*>", anthus_dom.MARK_OPEN, text, flags=re.I)
+    text = re.sub(r"</mark\s*>", anthus_dom.MARK_CLOSE, text, flags=re.I)
     text = re.sub(r"<br\s*/?>", "  \n", text, flags=re.I)
     return text
 
@@ -600,11 +629,18 @@ _KNOWN_HTML_TAGS = frozenset(
 def _convert_block_html(text: str, report: ConversionReport) -> str:
     report.marks += len(re.findall(r"<mark\b", text, re.I))
 
+    # Inline <svg> diagrams survive as a raw sentinel. They are hand-authored
+    # vector diagrams with no raster fallback anywhere in the repo, so dropping
+    # them left a hole in the article where a diagram belongs. The markup is
+    # author-written and never user-supplied, and it is round-tripped verbatim
+    # rather than being re-parsed, so this does not reintroduce the raw-HTML
+    # injection surface that `--allow-html` would.
     svg_count = len(_SVG_RE.findall(text))
     if svg_count:
-        report.dropped_svg += svg_count
-        report.dropped_html.append(f"{svg_count} inline <svg> diagram(s) dropped")
-        text = _SVG_RE.sub("", text)
+        report.svgs += svg_count
+        text = _SVG_RE.sub(
+            lambda m: "\n\n" + anthus_dom.raw_sentinel(m.group(0)) + "\n\n", text
+        )
 
     # <picture>/<source> negotiation has no Markus equivalent; keep whatever
     # <img> the element wraps and let _convert_figures resolve it.
