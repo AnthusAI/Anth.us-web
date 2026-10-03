@@ -151,6 +151,36 @@ aws amplify get-job --app-id "$APP" --branch-name staging --job-id "$JOB" \
   --query 'job.summary.status'
 ```
 
+### Manual deployment caveat: customHttp.yml does not apply
+
+`customHttp.yml` is only read by Amplify during a **repo-connected CI build**.
+A manual deployment ships only the artifact, so the file is never seen. The
+same headers are therefore also set on the app itself
+(`aws amplify update-app --custom-headers …`) and `X-Robots-Tag: noindex` is
+verified live. If the repo is later connected, `customHttp.yml` takes over —
+keep the two in sync, and keep `noindex` in both.
+
+Each page also carries `<meta name="robots" content="noindex, nofollow">` and
+`robots.txt` is `Disallow: /`, so indexing is blocked three independent ways.
+
+### Known quirk: the 404 rule
+
+The app's custom rule (`/<*>` -> `/404.html`, status `404`) is implemented by
+Amplify as a 301 to `/404.html`, which then returns 200 — not a true 404
+status. Acceptable for a staging review site; revisit before any promotion.
+
+### Canonical URLs
+
+`build_via_papyrus.py` derives `SITE_ORIGIN` from `AWS_APP_ID`/`AWS_BRANCH`,
+which Amplify injects during a CI build. A **local** build has neither, so it
+falls back to `http://localhost:8080` — which is what then ships in
+`<link rel="canonical">` and `og:url`. When deploying manually, build with:
+
+```bash
+ANTHUS_SITE_ORIGIN=https://staging.AMPLIFY_APP_ID.amplifyapp.com \
+  PAPYRUS_ROOT=/Users/home/Projects/Papyrus python3 web/build_via_papyrus.py
+```
+
 `amplify.yml` is committed and correct, so connecting the repository in the
 console (Amplify → this app → Hosting → Connect repository, pick
 `AnthusAI/Anth.us-Papyrus`, branch `staging`) switches it to CI builds with no

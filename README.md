@@ -8,8 +8,9 @@
 >
 > * Production Anth.us is still the Gatsby site in `AnthusAI/Anth.us`,
 >   served by a **different** Amplify app (`AMPLIFY_APP_ID`).
-> * This project has its **own** Amplify app and is reviewed only on its
->   default `*.amplifyapp.com` hostname.
+> * This project has its **own** Amplify app
+>   (`anthus-papyrus-staging` / `AMPLIFY_APP_ID`) and is reviewed only on its
+>   default hostname: <https://staging.AMPLIFY_APP_ID.amplifyapp.com>
 > * **No custom domain is attached, and none should be.** Do not point
 >   `anth.us`, `www.anth.us`, or any subdomain at this app. Do not create or
 >   modify Route 53 records. Domain cutover is a separate decision Ryan makes
