@@ -34,7 +34,6 @@ so they never disturb emphasis or table parsing.
 
 from __future__ import annotations
 
-import base64
 import html
 import json
 import re
@@ -42,43 +41,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 POD_ROOT = Path(__file__).resolve().parent
-
-# --------------------------------------------------------------------------
-# Sentinels (shared with anthus_mdx)
-# --------------------------------------------------------------------------
-
-MARK_OPEN = "\ue012"
-MARK_CLOSE = "\ue013"
-IMG_OPEN = "\ue010"
-IMG_CLOSE = "\ue011"
-RAW_OPEN = "\ue014"
-RAW_CLOSE = "\ue015"
-
-_B32 = "[A-Z2-7=]+"
-
-
-def encode_payload(value: dict | str) -> str:
-    """Base32 so the payload cannot contain a character Markdown reacts to.
-
-    Base64 was the obvious choice and the wrong one: its `_` and `*` runs get
-    parsed as emphasis inside a long token, which silently corrupted the
-    payload. Base32's alphabet is `A-Z2-7=` only.
-    """
-    raw = value if isinstance(value, str) else json.dumps(value, separators=(",", ":"))
-    return base64.b32encode(raw.encode("utf-8")).decode("ascii")
-
-
-def decode_payload(token: str) -> str:
-    return base64.b32decode(token.encode("ascii")).decode("utf-8")
-
-
-def image_sentinel(**payload) -> str:
-    return f"{IMG_OPEN}{encode_payload(payload)}{IMG_CLOSE}"
-
-
-def raw_sentinel(markup: str) -> str:
-    return f"{RAW_OPEN}{encode_payload(markup)}{RAW_CLOSE}"
-
 
 # --------------------------------------------------------------------------
 # Chrome
@@ -169,55 +131,52 @@ _FONTS = (
     "|Montserrat:400,500,600,900&display=block"
 )
 
-
-@dataclass(frozen=True)
-class PageMeta:
-    """Everything the shell needs that is not the body fragment."""
-
-    title: str
-    route: str  # production-shaped route, e.g. "/blog/ai-agents/" — drives nav active state
-    extra_head: str = ""
+#: Markup placed after ``</title>`` by ``SiteChrome.head_html``.
+HEAD_HTML = (
+    '<link rel="icon" href="/assets/site/favicon-32x32.png" type="image/png">\n'
+    f'<link href="{_FONTS}" rel="stylesheet">\n'
+)
 
 
-def render_shell(*, fragment: str, meta: PageMeta, css_version: str | None) -> str:
-    """The `<html>` envelope: `Anth.us/src/components/layout.js`, rendered.
+def route_for(active_href: str) -> str:
+    """Production-shaped route (``/blog/x/``) for a Papyrus ``active_href``.
 
-    The outer `#___gatsby` / `#gatsby-focus-wrapper` divs are reproduced
-    because they are what the production pages have; nothing in the stylesheet
-    targets them, but keeping them makes a class-name/structure diff against
-    `Anth.us/public/` read cleanly instead of being noisy by one level.
+    Drives the nav ``active`` class, which Gatsby sets on an exact route match
+    only. Papyrus hrefs are ``index.html`` / ``about.html`` / ``posts/x.html``;
+    the nav links are ``/about/`` etc., so only the top-level pages can match.
     """
-    suffix = f"?v={html.escape(css_version, quote=True)}" if css_version else ""
-    title = f"{html.escape(meta.title)} | {SITE_TITLE}" if meta.title else SITE_TITLE
+    href = (active_href or "index.html").lstrip("/")
+    if href in ("index.html", ""):
+        return "/"
+    if href.endswith("/index.html"):
+        return "/" + href[: -len("index.html")]
+    if href.endswith(".html"):
+        return "/" + href[: -len(".html")] + "/"
+    return "/" + href
+
+
+def render_masthead(route: str) -> str:
+    return _header_html(route)
+
+
+def render_envelope(*, fragment: str, route: str, scripts: str) -> str:
+    """Everything between ``<body>`` and ``</body>``: `layout.js`, rendered.
+
+    The outer ``#___gatsby`` / ``#gatsby-focus-wrapper`` divs are reproduced
+    because production has them; keeping them makes a structure diff against
+    ``Anth.us/public/`` read cleanly.
+    """
     return (
-        "<!DOCTYPE html>\n"
-        '<html lang="en">\n'
-        "<head>\n"
-        '<meta charset="utf-8">\n'
-        '<meta http-equiv="x-ua-compatible" content="ie=edge">\n'
-        '<meta name="viewport" content="width=device-width, initial-scale=1, '
-        'shrink-to-fit=no">\n'
-        f"<title>{title}</title>\n"
-        f"{meta.extra_head}"
-        '<link rel="icon" href="/assets/site/favicon-32x32.png" type="image/png">\n'
-        f'<link href="{_FONTS}" rel="stylesheet">\n'
-        f'<link rel="stylesheet" href="/css/anthus-theme.css{suffix}">\n'
-        "</head>\n"
-        "<body>\n"
         '<div id="___gatsby"><div style="outline:none" tabindex="-1" '
         'id="gatsby-focus-wrapper">\n'
         '<div class="layout">'
-        + _header_html(meta.route)
+        + _header_html(route)
         + '<div class="wrapper"><main>'
         + fragment
         + "</main></div>"
         + FOOTER_HTML
         + "</div>\n"
-        "</div></div>\n"
-        f'<script src="/assets/priority-plus.js{suffix}"></script>\n'
-        f'<script src="/assets/site-nav.js{suffix}"></script>\n'
-        "</body>\n"
-        "</html>\n"
+        "</div></div>\n" + scripts
     )
 
 
@@ -270,13 +229,20 @@ def css_modules() -> _CssModules:
 # --------------------------------------------------------------------------
 
 _DIMENSION_CACHE: dict[str, tuple[int, int] | None] = {}
-_ASSET_ROOTS: list[Path] = []
+_ASSET_ROOTS: dict[str, Path] = {}
 
 
-def set_asset_roots(*roots: Path) -> None:
-    """Where to look up an image's pixel size for the aspect-ratio sizer."""
+def set_asset_roots(roots: dict[str, Path]) -> None:
+    """Where to look up an image's pixel size for the aspect-ratio sizer.
+
+    Maps a site-absolute URL prefix to the directory that holds it, e.g.
+    ``{"/assets/content/": <content submodule>, "/assets/site/": web/assets/site}``.
+    Source dimensions are used even though the staged copy may be downscaled:
+    the aspect ratio is identical, and the sizer's ``max-width`` only matters
+    below the column width.
+    """
     _ASSET_ROOTS.clear()
-    _ASSET_ROOTS.extend(roots)
+    _ASSET_ROOTS.update(roots)
     _DIMENSION_CACHE.clear()
 
 
@@ -284,10 +250,9 @@ def _dimensions(src: str) -> tuple[int, int] | None:
     if src in _DIMENSION_CACHE:
         return _DIMENSION_CACHE[src]
     size = None
-    if src.startswith("/"):
-        rel = src.lstrip("/")
-        for root in _ASSET_ROOTS:
-            candidate = root / rel
+    for prefix, root in _ASSET_ROOTS.items():
+        if src.startswith(prefix):
+            candidate = root / src[len(prefix):]
             if candidate.is_file():
                 try:
                     from PIL import Image
@@ -296,7 +261,7 @@ def _dimensions(src: str) -> tuple[int, int] | None:
                         size = image.size
                 except Exception:
                     size = None
-                break
+            break
     _DIMENSION_CACHE[src] = size
     return size
 
@@ -327,27 +292,98 @@ def image_html(
         if token not in classes:
             classes.append(token)
     size = _dimensions(src)
-    sizer = ""
-    if size:
-        width, height = size
-        # A transparent SVG of the right aspect ratio, exactly as
-        # gatsby-plugin-image does it, so the wrapper has a height before the
-        # real image loads and nothing reflows.
-        placeholder = (
-            "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'"
-            f"%20viewBox='0%200%20{width}%20{height}'%3E%3C/svg%3E"
-        )
-        sizer = (
-            f'<div style="max-width:{width}px;display:block">'
-            f'<img alt="" role="presentation" aria-hidden="true" src="{placeholder}" '
-            'style="max-width:100%;display:block;position:static"></div>'
-        )
+    sizer = _sizer(*size) if size else ""
     loading = "eager" if eager else "lazy"
     return (
         f'<div class="{" ".join(classes)}">{sizer}'
         f'<img src="{html.escape(src, quote=True)}" alt="{html.escape(alt, quote=True)}" '
         f'decoding="async" loading="{loading}"></div>'
     )
+
+
+# --------------------------------------------------------------------------
+# Papyrus ImagePipeline wrap: gatsby-plugin-image's constrained shape
+# --------------------------------------------------------------------------
+
+#: Wrapper elements the corpus authors around an ``::image{}`` (production
+#: renders them verbatim, and the stylesheet keys on them: ``.center-full-image
+#: {text-align:center}`` centres a caption, ``.center-small-image`` is a 60%
+#: box). ``anthus_mdx`` encodes the wrapper into the image's layout as
+#: ``<layout>@<key>`` because ``::image{}`` has no other channel for it; the
+#: wrap hook decodes it here. ``<p class="center-full-image">`` is deliberately
+#: absent: production nests a block ``<div>`` in that ``<p>``, so the parser
+#: closes the ``<p>`` before the ``<div>`` and the class never applies to it.
+IMAGE_WRAPPERS: dict[str, tuple[str, str]] = {
+    "div-cfi": ('<div class="center-full-image">', "</div>"),
+    "figure-cfi": ('<figure class="center-full-image">', "</figure>"),
+    "div-csi": ('<div class="center-small-image">', "</div>"),
+    "float-260": (
+        '<div style="float:right;width:260px;max-width:40%;margin-left:24px;'
+        'margin-bottom:16px">',
+        "</div>",
+    ),
+    "float-300": (
+        '<div style="float:right;width:300px;margin-left:20px;margin-bottom:20px">',
+        "</div>",
+    ),
+}
+
+#: Layouts a wrapper can accompany. ``anthus_layout_sizes`` registers every
+#: ``base@wrapper`` combination with the base layout's ``sizes``.
+WRAPPABLE_LAYOUTS = ("full", "center-full-image", "center-small-image", "right-aligned")
+
+
+def anthus_layout_sizes(base: dict) -> dict:
+    sizes = dict(base)
+    for layout in WRAPPABLE_LAYOUTS:
+        for key in IMAGE_WRAPPERS:
+            sizes[f"{layout}@{key}"] = base[layout]
+    return sizes
+
+
+def _sizer(width: int, height: int) -> str:
+    """gatsby-plugin-image's aspect-ratio sizer.
+
+    The transparent SVG carries `height`/`width` attributes (not a viewBox):
+    the wrapper is `display:inline-block`, so this image's intrinsic size is
+    what gives it a width at all.
+    """
+    return (
+        f'<div style="max-width:{width}px;display:block">'
+        '<img alt="" role="presentation" aria-hidden="true" '
+        'src="data:image/svg+xml;charset=utf-8,%3Csvg%20height=&#x27;'
+        f"{height}&#x27;%20width=&#x27;{width}&#x27;%20"
+        "xmlns=&#x27;http://www.w3.org/2000/svg&#x27;%20version=&#x27;1.1&#x27;"
+        '%3E%3C/svg%3E" style="max-width:100%;display:block;position:static"/>'
+        "</div>"
+    )
+
+
+def anthus_image_wrap(wrap) -> str:
+    """`ImagePipeline.wrap`: Papyrus renditions inside gatsby-plugin-image's DOM.
+
+    Production CSS absolutely positions ``.gatsby-image-wrapper img`` and takes
+    the box height from the sizer ``div`` (a transparent SVG of the source's
+    aspect ratio), so that element is load-bearing.
+    """
+    layout, _, wrapper = (wrap.layout or "").partition("@")
+    sizer = _sizer(wrap.width, wrap.height) if wrap.width and wrap.height else ""
+    markup = (
+        f'<div class="gatsby-image-wrapper gatsby-image-wrapper-constrained {layout}">'
+        f"{sizer}{wrap.inner}</div>"
+    )
+    caption = (wrap.request.caption or "").strip()
+    if wrapper:
+        opening, closing = IMAGE_WRAPPERS[wrapper]
+        if caption:
+            markup += (
+                f'<figcaption class="image-caption"><p>{html.escape(caption)}</p>'
+                "</figcaption>"
+            )
+        return opening + markup + closing
+    if caption:
+        markup += f'<p class="image-caption">{html.escape(caption)}</p>'
+    return markup
 
 
 def hero_image_html(*, src: str, alt: str, class_name: str) -> str:
@@ -375,67 +411,30 @@ def hero_image_html(*, src: str, alt: str, class_name: str) -> str:
 # --------------------------------------------------------------------------
 # Fragment rewriting: Markus output -> production Anth.us DOM
 # --------------------------------------------------------------------------
+#
+# Done declaratively by Papyrus's `FragmentTransform` (see build_via_papyrus),
+# not by regex passes over rendered HTML. This table is the whole mapping.
 
-_IMG_SENTINEL = re.compile(
-    rf"(?:<p>\s*)?{IMG_OPEN}({_B32}){IMG_CLOSE}(?:\s*</p>)?"
-)
-_RAW_SENTINEL = re.compile(rf"(?:<p>\s*)?{RAW_OPEN}({_B32}){RAW_CLOSE}(?:\s*</p>)?")
+#: The handful of Markus structural classes that can still reach an article
+#: body from a content directive. Each maps onto the nearest construct the
+#: Anthus stylesheet already styles, so no new CSS is invented here.
+CLASS_MAP = {
+    "markus-document": "",
+    "markus-figure": "",
+    "markus-callout--tip": "blockDiagram visualPlaceholder",
+    "markus-callout--note": "blockDiagram visualPlaceholder",
+    "markus-callout-title": "title",
+    "markus-callout-body": "container",
+    "markus-two-up--start": "comparisonChart",
+    "markus-column": "left-side",
+    "markus-metric": "experience",
+    "markus-metric-value": "title",
+    "markus-pull-quote--inline": "",
+    "markus-pull-quote--primary": "",
+}
 
-
-def decode_sentinels(fragment: str) -> str:
-    """Turn the PUA sentinels back into the HTML they stand for."""
-
-    def image(match: re.Match[str]) -> str:
-        payload = json.loads(decode_payload(match.group(1)))
-        wrapper = payload.pop("figure", "") or ""
-        caption = payload.pop("caption", "") or ""
-        markup = image_html(**payload)
-        if caption:
-            markup += f'<p class="image-caption">{caption}</p>'
-        if wrapper:
-            markup = f'<figure class="{html.escape(wrapper, quote=True)}">{markup}</figure>'
-        return markup
-
-    fragment = _IMG_SENTINEL.sub(image, fragment)
-    fragment = _RAW_SENTINEL.sub(
-        lambda m: decode_payload(m.group(1)), fragment
-    )
-    fragment = fragment.replace(MARK_OPEN, "<mark>").replace(MARK_CLOSE, "</mark>")
-    # Markus escapes the sentinel's neighbours, never the sentinel itself, but
-    # a stray unmatched one would render as a tofu box. Fail loud instead.
-    for sentinel in (IMG_OPEN, IMG_CLOSE, RAW_OPEN, RAW_CLOSE, MARK_OPEN, MARK_CLOSE):
-        if sentinel in fragment:
-            raise RuntimeError(
-                f"undecoded sentinel U+{ord(sentinel):04X} left in fragment"
-            )
-    return fragment
-
-
-_MARKUS_DOC = re.compile(r'<article class="markus-document">(.*)</article>\s*$', re.S)
-_MARKUS_HEADER = re.compile(
-    r'<header class="markus-header">.*?</header>', re.S
-)
-_MARKUS_DRAFT = re.compile(
-    r'<aside class="markus-callout markus-callout--warning"[^>]*>'
-    r'<p class="markus-callout-title">DRAFT</p>.*?</aside>',
-    re.S,
-)
-_MARKUS_BYLINE_P = re.compile(r"<p><em>by .*?</em></p>\s*", re.S)
-
-# The handful of Markus structural classes that can still reach an article
-# body from a content directive. Each maps onto the nearest construct the
-# Anthus stylesheet already styles, so no new CSS is invented here.
-_CLASS_MAP = (
-    ('<aside class="markus-callout markus-callout--tip" role="note">', '<aside class="blockDiagram visualPlaceholder">'),
-    ('<aside class="markus-callout markus-callout--note" role="note">', '<aside class="blockDiagram visualPlaceholder">'),
-    ('<p class="markus-callout-title">', '<p class="title">'),
-    ('<div class="markus-callout-body">', '<div class="container">'),
-    ('<section class="markus-two-up markus-two-up--start"', '<section class="comparisonChart"'),
-    ('<div class="markus-column">', '<div class="left-side">'),
-    ('<dl class="markus-metric">', '<dl class="experience">'),
-    ('<span class="markus-metric-value">', '<span class="title">'),
-    ('<blockquote class="markus-pull-quote markus-pull-quote--inline markus-pull-quote--primary">', "<blockquote>"),
-)
+#: Prefixes dropped when a class token is not in CLASS_MAP.
+DROP_PREFIXES = ("markus-", "papyrus-")
 
 
 @dataclass(frozen=True)
@@ -445,6 +444,7 @@ class ArticleHeading:
     title: str
     date: str = ""
     authors_html: str = ""
+    assistants_html: str = ""
     draft: bool = False
 
     def html(self) -> str:
@@ -453,6 +453,8 @@ class ArticleHeading:
             parts.append(f'<div class="date">{html.escape(self.date)}</div>')
         if self.authors_html:
             parts.append(f'<div class="authors">{self.authors_html}</div>')
+        if self.assistants_html:
+            parts.append(f'<div class="assistants">{self.assistants_html}</div>')
         heading = '<div class="heading">' + "".join(parts) + "</div>"
         if self.draft:
             # Production renders a diagonal watermark over the whole article
@@ -465,46 +467,6 @@ class ArticleHeading:
         return heading
 
 
-def article_fragment(fragment: str, heading: ArticleHeading | None) -> str:
-    """Rewrite one Markus-rendered article into the production article DOM.
-
-    Markus gives `<article class="markus-document"><header class="markus-header">
-    <h1>…</h1><p class="markus-byline">…</p></header>…`. Production gives
-    `<article><div class="draft-overlay">…</div><div class="heading"><h1>…</h1>
-    <div class="date">…</div><div class="authors">…</div></div>…`.
-
-    The heading is rebuilt from structured metadata rather than scraped out of
-    the rendered HTML, because the author list is authored as front-matter
-    HTML and Markus has already flattened it to `<em>by …</em>` by this point.
-    """
-    body = fragment
-    match = _MARKUS_DOC.search(body)
-    if match:
-        body = match.group(1)
-    body = _MARKUS_HEADER.sub("", body, count=1)
-    body = _MARKUS_DRAFT.sub("", body, count=1)
-    body = _MARKUS_BYLINE_P.sub("", body, count=1)
-    body = decode_sentinels(body)
-    for before, after in _CLASS_MAP:
-        body = body.replace(before, after)
-    body = re.sub(r'\sclass="markus-[^"]*"', "", body)
-    body = body.replace('<figure class="markus-figure">', "<figure>")
-    prefix = heading.html() if heading else ""
-    return f"<article>{prefix}{body.strip()}</article>"
-
-
-def plain_fragment(fragment: str) -> str:
-    """A page whose body is Markus-rendered but which has no article heading."""
-    body = fragment
-    match = _MARKUS_DOC.search(body)
-    if match:
-        body = match.group(1)
-    body = _MARKUS_HEADER.sub("", body, count=1)
-    body = decode_sentinels(body)
-    for before, after in _CLASS_MAP:
-        body = body.replace(before, after)
-    body = re.sub(r'\sclass="markus-[^"]*"', "", body)
-    return body.strip()
 
 
 def assert_no_markus_classes(html_text: str, where: str) -> None:
@@ -514,6 +476,68 @@ def assert_no_markus_classes(html_text: str, where: str) -> None:
     ship Markus's vendored CSS, so one leaking through is a silent visual
     regression rather than a cosmetic detail.
     """
-    leaked = sorted(set(re.findall(r'class="([^"]*markus-[^"]*)"', html_text)))
+    leaked = sorted(
+        set(re.findall(r'class="([^"]*(?:markus|papyrus)-[^"]*)"', html_text))
+    )
     if leaked:
-        raise RuntimeError(f"{where}: unstyled markus-* classes in output: {leaked}")
+        raise RuntimeError(f"{where}: unstyled markus-/papyrus- classes in output: {leaked}")
+
+
+_SINGLE_ELEMENT = re.compile(r"^<(\w+)\b[^>]*>.*</\1>$", re.S)
+
+
+def _markdown_inline(value: str) -> str:
+    """What `markdown-to-jsx` renders for a short inline author string.
+
+    A lone element is returned as-is; anything else (text, or text mixed with
+    elements) gets a wrapping ``<span>``. Verified against the reference:
+    ``<a href="/ryan">Ryan Porter</a>`` stays bare, ``and the <a>..</a> GPT``
+    becomes ``<span>and the <a>..</a> GPT</span>``.
+    """
+    text = str(value).strip()
+    if _SINGLE_ELEMENT.match(text) and text.count("<a ") <= 1 and text.startswith("<a"):
+        return text
+    return f"<span>{text}</span>"
+
+
+def _joined(entries: list[str], css: str) -> str:
+    out = []
+    last = len(entries) - 1
+    for index, entry in enumerate(entries):
+        out.append(f'<span class="{css}">{_markdown_inline(entry)}</span>')
+        if index < last - 1:
+            out.append(", ")
+        elif index == last - 1:
+            out.append(", and " if len(entries) > 2 else " and ")
+    return "".join(out)
+
+
+def article_heading(node) -> ArticleHeading:
+    """`blog-post.jsx`'s heading, from a discovered content node."""
+    front = node.front_matter
+
+    def values(key: str, field: str) -> list[str]:
+        return [
+            str(entry[field])
+            for entry in (front.get(key) or [])
+            if isinstance(entry, dict) and entry.get(field)
+        ]
+
+    authors = values("authors", "author")
+    assistants = values("assistants", "assistant")
+    authors_html = (
+        '<span class="byline">by </span>' + _joined(authors, "author") if authors else ""
+    )
+    assistants_html = (
+        '<span class="byline">with assistance from </span>'
+        + _joined(assistants, "assistant")
+        if assistants
+        else ""
+    )
+    return ArticleHeading(
+        title=node.title,
+        date=node.display_date,
+        authors_html=authors_html,
+        assistants_html=assistants_html,
+        draft=not node.published,
+    )
