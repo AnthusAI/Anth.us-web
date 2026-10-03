@@ -16,8 +16,9 @@ python3 bin/dev-server.py --port 8080
 
 `PAPYRUS_ROOT` defaults to `../Papyrus`. The Amplify build pins Papyrus by
 commit (`PAPYRUS_PIN` in `amplify.yml`) rather than tracking a branch, because
-this script monkey-patches the renderer's public surface and a silent upstream
-change there breaks the build with no commit in this repo to blame.
+this script builds on the renderer's public surface (`SiteChrome` hooks,
+`FragmentTransform`, `ImagePipeline.wrap`) and a silent upstream change there
+breaks the build with no commit in this repo to blame.
 
 **Do not try to preview from a cloud session.** Nothing bound inside a Claude
 Code cloud container is reachable from a browser — no port forwarding, no

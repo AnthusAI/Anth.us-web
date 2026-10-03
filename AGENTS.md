@@ -18,9 +18,11 @@ reader site. It is not the live marketing site.
   `anth.us`. Review happens on the default `*.amplifyapp.com` hostname.
   Promotion to a domain is an explicit decision Ryan makes after reviewing the
   port — not an agent's call.
-* Keep the staging notice in `README.md`, the staging banner in
-  `web/css/anthus-theme.css` (`body.markus-site::before`), the footer note in
-  `build_via_papyrus.py`, and the `noindex` headers in `customHttp.yml`. They
+* Keep the staging notice in `README.md`, the visible staging note in the
+  footer (`_STAGING_NOTE` in `web/anthus_dom.py`; the theme is now the compiled
+  production stylesheet, which has no banner rule, so the footer note is the
+  visible marker), the `noindex` robots meta that `build_via_papyrus.finish_pages`
+  requires on every page, and the `noindex` headers in `customHttp.yml`. They
   exist so nobody mistakes this for production. Do not quietly remove them.
 
 ## Read-only boundaries
@@ -60,17 +62,25 @@ The build ends with a **parity accounting** report. Treat a growth in the
 
 ### Architecture, in one paragraph
 
-`anthus_content.discover()` reads the MDX submodule and classifies nodes the
-way `Anth.us/gatsby-node.js` does. `anthus_mdx.normalize_body()` rewrites MDX
-imports, JSX components, and raw HTML into Markus-safe Markdown — necessary
-because static Markus builds run `markus convert` **without** `--allow-html`
-(a security invariant Papyrus enforces in
-`markus_renderer/security.py`), so raw HTML would otherwise be escaped into
-visible angle brackets. `anthus_pages` generates the bespoke pages and
-listings. All of that lands in `web/staging/`. Then Papyrus's
-`build_markus_site()` renders it with Anthus `SiteChrome`, and
-`build_via_papyrus.py` adds standalone pages, link rewriting, social meta,
-`robots.txt` and `sitemap.xml`.
+The front end is **the production Anth.us stylesheet and DOM**, not Markus's
+design language (see `web/DESIGN-PARITY.md`). `anthus_content.discover()` reads
+the MDX submodule and classifies nodes the way `Anth.us/gatsby-node.js` does.
+Article and platform-product **bodies** go `anthus_mdx.normalize_body()` ->
+`web/staging/*.md` -> Papyrus `build_markus_site(transform=ANTHUS_TRANSFORM,
+vendor_css=False, ...)`. `markus convert` runs **without** `--allow-html` (a
+Papyrus security invariant), so HTML the build itself generates -- the
+production `.heading` block, `<mark>`, inline `<svg>`, JSX diagram trees,
+colspan tables -- crosses it as Papyrus sentinels (`inline_sentinel`,
+`block_sentinel`) and is re-emitted by `FragmentTransform`. Every other page
+(home, listings, posts, tags, platform index, about, ai-solutions, ryan, 404,
+engage, reading, research, decision-models) is **generated HTML** from
+`anthus_pages` / `anthus_page_html` and rendered by calling
+`markus_shell.render_page` directly, bypassing Markus. The page envelope is
+`SiteChrome` hooks (`render_masthead`, `render_body`, `head_html`,
+`stylesheets`, `asset_root`), with no monkeypatching. A post-pass over
+`result.pages` (`finish_pages`) rewrites links, injects social meta and the
+`noindex` guard, and gates on `markus-`/`papyrus-` classes before
+`relocate_pages` moves files to canonical directory URLs.
 
 ### Images and citations: Papyrus content markup
 
@@ -89,10 +99,10 @@ citations=CITATIONS)`. The authoring contract is Papyrus
   that are vendored in **this** repo and so have no path under the pipeline's
   source root (which is the content submodule). Not responsive, by design.
 
-`markus convert` fails a whole page on an unregistered directive, so **the
-Papyrus pin in `amplify.yml` must include PR #83 before this branch deploys.**
-The pin committed on this branch does not. That is called out in `amplify.yml`
-itself; do not deploy until it is bumped.
+`markus convert` fails a whole page on an unregistered directive, so the
+Papyrus pin in `amplify.yml` must include PR #83. It does (pinned at develop
+`3fdd6fd`, which also has the shell hooks and fragment transforms this build
+needs); keep it that way when bumping.
 
 The content is authored in this markup directly, so the MDX conversion in
 `anthus_mdx` is a pass-through for the pinned content branch. It is kept
@@ -242,11 +252,19 @@ and skips submodules, and without that step the build has no content at all.
   leaf, so it is `::metric{…}` with no closing fence. Writing three colons
   makes the parser see an unterminated container and the whole page fails to
   convert.
-* **Front-matter `title` already emits the `<h1>`** and `description` emits
-  the lede. A body `# Heading` on top of that gives the page two `<h1>`s.
-* **Markus escapes the front-matter byline**, so Markdown links in
-  `authors[].author` do not render there. The build emits its own byline
-  paragraph instead.
+* **Front-matter `title` is kept for Papyrus's `<title>` only.** Markus's own
+  `<header>` is removed by `FragmentTransform(strip_header=True)` and the
+  production `.heading` (h1, date, authors, `.draft-overlay`) is prepended as a
+  block sentinel by `anthus_content._article_header`. A body `# Heading` would
+  give the page two `<h1>`s.
+* **Image wrappers ride in the layout name.** `<div className="center-full-image">`
+  / `<figure>` / floated `<div style=...>` around an `::image{}` is DOM the
+  stylesheet targets, and `::image{}` has no wrapper attribute, so
+  `anthus_mdx._convert_image_wrappers` encodes it as `layout="full@figure-cfi"`
+  and `anthus_dom.anthus_image_wrap` decodes it. `anthus_layout_sizes` registers
+  every combination.
+* **`web/css/anthus-theme.css` is generated** (`bin/build-theme-css.py`); do not
+  edit it by hand. Papyrus copies it to `dist/css/site-theme.css`.
 * **Do not strip tag-shaped prose.** `<N>`, `<arm>`, `<QUERY>` appear in
   sentences as placeholders. `anthus_mdx` only strips names in
   `_KNOWN_HTML_TAGS`; everything else is left for Markus to escape, which is
