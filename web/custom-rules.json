@@ -1775,6 +1775,16 @@
     "status": "301"
   },
   {
+    "source": "/static/938fa1a535efcc9aa2aa1e8f4cd04f2d/4a064/plexus-classifier-lab.png",
+    "target": "/assets/content/images/primus-classifier-lab.png",
+    "status": "301"
+  },
+  {
+    "source": "/static/8140ade93833cb379eac3e5d406723e3/08e5a/plexus-logo.png",
+    "target": "/assets/content/solutions/images/primus-logo.png",
+    "status": "301"
+  },
+  {
     "source": "/static/68b8b8c56fe44d19b215b6537a637684/4a064/procedural-film.png",
     "target": "/assets/content/images/posts/procedural-film.png",
     "status": "301"
