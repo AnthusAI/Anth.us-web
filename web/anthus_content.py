@@ -200,11 +200,14 @@ def discover(content_root: Path) -> list[ContentNode]:
         slug = str(front_matter.get("slug") or "").strip()
         if not slug:
             slug = path.stem
-        # Papyrus's collection discovery only accepts `^[a-z0-9][a-z0-9-]*\.md$`,
-        # so a node whose front-matter slug has capitals (e.g. `Paytronix`) was
-        # staged and then silently skipped at render time — a missing page with
-        # a successful build. Normalize here and keep the authored spelling for
-        # the redirect stub.
+        # Papyrus derives a page's URL slug from the staged FILE NAME
+        # (slugify(stem), Papyrus #89), never from front matter. This build
+        # stages each node as `<slug>.md`, so the front-matter `slug:` (which
+        # can carry capitals, e.g. `Paytronix`) must be normalized here to keep
+        # the staged name, internal links and redirects in agreement with what
+        # Papyrus renders. Not redundant with #89, which only covers file names
+        # (it agrees with `_slugify` on every file in the corpus). The authored
+        # spelling is kept for the redirect stub.
         slug = _slugify(slug)
         nodes.append(
             ContentNode(
