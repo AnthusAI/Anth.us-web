@@ -4,8 +4,10 @@
 Each benchmark site lives in its own repository and is an Astro site that reads
 BASE_PATH and SITE_URL. It is built at its pinned commit and copied under its
 anth.us path. The SITE_ENV switch applies to it like every other page: a guarded
-build marks every benchmark page noindex and leaves robots.txt alone, and a
-production build publishes each benchmark's sitemap and robots rules.
+build marks every benchmark page noindex, removes its analytics (the main site
+sends none outside production), and leaves robots.txt alone, and a production
+build publishes each benchmark's sitemap and robots rules and keeps the same GA4
+property as the main site.
 """
 from __future__ import annotations
 
@@ -32,6 +34,9 @@ HEAD_OPEN_TAG = re.compile(r"<head(\s[^>]*)?>", re.I)
 REFRESH_OR_NOINDEX = re.compile(
     r'<meta http-equiv="refresh"|<meta name="robots" content="[^"]*noindex', re.I
 )
+
+SCRIPT_ELEMENT = re.compile(r"<script\b[^>]*>.*?</script>", re.I | re.S)
+ANALYTICS_SCRIPT_MARKERS = ("googletagmanager.com", "gtag(", "anthus-no-analytics")
 
 
 def run(command: list[str], working_directory: Path, extra_environment: dict | None = None) -> None:
@@ -79,6 +84,25 @@ def mark_every_page_noindex(published_directory: Path) -> int:
         page.write_text(text, encoding="utf-8")
         marked += 1
     return marked
+
+
+def is_analytics_script(script_element: str) -> bool:
+    return any(marker in script_element for marker in ANALYTICS_SCRIPT_MARKERS)
+
+
+def remove_every_analytics_script(published_directory: Path) -> int:
+    cleaned = 0
+    for page in published_directory.rglob("*.html"):
+        text = page.read_text(encoding="utf-8")
+        without_analytics = SCRIPT_ELEMENT.sub(
+            lambda script: "" if is_analytics_script(script.group(0)) else script.group(0), text
+        )
+        if "googletagmanager.com" in without_analytics:
+            raise RuntimeError(f"{page}: analytics remain outside a <script> element")
+        if without_analytics != text:
+            page.write_text(without_analytics, encoding="utf-8")
+            cleaned += 1
+    return cleaned
 
 
 def publish_sitemap_and_robots_rules(
@@ -142,7 +166,11 @@ def main() -> None:
             print(f"Published {benchmark_site['title']} with {page_count} pages in its sitemap")
         else:
             marked = mark_every_page_noindex(published_directory)
-            print(f"Published {benchmark_site['title']} guarded: {marked} pages marked noindex")
+            cleaned = remove_every_analytics_script(published_directory)
+            print(
+                f"Published {benchmark_site['title']} guarded: {marked} pages marked noindex, "
+                f"analytics removed from {cleaned}"
+            )
 
 
 if __name__ == "__main__":
