@@ -427,6 +427,18 @@ def _creator_path(node) -> str | None:
 # Amplify customRules
 # --------------------------------------------------------------------------
 
+BENCHMARK_SUBDOMAIN_ORIGIN = "https://biased-decisions.anth.us"
+
+BENCHMARK_SUBDOMAIN_REDIRECT_RULES = (
+    {"source": "/biased-decisions", "target": f"{BENCHMARK_SUBDOMAIN_ORIGIN}/", "status": "301"},
+    {"source": "/biased-decisions/", "target": f"{BENCHMARK_SUBDOMAIN_ORIGIN}/", "status": "301"},
+    {
+        "source": "/biased-decisions/<*>",
+        "target": f"{BENCHMARK_SUBDOMAIN_ORIGIN}/<*>",
+        "status": "301",
+    },
+)
+
 #: Kept last; every generated rule has to come before it or an unmatched legacy
 #: URL 404s instead of redirecting. Status MUST be "404-200": measured on
 #: Amplify (PPY-fdb5e9), "404-200" serves 404.html AT the requested URL with
@@ -584,6 +596,9 @@ def legacy_rules(
                     )
                 continue
             out.add("og:image", source, image)
+
+    for rule in BENCHMARK_SUBDOMAIN_REDIRECT_RULES:
+        out.add("benchmark subdomain", rule["source"], rule["target"])
 
     out.rules.append(dict(CATCH_ALL_RULE))
 

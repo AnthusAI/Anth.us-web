@@ -82,12 +82,6 @@ frontend:
         # ~230 sources at four widths in two formats (about five minutes).
         - rm -rf web/dist-papyrus web/staging
         - cd web && PAPYRUS_ROOT="$PWD/../.amplify-cache/papyrus-src" python3 build_via_papyrus.py
-        # The benchmark sites (benchmark-sites.json) are Astro sites in their own
-        # repositories, built at pinned commits into their anth.us paths after the
-        # Markus build. They follow SITE_ENV: noindex when guarded, sitemap and
-        # robots rules in production. Node 22 is required by the Astro build.
-        - nvm use 22
-        - python3 ../bin/build_benchmark_sites.py
   artifacts:
     baseDirectory: web/dist-papyrus
     files:
