@@ -123,6 +123,10 @@ def _excerpt_container(tag: str, attrs: str, excerpt: str) -> str:
     return f"<{tag}{attrs}>{excerpt}</{tag}>"
 
 
+def _headline_from_excerpt_or_title(node: ContentNode) -> str:
+    return node.excerpt_text.strip() or node.title
+
+
 def _excerpt_html(node: ContentNode) -> str:
     """The excerpt as authored, markup intact.
 
@@ -148,6 +152,7 @@ def _blog_item(
     excerpt_tag: str,
     href: str | None = None,
     image_class: str = "featured",
+    shows_excerpt_as_headline: bool = False,
 ) -> str:
     """One `ul.blog` row: `blog.jsx`'s `<BlogPostPreview>`.
 
@@ -169,12 +174,15 @@ def _blog_item(
         if image
         else ""
     )
-    excerpt = _excerpt_html(node)
+    headline = _headline_from_excerpt_or_title(node) if shows_excerpt_as_headline else node.title
+    excerpt = "" if shows_excerpt_as_headline else _excerpt_container(
+        excerpt_tag, "", _excerpt_html(node)
+    )
     return (
         '<div class="blog-post-preview"><li class="clear-float">'
-        f'<a href="{_esc(target)}">{image_html}<h3>{escape(node.title)}</h3></a>'
+        f'<a href="{_esc(target)}">{image_html}<h3>{escape(headline)}</h3></a>'
         f'<div class="date">{escape(date)}</div>'
-        + _excerpt_container(excerpt_tag, "", excerpt)
+        + excerpt
         + "</li></div>"
     )
 
@@ -532,10 +540,15 @@ def collection_page_path(base: str, page: int) -> str:
     return f"/{base}/" if page == 1 else f"/{base}/page/{page}/"
 
 
-def _grid_html(nodes: list[ContentNode], images: ImageIndex) -> str:
+def _grid_html(
+    nodes: list[ContentNode], images: ImageIndex, shows_excerpt_as_headline: bool = False
+) -> str:
     return (
         f'<ul class="{C["platform:grid"]}">'
-        + "".join(_research_card(n, images) for n in nodes)
+        + "".join(
+            _research_card(n, images, shows_excerpt_as_headline=shows_excerpt_as_headline)
+            for n in nodes
+        )
         + "</ul>"
     )
 
@@ -549,7 +562,10 @@ def collection_slices(nodes: list[ContentNode], page: int):
 
 
 def collection_lists(
-    nodes: list[ContentNode], images: ImageIndex, page: int = 1
+    nodes: list[ContentNode],
+    images: ImageIndex,
+    page: int = 1,
+    shows_excerpt_as_headline: bool = False,
 ) -> tuple[str, str]:
     """The (featured `ul.blog`, grid `ul`) HTML for one collection page."""
     featured_nodes, grid_nodes = collection_slices(nodes, page)
@@ -557,7 +573,12 @@ def collection_lists(
         '<ul class="blog">'
         + "".join(
             _blog_item(
-                n, images, date=n.display_date, excerpt_tag="p", image_class="featured"
+                n,
+                images,
+                date=n.display_date,
+                excerpt_tag="p",
+                image_class="featured",
+                shows_excerpt_as_headline=shows_excerpt_as_headline,
             )
             for n in featured_nodes
         )
@@ -565,7 +586,7 @@ def collection_lists(
         if featured_nodes
         else ""
     )
-    return featured, _grid_html(grid_nodes, images)
+    return featured, _grid_html(grid_nodes, images, shows_excerpt_as_headline)
 
 
 def collection_nav(title: str, base: str, page: int, total: int) -> str:
@@ -592,11 +613,16 @@ def collection_nav(title: str, base: str, page: int, total: int) -> str:
 
 
 def collection_page(
-    title: str, base: str, nodes: list[ContentNode], page: int, images: ImageIndex
+    title: str,
+    base: str,
+    nodes: list[ContentNode],
+    page: int,
+    images: ImageIndex,
+    shows_excerpt_as_headline: bool = False,
 ) -> str:
     """`collection.jsx` for `/blog/` and `/posts/` (every page) and page >= 2 of any base."""
     total = collection_page_count(len(nodes))
-    featured, grid = collection_lists(nodes, images, page)
+    featured, grid = collection_lists(nodes, images, page, shows_excerpt_as_headline)
     heading = title if page == 1 else f"{title}, page {page}"
     return (
         f"<article><h1>{escape(heading)}</h1>"
@@ -615,7 +641,10 @@ def articles_collection(articles: list[ContentNode], images: ImageIndex) -> dict
 
 def posts_collection(posts: list[ContentNode], images: ImageIndex) -> dict[int, str]:
     total = collection_page_count(len(posts))
-    return {p: collection_page("Posts", "posts", posts, p, images) for p in range(1, total + 1)}
+    return {
+        p: collection_page("Posts", "posts", posts, p, images, shows_excerpt_as_headline=True)
+        for p in range(1, total + 1)
+    }
 
 
 def tag_pages(tags: dict[str, list[ContentNode]]) -> dict[str, tuple[str, str]]:
@@ -690,6 +719,12 @@ _STACK_RECIPES = (
         "Korporus supplies the shared shell while product-specific modules from "
         "Plexus, Kanbus, Biblicus, and future tools appear as interoperable "
         "applications instead of one-off surfaces.",
+    ),
+    (
+        "Multi-user agent workplace",
+        "Chatticus is the shared room for people and named bots, Antharchy is the "
+        "agentic desktop those bots can run, and Tactus encodes the durable "
+        "procedures they execute with human approval boundaries.",
     ),
 )
 
@@ -819,6 +854,7 @@ _MAP_COLUMNS = (
         "Runtime and control plane",
         (
             ("Korporus", "standardizes the shell and hosting model for platform-powered services."),
+            ("Chatticus", "gives people and bots a shared room with approvals."),
             ("Plexus", "manages evaluation, feedback loops, and MLOps."),
             ("Kanbus", "keeps work orchestration and project memory durable."),
         ),
@@ -827,6 +863,7 @@ _MAP_COLUMNS = (
         "Agent execution and data",
         (
             ("Tactus", "defines durable, sandboxed agent procedures."),
+            ("Antharchy", "is the agentic Linux desktop for long-running bot work."),
             ("Biblicus", "turns corpora into extractable, retrievable knowledge."),
             ("Virtuus", "makes structured JSON data queryable on disk."),
         ),
@@ -885,7 +922,8 @@ def platform_index(platform: list[ContentNode]) -> str:
         f'<section class="{C["platform:section"]}">'
         f'<h2 class="{C["platform:sectionHeading"]}">How the platform fits together</h2>'
         "<p>We think about the platform in layers because complete AI systems need more "
-        "than a model call. Korporus is the host shell. Tactus "
+        "than a model call. Korporus is the host shell. Chatticus is the shared room "
+        "for people and bots. Antharchy is the agentic desktop those bots can run. Tactus "
         "defines the durable procedure. Kanbus keeps workflow memory and state. Plexus "
         "closes the evaluation loop. Biblicus and Virtuus make evidence and structured "
         "data portable. Caducus gives operators visibility. Babulus and VideoML apply the "
@@ -1035,7 +1073,9 @@ def collection_nodes(blog: list[ContentNode], tag: str) -> list[ContentNode]:
 _RC = "research-cards-module"
 
 
-def _research_card(node: ContentNode, images: ImageIndex) -> str:
+def _research_card(
+    node: ContentNode, images: ImageIndex, shows_excerpt_as_headline: bool = False
+) -> str:
     href = _esc(blog_href(node))
     preview = _preview(node, images)
     image = ""
@@ -1060,10 +1100,12 @@ def _research_card(node: ContentNode, images: ImageIndex) -> str:
         )
     return (
         f'<li class="{C["platform:card"]}">{image}'
-        f'<a class="{C["platform:cardTitleLink"]}" href="{href}"><h3>{escape(node.title)}</h3></a>'
+        f'<a class="{C["platform:cardTitleLink"]}" href="{href}"><h3>'
+        f"{escape(_headline_from_excerpt_or_title(node) if shows_excerpt_as_headline else node.title)}"
+        "</h3></a>"
         f'<div class="{C["platform:metaRow"]}"><span class="{C["platform:pill"]}">'
         f"{escape(node.formatted_date)}</span></div>"
-        + _excerpt_container("p", "", _excerpt_html(node))
+        + ("" if shows_excerpt_as_headline else _excerpt_container("p", "", _excerpt_html(node)))
         + f'<div class="{C["platform:cardActions"]}"><a href="{href}">Read more</a>{code}</div></li>'
     )
 
@@ -1088,3 +1130,7 @@ def engage_page() -> str:
 
 def decision_models_page() -> str:
     return anthus_page_html.decision_models_html()
+
+
+def benchmarks_page() -> str:
+    return anthus_page_html.benchmarks_html()

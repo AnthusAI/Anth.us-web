@@ -97,6 +97,10 @@ PAGES: dict[str, dict] = {
                             build="decision-models/index.html",
                             url="/decision-models/",
                             func="decision_models_html", holes=[]),
+    "benchmarks": dict(path="benchmarks.html",
+                       build="benchmarks/index.html",
+                       url="/benchmarks/",
+                       func="benchmarks_html", holes=[]),
 }
 
 HOLE_DOCS = {
