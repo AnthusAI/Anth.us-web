@@ -1065,12 +1065,12 @@
     "status": "301"
   },
   {
-    "source": "/primus-classifier-lab/",
+    "source": "/plexus-classifier-lab/",
     "target": "/articles/primus-classifier-lab/",
     "status": "301"
   },
   {
-    "source": "/primus-classifier-lab/index.html",
+    "source": "/plexus-classifier-lab/index.html",
     "target": "/articles/primus-classifier-lab/",
     "status": "301"
   },
@@ -1195,12 +1195,12 @@
     "status": "301"
   },
   {
-    "source": "/solutions/Primus/",
+    "source": "/solutions/Plexus/",
     "target": "/articles/primus/",
     "status": "301"
   },
   {
-    "source": "/solutions/Primus/index.html",
+    "source": "/solutions/Plexus/index.html",
     "target": "/articles/primus/",
     "status": "301"
   },
@@ -1760,12 +1760,12 @@
     "status": "301"
   },
   {
-    "source": "/static/938fa1a535efcc9aa2aa1e8f4cd04f2d/4a064/primus-classifier-lab.png",
+    "source": "/static/938fa1a535efcc9aa2aa1e8f4cd04f2d/4a064/plexus-classifier-lab.png",
     "target": "/assets/content/images/primus-classifier-lab.png",
     "status": "301"
   },
   {
-    "source": "/static/8140ade93833cb379eac3e5d406723e3/08e5a/primus-logo.png",
+    "source": "/static/8140ade93833cb379eac3e5d406723e3/08e5a/plexus-logo.png",
     "target": "/assets/content/solutions/images/primus-logo.png",
     "status": "301"
   },
@@ -1918,45 +1918,5 @@
     "source": "/<*>",
     "target": "/404.html",
     "status": "404-200"
-  },
-  {
-    "source": "/solutions/Plexus/",
-    "target": "/solutions/Primus/",
-    "status": "301"
-  },
-  {
-    "source": "/solutions/Plexus/index.html",
-    "target": "/solutions/Primus/",
-    "status": "301"
-  },
-  {
-    "source": "/plexus-classifier-lab/",
-    "target": "/primus-classifier-lab/",
-    "status": "301"
-  },
-  {
-    "source": "/plexus-classifier-lab/index.html",
-    "target": "/primus-classifier-lab/",
-    "status": "301"
-  },
-  {
-    "source": "/blog/plexus/",
-    "target": "/blog/primus/",
-    "status": "301"
-  },
-  {
-    "source": "/blog/plexus/index.html",
-    "target": "/blog/primus/",
-    "status": "301"
-  },
-  {
-    "source": "/blog/plexus-classifier-lab/",
-    "target": "/blog/primus-classifier-lab/",
-    "status": "301"
-  },
-  {
-    "source": "/blog/plexus-classifier-lab/index.html",
-    "target": "/blog/primus-classifier-lab/",
-    "status": "301"
   }
 ]
