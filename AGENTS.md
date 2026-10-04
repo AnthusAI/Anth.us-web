@@ -276,11 +276,21 @@ topology-independent):** two Amplify apps. The existing staging app
 app, with no code edits; run `check-guards.py --expect production` against it
 first. Do not create that app or any domain from this repo without Ryan.
 
-### Known quirk: the 404 rule
+### The 404 rule (real 404s)
 
-The app's custom rule (`/<*>` -> `/404.html`, status `404`) is implemented by
-Amplify as a 301 to `/404.html`, which then returns 200 — not a true 404
-status. Acceptable for a staging review site; revisit before any promotion.
+The catch-all must be `/<*>` -> `/404.html` with status **`404-200`**, last
+after the 301s. Despite its name, Amplify answers that with the custom
+`404.html` body at the requested URL and HTTP **404**, no redirect. Measured
+2026-10-03 on the staging app:
+
+| catch-all | missing page |
+|---|---|
+| status `404` | 302 -> `/404.html` (200): crawlers see a live page |
+| none | 404 with an empty body (no custom page) |
+| status `404-200` | 404 with the custom page body (correct) |
+
+`bin/check-404.py <base-url>` verifies this. Note `/missing.html` or
+`/missing` without a slash first take Amplify's own 301 to `/missing/`, then 404.
 
 ### Canonical URLs
 
