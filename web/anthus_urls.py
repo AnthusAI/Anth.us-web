@@ -49,6 +49,9 @@ Amplify rule semantics, measured against the staging app rather than assumed:
   hop rather than a second rule per article.
 * A source segment containing a space must be written **percent-encoded**
   (``/blog/AI%20commodification/``); a literal space does not match.
+* Live also answers ``/blog/x/index.html`` (S3 index document); a rule source
+  matches the literal path, so each directory-style legacy rule has an
+  ``index.html`` twin to the same target (``index_twin``).
 * ``<name>`` placeholders match one segment and substitute into the target,
   including mid-segment (``/posts/page/<n>/`` -> ``/posts/page-<n>/``).
 """
@@ -133,8 +136,11 @@ STANDALONE_PAGES = (
     "benchmarks",
 )
 
-_NON_PAGE_PREFIXES = ("/assets/", "/css/")
-_NON_PAGE_FILES = frozenset({"/robots.txt", "/sitemap.xml", "/favicon.ico"})
+# `/icons/`, `/favicon-32x32.png` and `/manifest.webmanifest` come from web/static-root/.
+_NON_PAGE_PREFIXES = ("/assets/", "/css/", "/icons/")
+_NON_PAGE_FILES = frozenset(
+    {"/robots.txt", "/sitemap.xml", "/favicon.ico", "/favicon-32x32.png", "/manifest.webmanifest"}
+)
 
 
 # --------------------------------------------------------------------------
@@ -450,9 +456,18 @@ class RuleSet:
     counts: dict[str, int] = field(default_factory=dict)
     skipped: list[str] = field(default_factory=list)
 
-    def add(self, group: str, source: str, target: str) -> None:
+    def add(self, group: str, source: str, target: str, *, index_twin: bool = False) -> None:
         self.rules.append({"source": source, "target": target, "status": "301"})
         self.counts[group] = self.counts.get(group, 0) + 1
+        if index_twin:
+            # Live is S3 + an index document, so `/blog/x/index.html` answers
+            # 200 as well as `/blog/x/`. Amplify matches the literal path, so
+            # the same source plus `index.html` needs its own rule, to the same
+            # target. Emitted right after the rule it mirrors, so it keeps that
+            # rule's position (specific before pattern).
+            assert source.endswith("/"), source
+            self.rules.append({"source": source + "index.html", "target": target, "status": "301"})
+            self.counts[group + " (index.html)"] = self.counts.get(group + " (index.html)", 0) + 1
 
 
 def legacy_rules(
@@ -478,12 +493,12 @@ def legacy_rules(
     #    Production now serves /blog/page/<n>/ and /posts/page/<n>/ (and
     #    /posts/<n>/ as a meta-refresh stub); the canonical namespace here is
     #    /articles/page/<n>/ and /posts/page/<n>/.
-    out.add("blog index", "/blog/", articles_url)
-    out.add("blog pagination", "/blog/page/1/", articles_url)
-    out.add("blog pagination", "/blog/page/<n>/", "/articles/page/<n>/")
+    out.add("blog index", "/blog/", articles_url, index_twin=True)
+    out.add("blog pagination", "/blog/page/1/", articles_url, index_twin=True)
+    out.add("blog pagination", "/blog/page/<n>/", "/articles/page/<n>/", index_twin=True)
     posts_index = page_url("posts/index.html")
-    out.add("posts pagination", "/posts/1/", posts_index)
-    out.add("posts pagination", "/posts/page/1/", posts_index)
+    out.add("posts pagination", "/posts/1/", posts_index, index_twin=True)
+    out.add("posts pagination", "/posts/page/1/", posts_index, index_twin=True)
     # `/posts/<n>/` has to be enumerated: as a pattern, `<n>` would also match
     # the literal `/posts/page/`, and a 301 rule beats the filesystem.
     for number in range(2, urls.posts_pages + 1):
@@ -491,6 +506,7 @@ def legacy_rules(
             "posts pagination",
             f"/posts/{number}/",
             canonical(collection_href("posts", number)),
+            index_twin=True,
         )
     # Shapes this staging site published before the canonical form moved:
     # `/posts/page-<n>/`. Two segments, so it cannot collide with `/posts/page/<n>/`.
@@ -515,11 +531,16 @@ def legacy_rules(
             out.skipped.append(f"/blog/{name}/ -> covered by the /blog/<slug>/ pattern")
             continue
         group = "blog tag" if href.startswith("tags/") else "blog alias"
-        out.add(group, _source("blog", name), canonical(href))
+        out.add(group, _source("blog", name), canonical(href), index_twin=True)
 
     # 3. The generic article rule. One pattern for the whole corpus, so a new
     #    article needs no new rule as long as its slug is already normalized.
-    out.add("blog article pattern", "/blog/<slug>/", canonical("articles/<slug>.html"))
+    out.add(
+        "blog article pattern",
+        "/blog/<slug>/",
+        canonical("articles/<slug>.html"),
+        index_twin=True,
+    )
 
     # 4. gatsby-plugin-page-creator paths. The authored capitalization and the
     #    spaces rule out a pattern, so these are one rule per file.
@@ -538,7 +559,7 @@ def legacy_rules(
             target = canonical(f"{directory}/{slug}.html")
             if source == target:
                 continue  # already canonical; a rule here would be a loop
-            out.add(f"{directory} path", source, target)
+            out.add(f"{directory} path", source, target, index_twin=True)
 
     # 5. Shared link previews (PPY-5a64a2). Every link already shared on social
     #    media embeds the old Gatsby og:image URL (`/static/<hash>/<hash>/<file>`),
@@ -567,6 +588,7 @@ def legacy_rules(
     out.rules.append(dict(CATCH_ALL_RULE))
 
     _assert_no_shadowed_pages(out.rules, urls)
+    _assert_index_twins(out.rules, dist)
     _assert_og_rules(out.rules, dist)
     return out
 
@@ -589,6 +611,25 @@ def _assert_og_rules(rules: list[dict], dist) -> None:
                 raise RuntimeError(f"og:image rule {rule['source']}: target {rule['target']} is not in dist")
             if (dist / unquote(rule["source"]).lstrip("/")).exists():
                 raise RuntimeError(f"og:image rule {rule['source']} would shadow a file in dist")
+
+
+def _assert_index_twins(rules: list[dict], dist) -> None:
+    """`.../index.html` rules: no chains, and (when the output exists) they
+    shadow no file and point at a real page."""
+    sources = {r["source"] for r in rules}
+    for rule in rules:
+        if rule["status"] != "301" or not rule["source"].endswith("/index.html"):
+            continue
+        if rule["target"] in sources or rule["target"] == rule["source"]:
+            raise RuntimeError(f"index.html rule {rule['source']} chains into {rule['target']}")
+        if dist is None or "<" in rule["source"]:
+            continue
+        if (dist / unquote(rule["source"]).lstrip("/")).exists():
+            raise RuntimeError(f"index.html rule {rule['source']} would shadow a file in dist")
+        if "<" not in rule["target"] and not (
+            dist / unquote(rule["target"]).lstrip("/") / "index.html"
+        ).is_file():
+            raise RuntimeError(f"index.html rule {rule['source']}: target {rule['target']} is not in dist")
 
 
 def _assert_no_shadowed_pages(rules: list[dict], urls: SiteUrls) -> None:
