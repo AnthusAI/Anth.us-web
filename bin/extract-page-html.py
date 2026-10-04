@@ -119,7 +119,7 @@ HOLE_DOCS = {
     ("ryan", "portfolio"):
         "TWO adjacent index-module--list <ul>s under <h2>Portfolio</h2>: the "
         "featured set (B0rd ... Call Criteria, smallImageList) immediately "
-        "followed by the portfolio set (Plexus ... Checkout Driver)",
+        "followed by the portfolio set (Primus ... Checkout Driver)",
     ("ryan", "integrations"):
         "the index-module--list <ul> under <h2>Integrations</h2>",
     ("reading", "featured"):
