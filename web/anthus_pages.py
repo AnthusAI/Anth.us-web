@@ -413,7 +413,7 @@ def homepage(
             "Call Criteria",
             "<li>Call-center QA, scored by an outside service&#x27;s fine-tuned classifiers.</li>"
             "<li>Too expensive and too slow to scale to every new scorecard.</li>"
-            "<li>We built their classifier lab on Plexus in their own AWS account and ran it for years.</li>"
+            "<li>We built their classifier lab on Primus in their own AWS account and ran it for years.</li>"
             "<li><mark>Hundreds of scorecards, millions of calls scored</mark>.</li>",
         )
         + case(
@@ -710,14 +710,14 @@ _STACK_RECIPES = (
     ),
     (
         "Governed agent application",
-        "Tactus defines the durable procedure, Plexus measures and improves it, "
+        "Tactus defines the durable procedure, Primus measures and improves it, "
         "Kanbus tracks work and operator state, and Caducus helps humans see what "
         "is going wrong in production.",
     ),
     (
         "Platform-native internal tooling",
         "Korporus supplies the shared shell while product-specific modules from "
-        "Plexus, Kanbus, Biblicus, and future tools appear as interoperable "
+        "Primus, Kanbus, Biblicus, and future tools appear as interoperable "
         "applications instead of one-off surfaces.",
     ),
     (
@@ -729,47 +729,47 @@ _STACK_RECIPES = (
 )
 
 PLATFORM_RELATIONSHIPS: dict[str, dict] = {
-    "plexus": {
-        "fits": "Plexus is the MLOps and evaluation spine of the platform. It helps the other building blocks behave like governable production systems instead of isolated demos.",
+    "primus": {
+        "fits": "Primus is the MLOps and evaluation spine of the platform. It helps the other building blocks behave like governable production systems instead of isolated demos.",
         "links": [
             ("Works with Tactus procedures", "tactus"),
             ("Turns Biblicus feedback into evaluation inputs", "biblicus"),
             ("Runs inside broader Korporus surfaces", "korporus"),
         ],
-        "recipe": "Example: pair Plexus with Tactus for durable procedures, Biblicus for evidence-backed inputs, and Caducus for operator monitoring.",
+        "recipe": "Example: pair Primus with Tactus for durable procedures, Biblicus for evidence-backed inputs, and Caducus for operator monitoring.",
     },
     "tactus": {
         "fits": "Tactus is the procedural core. It gives the rest of the platform a durable way to describe tool-using agent behavior.",
         "links": [
-            ("Evaluated through Plexus", "plexus"),
+            ("Evaluated through Primus", "primus"),
             ("Grounded by Biblicus corpora", "biblicus"),
             ("Hosted inside Korporus", "korporus"),
         ],
-        "recipe": "Example: use Tactus to encode a repeatable research workflow, Biblicus for the corpus, and Plexus for regression checks before deployment.",
+        "recipe": "Example: use Tactus to encode a repeatable research workflow, Biblicus for the corpus, and Primus for regression checks before deployment.",
     },
     "kanbus": {
         "fits": "Kanbus supplies durable workflow memory so humans and agents can coordinate real delivery work instead of operating in a stateless loop.",
         "links": [
             ("Pairs with Tactus for execution", "tactus"),
-            ("Feeds work cadence into Plexus", "plexus"),
+            ("Feeds work cadence into Primus", "primus"),
             ("Appears in Korporus as an operator surface", "korporus"),
         ],
-        "recipe": "Example: combine Kanbus, Tactus, and Plexus to manage backlogs, execute procedures, and continuously improve the resulting system.",
+        "recipe": "Example: combine Kanbus, Tactus, and Primus to manage backlogs, execute procedures, and continuously improve the resulting system.",
     },
     "korporus": {
         "fits": "Korporus is the standard container for platform-powered applications. It is where multiple Anthus components can show up together as one service.",
         "links": [
-            ("Hosts Plexus-powered applications", "plexus"),
+            ("Hosts Primus-powered applications", "primus"),
             ("Hosts Tactus-driven workflows", "tactus"),
             ("Benefits from Caducus operator visibility", "caducus"),
         ],
-        "recipe": "Example: use Korporus as the shell around a Tactus workflow, a Plexus control plane, and a Babulus authoring surface for a complete internal platform app.",
+        "recipe": "Example: use Korporus as the shell around a Tactus workflow, a Primus control plane, and a Babulus authoring surface for a complete internal platform app.",
     },
     "biblicus": {
         "fits": "Biblicus is the evidence layer. It gives other Anthus components something inspectable and rebuildable to reason over.",
         "links": [
             ("Grounds Tactus procedures", "tactus"),
-            ("Feeds signals into Plexus", "plexus"),
+            ("Feeds signals into Primus", "primus"),
             ("Supplies source material to Babulus", "babulus"),
         ],
         "recipe": "Example: use Biblicus to manage a document corpus, Tactus to extract and transform it, and Babulus to publish a derived narrative or video output.",
@@ -787,10 +787,10 @@ PLATFORM_RELATIONSHIPS: dict[str, dict] = {
         "fits": "Caducus is the operator-visibility layer. It helps Anthus services stay understandable after deployment.",
         "links": [
             ("Monitors Korporus-hosted services", "korporus"),
-            ("Supports Plexus-governed systems", "plexus"),
+            ("Supports Primus-governed systems", "primus"),
             ("Uses Virtuus-backed local data", "virtuus"),
         ],
-        "recipe": "Example: add Caducus to a Korporus and Plexus deployment when humans need to triage incidents and understand evolving agent behavior.",
+        "recipe": "Example: add Caducus to a Korporus and Primus deployment when humans need to triage incidents and understand evolving agent behavior.",
     },
     "babulus": {
         "fits": "Babulus is the content and video authoring layer for the platform. It applies the same code-reviewable discipline to outward-facing media.",
@@ -855,7 +855,7 @@ _MAP_COLUMNS = (
         (
             ("Korporus", "standardizes the shell and hosting model for platform-powered services."),
             ("Chatticus", "gives people and bots a shared room with approvals."),
-            ("Plexus", "manages evaluation, feedback loops, and MLOps."),
+            ("Primus", "manages evaluation, feedback loops, and MLOps."),
             ("Kanbus", "keeps work orchestration and project memory durable."),
         ),
     ),
@@ -924,7 +924,7 @@ def platform_index(platform: list[ContentNode]) -> str:
         "<p>We think about the platform in layers because complete AI systems need more "
         "than a model call. Korporus is the host shell. Chatticus is the shared room "
         "for people and bots. Antharchy is the agentic desktop those bots can run. Tactus "
-        "defines the durable procedure. Kanbus keeps workflow memory and state. Plexus "
+        "defines the durable procedure. Kanbus keeps workflow memory and state. Primus "
         "closes the evaluation loop. Biblicus and Virtuus make evidence and structured "
         "data portable. Caducus gives operators visibility. Babulus and VideoML apply the "
         "same discipline to narrative and media output.</p>"

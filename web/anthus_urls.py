@@ -28,7 +28,7 @@ corpus, which is more than the ``/blog/<slug>/`` one that is obvious from
 2. ``/blog/<tag>/``              — ``gatsby-node.js`` tag collections, sharing
    the ``/blog/`` namespace with (1). Where a tag and an article slug collide
    the **article** is what production serves (verified live on
-   ``/blog/plexus/``, ``/blog/sqlbot/``, ``/blog/call-criteria/``).
+   ``/blog/primus/``, ``/blog/sqlbot/``, ``/blog/call-criteria/``).
 3. ``/<file-stem>/`` and ``/solutions/<File-Stem>/`` —
    ``gatsby-plugin-page-creator`` is pointed at the content directory in
    ``gatsby-config.mjs``, so **every** MDX file also gets a URL derived from
@@ -444,6 +444,16 @@ BENCHMARK_SUBDOMAIN_REDIRECT_RULES = (
 #: Amplify (PPY-fdb5e9), "404-200" serves 404.html AT the requested URL with
 #: HTTP 404, while plain "404" answers 302 -> /404.html (200), and having no
 #: catch-all at all gives a real 404 with an EMPTY body.
+RENAMED_PAGE_REDIRECTS = (
+    ("/solutions/Plexus/", "/articles/primus/"),
+    ("/platform/plexus/", "/articles/primus/"),
+    ("/blog/plexus/", "/articles/primus/"),
+    ("/articles/plexus/", "/articles/primus/"),
+    ("/plexus-classifier-lab/", "/articles/primus-classifier-lab/"),
+    ("/blog/plexus-classifier-lab/", "/articles/primus-classifier-lab/"),
+    ("/articles/plexus-classifier-lab/", "/articles/primus-classifier-lab/"),
+)
+
 CATCH_ALL_RULE = {"source": "/<*>", "target": "/404.html", "status": "404-200"}
 
 
@@ -599,6 +609,14 @@ def legacy_rules(
 
     for rule in BENCHMARK_SUBDOMAIN_REDIRECT_RULES:
         out.add("benchmark subdomain", rule["source"], rule["target"])
+
+    # Plexus was renamed Primus: every URL the old name ever had on this site
+    # (Gatsby /blog/ and /solutions/ shapes, current /articles/ and /platform/
+    # shapes) goes to the new article. The old plexus.anth.us host is NOT
+    # redirected here (it is handled at the Amplify domain level).
+    for old, new in RENAMED_PAGE_REDIRECTS:
+        if not any(r["source"] == old for r in out.rules):
+            out.add("plexus->primus rename", old, new, index_twin=True)
 
     out.rules.append(dict(CATCH_ALL_RULE))
 
