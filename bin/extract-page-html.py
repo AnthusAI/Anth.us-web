@@ -209,11 +209,20 @@ def rewrite_imgs(s: str) -> str:
     return _IMG_SRC.sub(sub, s)
 
 
+BIASED_DECISIONS_PATH_LINK = 'href="/biased-decisions/'
+BIASED_DECISIONS_SUBDOMAIN_LINK = 'href="https://biased-decisions.anth.us/'
+
+
+def point_benchmark_links_at_subdomain(s: str) -> str:
+    return s.replace(BIASED_DECISIONS_PATH_LINK, BIASED_DECISIONS_SUBDOMAIN_LINK)
+
+
 def normalize(s: str) -> str:
     """The reference normalisation used for both emission and verification."""
     s = _SCRIPT.sub("", s)
     s = _NOSCRIPT.sub("", s)
     s = s.replace("<!-- -->", "")
+    s = point_benchmark_links_at_subdomain(s)
     return rewrite_imgs(s)
 
 
