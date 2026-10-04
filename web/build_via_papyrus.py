@@ -75,6 +75,7 @@ import anthus_dom as dom  # noqa: E402
 import anthus_page_html  # noqa: E402
 import anthus_pages as pages  # noqa: E402
 import anthus_urls as urls  # noqa: E402
+import site_env  # noqa: E402  (PPY-f1f0a8)
 from anthus_content import (  # noqa: E402
     POSTS_PER_PAGE,
     Collections,
@@ -135,17 +136,12 @@ IMAGES = ImagePipeline(
 )
 CITATIONS = CitationRendering()
 
-# Staging deployment. Deliberately NOT https://anth.us — canonical URLs and
-# og:url must not claim to be the production site while this is under review,
-# or a crawler that reaches the staging host will attribute the content to
-# production (or worse, vice versa). Amplify injects AWS_APP_ID /
-# AWS_BRANCH at build time; fall back to a relative-only build locally.
-_APP_ID = os.environ.get("AWS_APP_ID", "")
-_BRANCH = os.environ.get("AWS_BRANCH", "")
-if _APP_ID and _BRANCH:
-    SITE_ORIGIN = f"https://{_BRANCH}.{_APP_ID}.amplifyapp.com"
-else:
-    SITE_ORIGIN = os.environ.get("ANTHUS_SITE_ORIGIN", "http://localhost:8080")
+# --- SITE_ENV guards (PPY-f1f0a8): all logic lives in site_env.py -----------
+ENV = site_env.ENV
+SITE_ORIGIN = ENV.origin
+# TODO(analytics): pass ENV.analytics_enabled to Papyrus's Markus analytics
+# capability (provider config for live anth.us) once it lands. Off unless production.
+ANALYTICS_ENABLED = ENV.analytics_enabled
 
 
 # --------------------------------------------------------------------------
@@ -348,10 +344,7 @@ def _inject_social_meta(html: str, *, active_href: str) -> str:
         f'<meta name="twitter:title" content="{q(page_title)}">\n'
         f'<meta name="twitter:description" content="{q(description)}">\n'
         f'<meta name="twitter:image" content="{q(_absolute(image))}">\n'
-        # Staging must never be indexed. This is the single guard that keeps a
-        # full copy of the marketing site out of search results while the port
-        # is under review; robots.txt alone does not stop an already-known URL.
-        '<meta name="robots" content="noindex, nofollow">\n'
+        + site_env.head_extras(ENV)  # noindex (guarded only) + sitemap link
         + ld_json
     )
     if 'property="og:title"' in html:
@@ -685,8 +678,6 @@ def finish_pages(result) -> None:
                 1,
             )
         dom.assert_no_markus_classes(text, active_href)
-        if 'name="robots" content="noindex, nofollow"' not in text:
-            raise RuntimeError(f"{active_href}: staging noindex guard missing")
         page.write_text(text, encoding="utf-8")
 
 
@@ -776,6 +767,7 @@ def write_custom_rules(site_urls: urls.SiteUrls) -> urls.RuleSet:
 
 
 def main() -> int:
+    site_env.announce(ENV)
     if not (CONTENT_SUBMODULE / "README.md").is_file():
         sys.exit(
             f"Content submodule missing at {CONTENT_SUBMODULE}. "
@@ -846,27 +838,17 @@ def main() -> int:
     ruleset = write_custom_rules(_SITE_URLS)
     redirects = len(ruleset.rules)
 
-    (result.out_dir / "robots.txt").write_text(
-        # Staging: refuse every crawler. Flip this when, and only when, the
-        # port is promoted to a production domain.
-        "User-agent: *\nDisallow: /\n",
-        encoding="utf-8",
-    )
-    sitemap_urls = sorted(
-        {
+    site_env.write_site_files(
+        ENV,
+        result.out_dir,
+        (
             _canonical_url(page.relative_to(result.out_dir).as_posix())
             for page in result.pages
-        }
+            if page.relative_to(result.out_dir).as_posix() != "404.html"
+        ),
     )
-    body = "\n".join(
-        f"  <url><loc>{escape(url, quote=True)}</loc></url>" for url in sitemap_urls
-    )
-    (result.out_dir / "sitemap.xml").write_text(
-        '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        f"{body}\n</urlset>\n",
-        encoding="utf-8",
-    )
+    guarded_pages = site_env.assert_dist(ENV, result.out_dir)
+    print(f"  {ENV.mode} guard assertions passed over {guarded_pages} HTML pages")
 
     print(f"\nBuilt Anth.us via Papyrus renderer: {result.out_dir}")
     print(f"  {len(result.pages)} pages, {redirects} redirect rules")
