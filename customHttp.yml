@@ -1,0 +1,24 @@
+# Amplify Hosting custom HTTP headers.
+# A customHttp.yml in the repo root overrides console-configured headers.
+# Patterns must NOT start with a slash (Amplify Hosting quirk).
+#
+# NO X-Robots-Tag here, deliberately (PPY-f1f0a8). This file applies to every
+# branch of the app, including `main` (production). Staging is guarded by the
+# noindex meta and robots.txt, which follow SITE_ENV at build time; see
+# AGENTS.md "Environment switch".
+customHeaders:
+  - pattern: "**/*.html"
+    headers:
+      - key: Cache-Control
+        value: "public, max-age=0, s-maxage=60, must-revalidate"
+  - pattern: "index.html"
+    headers:
+      - key: Cache-Control
+        value: "public, max-age=0, s-maxage=60, must-revalidate"
+  # Asset filenames are NOT content-hashed (an image keeps its authored name),
+  # so `immutable` would pin a stale image for a year. One hour is enough to
+  # help a browse session without fighting iteration.
+  - pattern: "assets/**"
+    headers:
+      - key: Cache-Control
+        value: "public, max-age=3600"
