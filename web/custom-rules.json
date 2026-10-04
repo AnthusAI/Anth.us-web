@@ -5,8 +5,13 @@
     "status": "301"
   },
   {
-    "source": "/blog/page/<n>/",
+    "source": "/blog/page/1/",
     "target": "/articles/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/page/<n>/",
+    "target": "/articles/page/<n>/",
     "status": "301"
   },
   {
@@ -21,22 +26,27 @@
   },
   {
     "source": "/posts/2/",
-    "target": "/posts/page-2/",
+    "target": "/posts/page/2/",
     "status": "301"
   },
   {
     "source": "/posts/3/",
-    "target": "/posts/page-3/",
+    "target": "/posts/page/3/",
     "status": "301"
   },
   {
     "source": "/posts/4/",
-    "target": "/posts/page-4/",
+    "target": "/posts/page/4/",
     "status": "301"
   },
   {
-    "source": "/posts/page/<n>/",
-    "target": "/posts/page-<n>/",
+    "source": "/posts/5/",
+    "target": "/posts/page/5/",
+    "status": "301"
+  },
+  {
+    "source": "/posts/page-<n>/",
+    "target": "/posts/page/<n>/",
     "status": "301"
   },
   {
@@ -217,6 +227,11 @@
   {
     "source": "/blog/mathematics/",
     "target": "/tags/mathematics/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/null/",
+    "target": "/articles/anthropic-citations-api/",
     "status": "301"
   },
   {

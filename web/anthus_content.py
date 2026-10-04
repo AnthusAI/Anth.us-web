@@ -42,6 +42,7 @@ from anthus_mdx import (
     ConversionReport,
     html_to_inline_markdown,
     html_to_text,
+    html_to_text,
     normalize_body,
     split_front_matter,
     staged_markdown,
@@ -116,12 +117,27 @@ class ContentNode:
         return parse_date(self.date_raw)
 
     @property
+    def formatted_date(self) -> str:
+        """`formatPostDate(date)`: always the parsed date, never `display_date`."""
+        parsed = self.date
+        return parsed.strftime("%B %-d, %Y") if parsed != datetime.min else self.date_raw
+
+    @property
     def display_date(self) -> str:
         explicit = self.front_matter.get("display_date")
         if explicit:
             return str(explicit)
         parsed = self.date
         return parsed.strftime("%B %-d, %Y") if parsed != datetime.min else self.date_raw
+
+    @property
+    def author_names(self) -> list[str]:
+        """Plain-text author names (the authored values may carry markup)."""
+        return [
+            html_to_text(entry.get("author"))
+            for entry in (self.front_matter.get("authors") or [])
+            if isinstance(entry, dict) and entry.get("author")
+        ]
 
     @property
     def byline(self) -> str:
@@ -410,7 +426,9 @@ class Collections:
 
     @classmethod
     def from_nodes(cls, nodes: list[ContentNode]) -> "Collections":
-        by_date = sorted(nodes, key=lambda n: (n.date, n.slug), reverse=True)
+        # Date descending; ties in ascending filename order (what live production
+        # shows, measured against its listings).
+        by_date = sorted(sorted(nodes, key=lambda n: n.source.name), key=lambda n: n.date, reverse=True)
         platform = [n for n in by_date if n.is_platform]
         blog = [n for n in by_date if not n.is_platform]
         # blog.jsx: published, tags nin [solutions, posts], not platform.
@@ -482,7 +500,14 @@ def stage_nodes(
             },
         }
         header = _article_header(node)
-        write_if_changed(out_dir / f"{node.slug}.md", staged_markdown(front, header + text))
+        tail = (
+            "\n\n" + block_sentinel(anthus_dom.ENGAGE_CTA_HTML) + "\n"
+            if "client-acquisition" in node.tags
+            else ""
+        )
+        write_if_changed(
+            out_dir / f"{node.slug}.md", staged_markdown(front, header + text + tail)
+        )
     return total
 
 
