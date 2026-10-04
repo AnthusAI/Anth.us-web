@@ -82,6 +82,8 @@ RESERVED_SEGMENTS = frozenset(
         "ai-solutions",
         "articles",
         "assets",
+        "benchmarks",
+        "biased-decisions",
         "blog",
         "css",
         "decision-models",
@@ -128,6 +130,7 @@ STANDALONE_PAGES = (
     "reading",
     "research",
     "decision-models",
+    "benchmarks",
 )
 
 _NON_PAGE_PREFIXES = ("/assets/", "/css/")
@@ -253,6 +256,25 @@ class SiteUrls:
         path = _creator_path(node)
         if path is not None:
             self.article_by_path[path] = node.slug
+
+    def add_content_redirect_stubs(self, redirect_stubs_directory) -> None:
+        """The content repository keeps retired article names as meta-refresh
+        stubs at ``redirects/<name>/index.html`` pointing at ``/blog/<target>/``.
+        Each stub's name becomes one more name for the article it points at."""
+        if not redirect_stubs_directory.is_dir():
+            return
+        for stub_page in sorted(redirect_stubs_directory.glob("*/index.html")):
+            refresh_target = re.search(
+                r"url=/blog/([^/\"']+)/", stub_page.read_text(encoding="utf-8")
+            )
+            if not refresh_target:
+                continue
+            target_slug = self.article_by_name.get(refresh_target.group(1).lower())
+            if target_slug is None:
+                continue
+            retired_name = stub_page.parent.name
+            self.article_by_name.setdefault(retired_name.lower(), target_slug)
+            self.blog_names.setdefault(retired_name, target_slug)
 
     def _add_platform(self, node) -> None:
         for name in (node.slug, node.authored_slug, slugify(node.authored_slug)):

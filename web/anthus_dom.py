@@ -55,8 +55,10 @@ SITE_TITLE = "Anthus"
 # build's static paths, so the chrome and the content go through one mapper.
 MENU_LINKS = (
     ("AI Solutions", "/ai-solutions/", "What we build and run for clients, with the case studies."),
+    ("Decision Models", "/decision-models/", "Aligning Jev and other decision models to your data."),
     ("Platform", "/platform/", "The components behind the work: Plexus, Kanbus, and the rest."),
     ("Research", "/research/", "Experiments on how decision models behave, with the numbers."),
+    ("Benchmarks", "/benchmarks/", "Public leaderboards for decision models: bias and reasoning depth."),
     ("Reading List", "/reading/", "Papers and books we keep coming back to, one note each."),
     ("About", "/about/", "Who we are, and the track record since 2007."),
     ("Articles", "/blog/", "Long-form pieces on classifiers, agents, and the economics of AI."),

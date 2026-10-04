@@ -522,6 +522,12 @@ def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
         meta_key="/decision-models/",
     )
     _generated(
+        "benchmarks.html",
+        _page_title(meta["/benchmarks/"]["title"]),
+        pages.benchmarks_page(),
+        meta_key="/benchmarks/",
+    )
+    _generated(
         "reading.html",
         _page_title(meta["/reading/"]["title"]),
         pages.reading_page(collections.blog, images),
@@ -816,6 +822,7 @@ def main() -> int:
     _SITE_URLS = urls.SiteUrls.from_collections(
         collections, pages=staged_page_hrefs(), posts_per_page=POSTS_PER_PAGE
     )
+    _SITE_URLS.add_content_redirect_stubs(CONTENT_SUBMODULE / "redirects")
     sample = next(iter(sorted(_SITE_URLS.pages - {"index.html"})), "index.html")
     print(f"  canonical URL style: {urls.URL_STYLE} (e.g. {urls.page_url(sample)})")
 

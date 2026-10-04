@@ -14,6 +14,7 @@ Reference pages:
     reading          web/reference/live/reading.html  (live https://anth.us/reading/)
     research         web/reference/live/research.html  (live https://anth.us/research/)
     decision-models  web/reference/live/decision-models.html  (live https://anth.us/decision-models/)
+    benchmarks       web/reference/live/benchmarks.html  (live https://anth.us/benchmarks/)
 
 Why verbatim: the port ships the production stylesheet, and that stylesheet
 targets the production DOM (index-module--*, platform-module--*,
@@ -76,6 +77,10 @@ PAGE_META: Dict[str, Dict[str, str]] = {
     '/decision-models/': {
         'title': 'Aligning Jev and Other Decision Models to Your Data | Anthus',
         'description': "You can't fine-tune Jev. Here is how to align a decision model to your own data instead: review its decisions, label the disagreements, calibrate its confidence, change the questions, gate by slice, and distill a classifier you own. Published measurements at every step.",
+    },
+    '/benchmarks/': {
+        'title': 'Decision Model Benchmarks: Biased-Decisions and Hard-Decisions | Anthus',
+        'description': 'Two public benchmarks for decision models: Biased-Decisions measures how often an answer changes when one personal detail changes, and Hard-Decisions measures how accuracy falls as reasoning gets deeper.',
     },
 }
 
@@ -141,7 +146,7 @@ _ABOUT_0 = (
     '<dt>Services</dt>'
     '<dd>LLM fine-tuning, agentic AI, MLOps and LLMOps, serverless architecture, AI-assisted operations</dd>'
     '<dt>Track record</dt>'
-    '<dd>Team together for over a decade; production platforms operated for 14+ years; Call Criteria in production with RLHF for two years</dd>'
+    '<dd>Team together for over a decade; revenue-critical platforms in continuous operation since 2007; a call-center QA classifier lab run on Plexus for years, across hundreds of scorecards and millions of interactions</dd>'
     '<dt>Platform</dt>'
     '<dd>Plexus, an MLOps platform</dd>'
     '<dt>Spinoff</dt>'
@@ -154,7 +159,7 @@ _ABOUT_0 = (
     '<h3>How is Anthus different from a typical AI consultancy?</h3>'
     '<p>We are operators first. The team has run a revenue-critical platform since 2007, through data center failures and DDoS attacks, before applying the same discipline to AI. We ship systems with human-in-the-loop feedback, not demos.</p>'
     '<h3>What is human-in-the-loop AI?</h3>'
-    '<p>Experts review and correct the AI&#x27;s judgments, and those corrections become training signal. In Call Criteria, QA specialists guide the models this way, and the system has improved through reinforcement learning from human feedback (RLHF) for two years.</p>'
+    '<p>Experts review and correct the AI&#x27;s judgments, and those corrections become training signal. In the Call Criteria classifier lab, QA specialists guide the models this way, and the scorecards have improved through reinforcement learning from human feedback (RLHF) over years of production, across hundreds of scorecards and millions of interactions.</p>'
     '<h3>Do you only work with one model provider?</h3>'
     '<p>No. We treat models as replaceable components and design systems so a model can be swapped without rebuilding the business logic.</p>'
     '<p>Now, we bring our depth of experience and technical agility to your projects. <mark>What can we develop and operate for you?</mark></p></div></article>'
@@ -370,7 +375,7 @@ _DECISION_MODELS_0 = (
     '<article>'
     '<section class="platform-module--hero--8cb19">'
     '<h1>Aligning Jev and other decision models to your data</h1>'
-    '<p class="platform-module--lead--c57dd">A decision model like Jev answers a bounded question with a verdict and a confidence, in a fraction of a second, for a fraction of a cent. It arrives frozen: you can&#x27;t fine-tune it, and it doesn&#x27;t know your reviewers&#x27; rules. Everything that makes it fit your business lives in the loop around it. This is that loop, with the published measurements behind each step and the offer to run it on your judgment task.</p></section>'
+    '<p class="platform-module--lead--c57dd">A decision model like Jev answers a bounded question with a verdict and a confidence, in a fraction of a second, for a fraction of a cent. It arrives frozen: you can&#x27;t fine-tune it, and it doesn&#x27;t know your reviewers&#x27; rules. Everything that makes it fit your business lives in the loop around it. Each step of that loop has a published measurement behind it, and we run the loop on client judgment tasks.</p></section>'
     '<section class="platform-module--section--8a9c1">'
     '<h2 class="platform-module--sectionHeading--06f95">The questions people arrive with</h2>'
     '<dl>'
@@ -402,12 +407,36 @@ _DECISION_MODELS_0 = (
     '<h2 class="platform-module--sectionHeading--06f95">The loop, in order</h2>'
     '<ol>'
     '<li><strong>Start classifying now.</strong> Put the decision model in front of real cases with the questions your reviewers already ask.</li>'
-    '<li><strong>Review and label the disagreements.</strong> Reviewers agree or disagree with verdicts as they happen. That is the whole labelling effort.</li>'
+    '<li><strong>Review and label the disagreements.</strong> Reviewers agree or disagree with verdicts as they happen, and those calls are all the labelling the loop needs.</li>'
     '<li><strong>Calibrate the confidence.</strong> Fit the stated confidence to observed accuracy so a threshold means what it says.</li>'
     '<li><strong>Change the questions when refits stall.</strong> Let the system read the disagreements and propose one question; a person approves it.</li>'
     '<li><strong>Gate every change by slice.</strong> Promote a version only when it clears held-out labels on every slice reviewers care about.</li>'
     '<li><strong>Distill when you&#x27;re ready to own it.</strong> Train a small model from the aligned system and ship it behind the same gate.</li></ol>'
-    '<p>Every step above is a published experiment on the <a href="/research/">research page</a>, and <a href="/platform/plexus/">Plexus</a> is where we run the loop in production.</p></section>'
+    '<p>Every step is a published experiment on the <a href="/research/">research page</a>, the public leaderboards are on the <a href="/benchmarks/">benchmarks page</a>, and <a href="/platform/plexus/">Plexus</a> is where we run the loop in production.</p></section>'
+    '<div class="engage-cta-module--box--92c7c">'
+    '<h2 class="engage-cta-module--heading--f8246">We do this for clients, at scale</h2>'
+    '<p class="engage-cta-module--text--60ac0">Anthus has run this kind of loop in production for years: reviewers correct the model and say why, the explanation becomes policy, and the system gets more trustworthy month over month across hundreds of scorecards and millions of interactions. Bring us the judgment task and we&#x27;ll run it on Plexus with your reviewers in the loop, and hand you a scorecard you can inspect after the first month.</p><a class="button" href="/engage/">See how an engagement works</a></div></article>'
+)
+
+# benchmarks: start of <main> .. end of <main>
+_BENCHMARKS_0 = (
+    '<article>'
+    '<section class="platform-module--hero--8cb19">'
+    '<h1>Benchmarks</h1>'
+    '<p class="platform-module--lead--c57dd">We publish two public benchmarks for decision models, the fast AI models that answer a bounded question with a verdict. Each one shows its method, every model&#x27;s results, and the cases behind them, so you can check a model against the decision you&#x27;re about to hand it.</p></section>'
+    '<section class="platform-module--section--8a9c1">'
+    '<ul class="platform-module--grid--279c8">'
+    '<li class="platform-module--card--0e0b8"><a href="/biased-decisions/" class="platform-module--cardTitleLink--86ffe">'
+    '<h3>Biased-Decisions</h3></a>'
+    '<p><strong>Does an AI model&#x27;s answer change when one personal detail about a person changes?</strong></p>'
+    '<p>Would AI identify a different job for the same person if “he” became “she”? Would it remove the same online comment after its author said they were gay? Biased-Decisions changes one personal detail in a text, asks the same question again, and ranks models by how much more often the answer changes than it does after a neutral control edit of the same size.</p>'
+    '<div class="platform-module--cardActions--b863f"><a href="/biased-decisions/">See the results</a><a href="https://github.com/AnthusAI/Biased-Decisions" target="_blank" rel="noopener noreferrer">Code: AnthusAI/Biased-Decisions</a></div></li>'
+    '<li class="platform-module--card--0e0b8"><a href="https://hard-decisions.anth.us/" class="platform-module--cardTitleLink--86ffe">'
+    '<h3>Hard-Decisions</h3></a>'
+    '<p><strong>How far can a decision model follow a chain of reasoning before it starts guessing?</strong></p>'
+    '<p>On true-or-false questions, every model tested except Jev falls to coin-flip accuracy by five chained inferences: the open decision models Kev, GLiNER2.5-Decide and Laya, GPT-6 Luna used as a one-shot classifier, and GLiDE. Jev still answers 89.3% correctly at that depth.</p>'
+    '<div class="platform-module--cardActions--b863f"><a href="https://hard-decisions.anth.us/">See the results</a></div></li></ul>'
+    '<p>The articles that explain these findings are on the <a href="/research/">research page</a>, and the guide to aligning a decision model to your own data is <a href="/decision-models/">here</a>.</p></section>'
     '<div class="engage-cta-module--box--92c7c">'
     '<h2 class="engage-cta-module--heading--f8246">We do this for clients, at scale</h2>'
     '<p class="engage-cta-module--text--60ac0">Anthus has run this kind of loop in production for years: reviewers correct the model and say why, the explanation becomes policy, and the system gets more trustworthy month over month across hundreds of scorecards and millions of interactions. Bring us the judgment task and we&#x27;ll run it on Plexus with your reviewers in the loop, and hand you a scorecard you can inspect after the first month.</p><a class="button" href="/engage/">See how an engagement works</a></div></article>'
@@ -452,3 +481,8 @@ def research_html(*, featured: str, earlier: str) -> str:
 def decision_models_html() -> str:
     """<main> inner HTML of /decision-models/."""
     return _DECISION_MODELS_0
+
+
+def benchmarks_html() -> str:
+    """<main> inner HTML of /benchmarks/."""
+    return _BENCHMARKS_0
