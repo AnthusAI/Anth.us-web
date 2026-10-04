@@ -594,6 +594,9 @@ def _jsx_style_to_css(match: re.Match[str]) -> str:
 
 
 _TAG_RE = re.compile(r"<(/?)([A-Za-z][A-Za-z0-9]*)\b[^<>]*?(/?)>")
+#: A line that opens with one of these continues the paragraph above it (a
+#: `<b>` after a text line is the same Markdown paragraph, not new JSX flow).
+_INLINE_START_RE = re.compile(r"</?(?:b|i|em|strong|a|code|span|mark|br|sup|sub|small|u)\b", re.I)
 _VOID_TAGS = frozenset("br hr img input meta link source col wbr area base embed param track".split())
 
 
@@ -610,7 +613,7 @@ def _mdx_flow_paragraphs(markup: str) -> str:
     """
     out: list[str] = []
     buffer: list[str] = []
-    stack: list[bool] = []  # one entry per open element: is its content flow?
+    stack: list[tuple[bool, bool]] = []  # (content is flow, `<p>` rewritten to `<div>`)
 
     def flush() -> None:
         if buffer:
@@ -622,16 +625,41 @@ def _mdx_flow_paragraphs(markup: str) -> str:
         if not stripped:
             flush()
             continue
-        if not stripped.startswith(("<", "\x01")):
-            if stack and stack[-1]:
+        in_flow = bool(stack and stack[-1][0])
+        if not stripped.startswith(("<", "\x01")) or (
+            _INLINE_START_RE.match(stripped) and (buffer or in_flow)
+        ):
+            if in_flow:
                 buffer.append(stripped)
             else:
                 flush()
                 out.append(line)
             continue
         flush()
+        tags = list(_TAG_RE.finditer(stripped))
+        alone = len(tags) == 1 and tags[0].group(0) == stripped
+        # `<p style=..>` alone on its line is a flow container whose text MDX
+        # wraps in a paragraph again; a browser parser cannot nest `<p>` in
+        # `<p>`, so the outer one is emitted as a `<div>` carrying the same
+        # inline style (the `p` margin/size rules are all overridden or equal).
+        convert = (
+            alone
+            and tags[0].group(1) == ""
+            and tags[0].group(2).lower() == "p"
+            and not tags[0].group(3)
+        )
+        if convert:
+            line = line.replace("<p", "<div", 1)
+        elif (
+            alone
+            and tags[0].group(1)
+            and tags[0].group(2).lower() == "p"
+            and stack
+            and stack[-1][1]
+        ):
+            line = line.replace("</p>", "</div>")
         out.append(line)
-        for tag in _TAG_RE.finditer(stripped):
+        for tag in tags:
             closing, name, selfclosing = tag.group(1), tag.group(2).lower(), tag.group(3)
             if name in _VOID_TAGS or selfclosing:
                 continue
@@ -639,7 +667,7 @@ def _mdx_flow_paragraphs(markup: str) -> str:
                 if stack:
                     stack.pop()
             else:
-                stack.append(tag.end() == len(stripped))
+                stack.append((tag.end() == len(stripped), convert))
     flush()
     return "\n".join(out)
 
@@ -730,11 +758,13 @@ def _convert_pre_blocks(text: str) -> str:
     )
 
 
-_PICTURE_RE = re.compile(r"<picture>.*?</picture>", re.S)
+_PICTURE_RE = re.compile(
+    r"<picture>.*?</picture>|<p\s+style=\{\{[^}]*\}\}>\s*<img\b[^>]*?/>\s*</p>", re.S
+)
 
 
 def _convert_picture_blocks(text: str) -> str:
-    """Hand-authored `<picture>` (dark/light `<source>`s + a styled `<img>`).
+    """Hand-authored `<picture>` and `<p style=..><img/></p>` (dark/light `<source>`s + a styled `<img>`).
 
     Re-emitted as written, JSX spellings translated, with the site-static
     `/images/<name>` references pointed at the copies committed under
@@ -747,6 +777,7 @@ def _convert_picture_blocks(text: str) -> str:
         markup = _jsx_to_html(match.group(0))
         markup = re.sub(r"\bsrcSet=", "srcset=", markup)
         markup = re.sub(r"\s*/>", ">", markup)
+        markup = re.sub(r">\s+<", "><", markup)
         markup = re.sub(r'(src|srcset)="/images/([^"]+)"', r'\1="/assets/site/\2"', markup)
         return "\n\n" + block_sentinel(markup) + "\n\n"
 
