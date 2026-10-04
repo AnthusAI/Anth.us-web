@@ -90,6 +90,16 @@
     "status": "301"
   },
   {
+    "source": "/posts/6/",
+    "target": "/posts/page/6/",
+    "status": "301"
+  },
+  {
+    "source": "/posts/6/index.html",
+    "target": "/posts/page/6/",
+    "status": "301"
+  },
+  {
     "source": "/posts/page-<n>/",
     "target": "/posts/page/<n>/",
     "status": "301"
@@ -1912,6 +1922,21 @@
   {
     "source": "/static/daa5abf2cfbb5d21f12715d3e933dc6b/4a064/wiki-that-only-gets-bigger.png",
     "target": "/assets/content/images/wiki-that-only-gets-bigger.png",
+    "status": "301"
+  },
+  {
+    "source": "/biased-decisions",
+    "target": "https://biased-decisions.anth.us/",
+    "status": "301"
+  },
+  {
+    "source": "/biased-decisions/",
+    "target": "https://biased-decisions.anth.us/",
+    "status": "301"
+  },
+  {
+    "source": "/biased-decisions/<*>",
+    "target": "https://biased-decisions.anth.us/<*>",
     "status": "301"
   },
   {
