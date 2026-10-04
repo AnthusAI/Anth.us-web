@@ -39,6 +39,27 @@ class GuardedBuild(unittest.TestCase):
             for page in published.rglob("*.html"):
                 self.assertEqual(page.read_text(encoding="utf-8").count(site_env.NOINDEX_META), 1)
 
+    def test_guarded_benchmark_pages_carry_no_analytics_and_keep_their_other_scripts(self):
+        page_with_analytics = (
+            "<html><head>"
+            "<script>(function(){var k='anthus-no-analytics';})();</script>\n"
+            '<script async src="https://www.googletagmanager.com/gtag/js?id=G-31SC26SDGX"></script>\n'
+            "<script>window.dataLayer = window.dataLayer || [];\n"
+            "function gtag(){dataLayer.push(arguments);}\ngtag('config', 'G-31SC26SDGX');</script>"
+            '<script type="module" src="/biased-decisions/_astro/app.js"></script>'
+            "</head><body></body></html>"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            published = Path(directory)
+            write_page(published, "index.html", page_with_analytics)
+            write_page(published, "plain/index.html", "<html><head></head></html>")
+            self.assertEqual(build_benchmark_sites.remove_every_analytics_script(published), 1)
+            cleaned_page = (published / "index.html").read_text(encoding="utf-8")
+            for analytics_marker in ("googletagmanager.com", "gtag(", "anthus-no-analytics", "G-31SC26SDGX"):
+                self.assertNotIn(analytics_marker, cleaned_page)
+            self.assertIn("/biased-decisions/_astro/app.js", cleaned_page)
+            self.assertEqual(build_benchmark_sites.remove_every_analytics_script(published), 0)
+
 
 class ProductionBuild(unittest.TestCase):
     def test_sitemap_and_robots_rules_keep_the_production_robots_check_passing(self):
