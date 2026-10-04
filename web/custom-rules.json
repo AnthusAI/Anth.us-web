@@ -1915,6 +1915,36 @@
     "status": "301"
   },
   {
+    "source": "/articles/plexus/",
+    "target": "/articles/primus/",
+    "status": "301"
+  },
+  {
+    "source": "/articles/plexus/index.html",
+    "target": "/articles/primus/",
+    "status": "301"
+  },
+  {
+    "source": "/articles/plexus-classifier-lab/",
+    "target": "/articles/primus-classifier-lab/",
+    "status": "301"
+  },
+  {
+    "source": "/articles/plexus-classifier-lab/index.html",
+    "target": "/articles/primus-classifier-lab/",
+    "status": "301"
+  },
+  {
+    "source": "/platform/plexus/",
+    "target": "/articles/primus/",
+    "status": "301"
+  },
+  {
+    "source": "/platform/plexus/index.html",
+    "target": "/articles/primus/",
+    "status": "301"
+  },
+  {
     "source": "/<*>",
     "target": "/404.html",
     "status": "404-200"
