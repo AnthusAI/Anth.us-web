@@ -2,12 +2,10 @@
 # A customHttp.yml in the repo root overrides console-configured headers.
 # Patterns must NOT start with a slash (Amplify Hosting quirk).
 #
-# NO X-Robots-Tag here, deliberately (PPY-f1f0a8). This file is app-wide: any
-# Amplify app connected to this repo would apply it, including a production app
-# serving anth.us from `main`. The noindex header lives in the STAGING app's own
-# configuration (AMPLIFY_APP_ID, `aws amplify update-app --custom-headers`) and
-# stays there permanently. Per-page noindex, robots.txt and the staging note are
-# build-time and follow SITE_ENV; see AGENTS.md "Environment switch".
+# NO X-Robots-Tag here, deliberately (PPY-f1f0a8). This file applies to every
+# branch of the app, including `main` (production). Staging is guarded by the
+# noindex meta and robots.txt, which follow SITE_ENV at build time; see
+# AGENTS.md "Environment switch".
 customHeaders:
   - pattern: "**/*.html"
     headers:

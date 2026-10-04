@@ -211,16 +211,20 @@ assumed:
 
 `customHttp.yml` is only read by Amplify during a **repo-connected CI build**.
 A manual deployment ships only the artifact, so the file is never seen.
-`customHttp.yml` is **app-wide** (every branch of whichever app is connected to
-this repo), so it carries **only cache headers and never `X-Robots-Tag`**:
-if it did, a production app connected to `main` would ship a noindex header.
+`customHttp.yml` is **app-wide** (every branch of the connected app), so it
+carries **only cache headers and never `X-Robots-Tag`**: a noindex header there
+would ship on `main` (production) too.
 
-`X-Robots-Tag: noindex, nofollow` is instead **app configuration on the staging
-app** (`aws amplify update-app --app-id AMPLIFY_APP_ID --custom-headers ...`),
-kept there permanently as a safety net, and verified live by
-`bin/check-guards.py`. Caveat: if the staging app is ever connected to this
-repo, `customHttp.yml` overrides console headers and the app-level
-`X-Robots-Tag` would disappear -- re-run `bin/check-guards.py` after connecting.
+Staging is guarded by the per-page `noindex` meta and `robots.txt` only. There
+is **no `X-Robots-Tag` header and no basic auth** on staging (decision recorded
+on PPY-f1f0a8).
+
+**Before `main` goes live:** the staging app currently carries an app-level
+`X-Robots-Tag: noindex, nofollow` custom header (set earlier with
+`aws amplify update-app --custom-headers`). The app is shared by both branches,
+so that header would apply to production too. **It must be removed from the app
+(console or CLI) before `main` is served on anth.us.**
+`bin/check-guards.py --expect production` fails if the header is present.
 
 ### Environment switch (`SITE_ENV`)
 
@@ -241,7 +245,7 @@ origin first.
 | `<meta name="robots" content="noindex, nofollow">` | every page | none |
 | footer staging note | yes | no |
 | `robots.txt` | `Disallow: /` | `Allow: /` + `Sitemap: https://anth.us/sitemap-index.xml` (matches live) |
-| analytics (`analytics_enabled`) | off | on (TODO: wired to Papyrus's analytics capability when it lands; the decision is `site_env.ENV.analytics_enabled`) |
+| analytics (`analytics_enabled`) | off | GA4 `G-31SC26SDGX` with owner opt-out, via `SiteChrome.ga_measurement_id` / `ga_owner_opt_out` (Papyrus #86) |
 
 Both modes publish `/sitemap-index.xml` (a sitemapindex) and `/sitemap-0.xml`
 (the urlset of canonical 200 pages, no 404) -- the same URLs live anth.us
@@ -263,18 +267,20 @@ python3 bin/check-guards.py https://staging.AMPLIFY_APP_ID.amplifyapp.com --expe
 python3 bin/check-guards.py https://<production-host> --expect production
 ```
 
-Guarded expects the `X-Robots-Tag` header present; production expects it
-absent. Exits non-zero on any mismatch. `--no-sitemap` skips the sitemap checks
+Guarded expects the noindex meta and staging note, with no `X-Robots-Tag`
+requirement; production expects no noindex and **no** `X-Robots-Tag` header.
+Exits non-zero on any mismatch. `--no-sitemap` skips the sitemap checks
 for a host still serving a pre-sitemap-index build.
 
-**Topology (recommended, NOT yet confirmed by Ryan; the code is
-topology-independent):** two Amplify apps. The existing staging app
-(`AMPLIFY_APP_ID`) keeps `X-Robots-Tag` permanently and never sets
-`SITE_ENV=production`. A separate production app for anth.us, connected to
-`main`, sets the environment variable `SITE_ENV=production` and never has the
-`X-Robots-Tag` header. Cutover is then a domain association on the production
-app, with no code edits; run `check-guards.py --expect production` against it
-first. Do not create that app or any domain from this repo without Ryan.
+**Topology (decided, PPY-f1f0a8):** ONE Amplify app, `AMPLIFY_APP_ID`, two
+branches. `main` is production: branch environment variable
+`SITE_ENV=production`, and the `anth.us` domain is attached at cutover.
+`staging` is guarded (no `SITE_ENV`). Ryan connects the repository in the
+Amplify console (Hosting -> Connect repository, `AnthusAI/Anth.us-Papyrus`) and
+adds the branch variable; agents do not wire the repo, the domain or DNS. Run
+`bin/check-guards.py --expect production` against the `main` branch URL before
+attaching the domain, and remove the app-level `X-Robots-Tag` header first (see
+above).
 
 ### The 404 rule (real 404s)
 
@@ -351,8 +357,13 @@ and skips submodules, and without that step the build has no content at all.
   Turning the upgrade on fails the build on the homepage.
 * **`web/.image-cache/` must stay outside `web/staging/` and
   `web/dist-papyrus/`.** The build wipes both. Without the cache every build
-  re-encodes ~230 sources at four widths in two formats, about five minutes.
-* **Widths are capped at 1366 on purpose.** Every layout's `sizes` tops out at
-  48rem, and the source format is always emitted as the `<picture>` fallback —
-  this corpus is mostly photographic PNG, so the fallbacks are 193 MB against
-  27 MB of WebP. Raising the cap grows the artifact fast.
+  re-encodes every source at every breakpoint in AVIF and WebP
+  (`gatsby_parity`, AVIF up to 4096px), which is slow. `amplify.yml` already
+  lists `web/.image-cache/**/*` under `cache.paths`; once the repo is connected
+  in the console, confirm Amplify's build cache is on, or every CI build is cold.
+* **Pillow must be >=11.3** (it bundles libavif); `amplify.yml` pins
+  `Pillow>=11.3,<12`. Check locally with
+  `python3 -c "from PIL import features; print(features.check('avif'))"`.
+* **Main images start at `opacity:0`** (gatsby-plugin-image's behaviour).
+  `_render_body` appends Papyrus's `FADE_IN_SCRIPT` to every page that has a
+  `data-main-image`; without it the images stay invisible.
