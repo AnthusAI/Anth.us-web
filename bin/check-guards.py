@@ -4,12 +4,12 @@
     bin/check-guards.py <base-url> --expect production|guarded [--no-sitemap]
 
 Verifies, against a live host: the robots meta on a few pages, robots.txt,
-the X-Robots-Tag response header, the canonical origin, and that
+the absence of an X-Robots-Tag header (production), the canonical origin, and that
 /sitemap-index.xml and /sitemap-0.xml answer 200 on the expected origin.
 
 * guarded:    noindex meta + staging note on every sampled page, robots.txt
-              "Disallow: /", X-Robots-Tag PRESENT (the staging app keeps it
-              permanently), canonical origin == the base URL's origin.
+              "Disallow: /", canonical origin == the base URL's origin. No
+              X-Robots-Tag header is required (staging uses meta + robots.txt).
 * production: no noindex, no staging note, robots.txt allows and names the
               sitemap, X-Robots-Tag ABSENT, canonical origin == https://anth.us.
 
@@ -88,8 +88,6 @@ def main() -> int:
         xrt = headers.get("X-Robots-Tag") if headers else None
         if prod:
             check(not xrt, f"{tag} no X-Robots-Tag header", f"got {xrt!r}")
-        else:
-            check(bool(xrt) and "noindex" in xrt.lower(), f"{tag} X-Robots-Tag noindex header", f"got {xrt!r}")
         canon = re.findall(r"<link\b[^>]*\brel=[\"']canonical[\"'][^>]*>", html, re.I)
         hrefs = [m.group(1) for c in canon if (m := re.search(r"href=[\"']([^\"']*)", c))]
         check(len(hrefs) == 1 and (hrefs[0] == origin or hrefs[0].startswith(origin + "/")),

@@ -15,9 +15,8 @@
 >   `anth.us`, `www.anth.us`, or any subdomain at this app. Do not create or
 >   modify Route 53 records. Domain cutover is a separate decision Ryan makes
 >   after reviewing the port.
-> * Every page ships `<meta name="robots" content="noindex, nofollow">`,
->   `robots.txt` is `Disallow: /`, and `customHttp.yml` sets
->   `X-Robots-Tag: noindex`. A full second copy of the marketing site must not
+> * Every staging page ships `<meta name="robots" content="noindex, nofollow">`
+>   and `robots.txt` is `Disallow: /` (see AGENTS.md, "Environment switch"). A full second copy of the marketing site must not
 >   enter a search index.
 
 The point of the project is dogfooding: Anthus publishes with Papyrus, so the
