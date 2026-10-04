@@ -56,7 +56,7 @@ SITE_TITLE = "Anthus"
 MENU_LINKS = (
     ("AI Solutions", "/ai-solutions/", "What we build and run for clients, with the case studies."),
     ("Decision Models", "/decision-models/", "Aligning Jev and other decision models to your data."),
-    ("Platform", "/platform/", "The components behind the work: Plexus, Kanbus, and the rest."),
+    ("Platform", "/platform/", "The components behind the work: Primus, Kanbus, and the rest."),
     ("Research", "/research/", "Experiments on how decision models behave, with the numbers."),
     ("Benchmarks", "/benchmarks/", "Public leaderboards for decision models: bias and reasoning depth."),
     ("Reading List", "/reading/", "Papers and books we keep coming back to, one note each."),
@@ -573,7 +573,7 @@ ENGAGE_CTA_HTML = (
     "production for years: reviewers correct the model and say why, the explanation "
     "becomes policy, and the system gets more trustworthy month over month across "
     "hundreds of scorecards and millions of interactions. Bring us the judgment task "
-    "and we&#x27;ll run it on Plexus with your reviewers in the loop, and hand you a "
+    "and we&#x27;ll run it on Primus with your reviewers in the loop, and hand you a "
     "scorecard you can inspect after the first month.</p>"
     '<a class="button" href="/engage/">See how an engagement works</a></div>'
 )
