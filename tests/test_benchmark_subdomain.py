@@ -1,4 +1,5 @@
 """Biased-Decisions lives on its own subdomain: python3 -m pytest -q tests/test_benchmark_subdomain.py"""
+import json
 import re
 import sys
 from pathlib import Path
@@ -8,6 +9,7 @@ sys.path.insert(0, str(REPOSITORY_ROOT / "web"))
 import anthus_page_html  # noqa: E402
 import anthus_urls  # noqa: E402
 
+CUSTOM_RULES_FILE = REPOSITORY_ROOT / "web" / "custom-rules.json"
 INTERNAL_BENCHMARK_LINK = re.compile(r'href="/biased-decisions/')
 
 
@@ -31,6 +33,8 @@ def test_every_biased_decisions_path_redirects_to_the_same_path_on_the_subdomain
 
 
 def test_subdomain_redirects_precede_the_catch_all_rule():
-    rule_sources = [rule["source"] for rule in anthus_urls.BENCHMARK_SUBDOMAIN_REDIRECT_RULES]
-    assert rule_sources
-    assert anthus_urls.CATCH_ALL_RULE["source"] == "/<*>"
+    generated_rules = json.loads(CUSTOM_RULES_FILE.read_text(encoding="utf-8"))
+    generated_sources = [rule["source"] for rule in generated_rules]
+    catch_all_index = generated_sources.index(anthus_urls.CATCH_ALL_RULE["source"])
+    for rule in anthus_urls.BENCHMARK_SUBDOMAIN_REDIRECT_RULES:
+        assert generated_sources.index(rule["source"]) < catch_all_index
