@@ -90,6 +90,16 @@
     "status": "301"
   },
   {
+    "source": "/posts/6/",
+    "target": "/posts/page/6/",
+    "status": "301"
+  },
+  {
+    "source": "/posts/6/index.html",
+    "target": "/posts/page/6/",
+    "status": "301"
+  },
+  {
     "source": "/posts/page-<n>/",
     "target": "/posts/page/<n>/",
     "status": "301"
