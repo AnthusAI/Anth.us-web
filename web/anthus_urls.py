@@ -433,7 +433,13 @@ class RuleSet:
         self.counts[group] = self.counts.get(group, 0) + 1
 
 
-def legacy_rules(urls: SiteUrls) -> RuleSet:
+def legacy_rules(
+    urls: SiteUrls,
+    *,
+    og_images: dict[str, list[str]] | None = None,
+    page_images: dict[str, str] | None = None,
+    dist=None,
+) -> RuleSet:
     """301 rules from every published Gatsby URL shape onto its canonical form.
 
     Order is load-bearing: Amplify takes the first matching rule, and the
@@ -512,10 +518,55 @@ def legacy_rules(urls: SiteUrls) -> RuleSet:
                 continue  # already canonical; a rule here would be a loop
             out.add(f"{directory} path", source, target)
 
+    # 5. Shared link previews (PPY-5a64a2). Every link already shared on social
+    #    media embeds the old Gatsby og:image URL (`/static/<hash>/<hash>/<file>`),
+    #    which 404s after cutover. `og_images` maps each live page path to the
+    #    URLs read from the live build (web/legacy-og-images.json); the target is
+    #    the image this port gives the same page (`page_images`, by Papyrus href).
+    #    Only the og:image/twitter:image URLs, not every /static/ rendition.
+    for live_path, old_urls in sorted((og_images or {}).items()):
+        href = urls.resolve(live_path)
+        image = (page_images or {}).get(href) if href else None
+        if not image:
+            out.skipped.append(f"{live_path} og:image -> page not in this build")
+            continue
+        for old in old_urls:
+            source = _static_source(old)
+            existing = next((r for r in out.rules if r["source"] == source), None)
+            if existing is not None:
+                if existing["target"] != image:
+                    raise RuntimeError(
+                        f"{old} is the og:image of pages that map to different "
+                        f"images here: {existing['target']} vs {image}"
+                    )
+                continue
+            out.add("og:image", source, image)
+
     out.rules.append(dict(CATCH_ALL_RULE))
 
     _assert_no_shadowed_pages(out.rules, urls)
+    _assert_og_rules(out.rules, dist)
     return out
+
+
+def _static_source(path: str) -> str:
+    """An old `/static/...` path as an Amplify rule source (percent-encoded)."""
+    return "/" + "/".join(_encode(unquote(seg)) for seg in path.strip("/").split("/"))
+
+
+def _assert_og_rules(rules: list[dict], dist) -> None:
+    """og:image rules: no chains, and (when the output exists) real targets."""
+    sources = {r["source"] for r in rules}
+    for rule in rules:
+        if rule["status"] != "301" or not unquote(rule["source"]).startswith("/static/"):
+            continue
+        if rule["target"] in sources:
+            raise RuntimeError(f"og:image rule {rule['source']} chains into {rule['target']}")
+        if dist is not None:
+            if not (dist / unquote(rule["target"]).lstrip("/")).is_file():
+                raise RuntimeError(f"og:image rule {rule['source']}: target {rule['target']} is not in dist")
+            if (dist / unquote(rule["source"]).lstrip("/")).exists():
+                raise RuntimeError(f"og:image rule {rule['source']} would shadow a file in dist")
 
 
 def _assert_no_shadowed_pages(rules: list[dict], urls: SiteUrls) -> None:

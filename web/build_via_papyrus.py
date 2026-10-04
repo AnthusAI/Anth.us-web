@@ -748,6 +748,7 @@ def relocate_pages(result) -> int:
 #: artifact: `customRules` is Amplify *app* configuration, not a repo file, so
 #: `bin/apply_custom_rules.py` reads this and calls `amplify update-app`.
 CUSTOM_RULES = _BUILD_DIR / "custom-rules.json"
+LEGACY_OG_IMAGES = POD_ROOT / "legacy-og-images.json"  # bin/extract-legacy-og-images.py
 
 
 def write_custom_rules(site_urls: urls.SiteUrls) -> urls.RuleSet:
@@ -759,7 +760,12 @@ def write_custom_rules(site_urls: urls.SiteUrls) -> urls.RuleSet:
     equity the way a 301 does, and it costs a full page load. These are real
     301s, served by Amplify before it touches the filesystem.
     """
-    ruleset = urls.legacy_rules(site_urls)
+    ruleset = urls.legacy_rules(
+        site_urls,
+        og_images=json.loads(LEGACY_OG_IMAGES.read_text(encoding="utf-8")),
+        page_images={href: image for href, (_, image) in _PAGE_META.items()},
+        dist=DIST,
+    )
     CUSTOM_RULES.write_text(
         json.dumps(ruleset.rules, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )

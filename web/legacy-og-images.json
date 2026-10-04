@@ -1,0 +1,377 @@
+{
+ "/": [
+  "/static/fe4c7eafa272fec2c7d977d297cbcd80/0e7f8/serverless-ai-software-solutions.png"
+ ],
+ "/about/": [
+  "/static/fe4c7eafa272fec2c7d977d297cbcd80/0e7f8/serverless-ai-software-solutions.png"
+ ],
+ "/ai-solutions/": [
+  "/static/fe4c7eafa272fec2c7d977d297cbcd80/0e7f8/serverless-ai-software-solutions.png"
+ ],
+ "/blog/": [
+  "/static/fe4c7eafa272fec2c7d977d297cbcd80/0e7f8/serverless-ai-software-solutions.png"
+ ],
+ "/blog/a-week-with-grok-bot/": [
+  "/static/1e5ff5fb7040ec1f536cf70c18a38004/2741e/grok-bot-after-a-week.png"
+ ],
+ "/blog/a-world-with-no-moats/": [
+  "/static/373290a131b4da8e9f79418f3adc45a9/53517/the-revolution-will-be-commodified.png"
+ ],
+ "/blog/agent-skills/": [
+  "/static/9038154aa93e0f6f47a58bcf1e5263a5/4a064/agent-skills.png"
+ ],
+ "/blog/agent-software-factory-is-throttling-up/": [
+  "/static/7cb4ccf01088e092d42a40f021033246/4a064/agent-software-factory-is-throttling-up.png"
+ ],
+ "/blog/ai-agents/": [
+  "/static/40fa11d4258e8af4e32a13cdb9e62052/c6e9d/ai-agent-at-control-panel.png"
+ ],
+ "/blog/ai-coding-cost-collapse-2026/": [
+  "/static/32aa0fa73f6f64b6aecd9d19cac58806/65e4a/ai-coding-cost-collapse-2026.png"
+ ],
+ "/blog/ai-project-planning/": [
+  "/static/9e89d7a38b3888e2f5d0bf561bef5ca9/c6e9d/ai-project-planning.png"
+ ],
+ "/blog/alignment-faking/": [
+  "/static/d55b5d70b8b0c14bc80a63483c0c7f32/4a064/alignment-faking.png"
+ ],
+ "/blog/all-your-agents-are-belong-to-us/": [
+  "/static/b7530b0eb28379c82ec38920cbf7e88a/72faf/all-your-agents-are-belong-to-us.png"
+ ],
+ "/blog/alphaevolve/": [
+  "/static/d7f943ab86e02d31d78744f48e0d8c60/4a064/alphaevolve.png"
+ ],
+ "/blog/an-agent-skill-for-not-sounding-like-an-agent/": [
+  "/static/7f09f2f92fcf8954dbbc4704e4b8d95b/d6ba3/an-agent-skill-for-not-sounding-like-ai.png"
+ ],
+ "/blog/automated-scientific-discovery/": [
+  "/static/aaebd72c4554eb8e24473bd6954d12a1/39e69/automated-scientific-discovery.png"
+ ],
+ "/blog/aws-lambda-for-ai-ml/": [
+  "/static/072a2ebee5cc550c808875cf8e73615f/c6e9d/aws-lambda-for-ai-ml.png"
+ ],
+ "/blog/b0rd/": [
+  "/static/e78ac8f8185e75d97df9e463e99f0bbf/4a064/b0rd-hero.png"
+ ],
+ "/blog/beautiful-mermaid/": [
+  "/static/25aa1c0025295c37711e4a9fa4fb00d0/4a064/beautiful-mermaid.png"
+ ],
+ "/blog/bloub/": [
+  "/static/d0e6b48124cd2b9e0834a1ef119154af/4a064/bloub.png"
+ ],
+ "/blog/bugonomics-cheap-exploits-2026/": [
+  "/static/be50e9f9e7acbe7c9af3d8638c646209/c6e9d/bugonomics-cheap-exploits-2026.png"
+ ],
+ "/blog/call-criteria/": [
+  "/static/8814b7c4d4ee4a29b6ff95755ea9d53b/8ca44/call-criteria-logo.png"
+ ],
+ "/blog/can-averaging-reduce-noise/": [
+  "/static/4e5ecbaf433721d9ae3d9033eaebe99b/4a064/jev-pooled-preview.png"
+ ],
+ "/blog/can-you-fix-it/": [
+  "/static/bd3402fc60956ca24ac27dbddb8eafe4/4a064/can-you-fix-it-cover.png"
+ ],
+ "/blog/can-you-trust-jev-confidence/": [
+  "/static/711d540fc60bd01b7c743924c91f95da/4a064/jev-calibration-preview.png"
+ ],
+ "/blog/classification-with-confidence/": [
+  "/static/d66426e1915ce2c808fe838d61a8a726/7268e/freud-detector-fine-tuned.png"
+ ],
+ "/blog/claude-code/": [
+  "/static/247c5e08f4a65db1766b168646894537/4a064/claude-code.png"
+ ],
+ "/blog/code-based-hill-climbing/": [
+  "/static/8fe395208fc59f3813ebcbc5fd8e6de3/4a064/code-based-hill-climbing.png"
+ ],
+ "/blog/coding-agents-went-remote-2026/": [
+  "/static/f007abff3ce3724df5e8a368f379b2af/4a064/coding-agents-went-remote-2026.png"
+ ],
+ "/blog/commodity-receipts/": [
+  "/static/9534b02c90d276f7e2c6b4f93a182eda/4a064/commodity-receipts.png"
+ ],
+ "/blog/complexmcp/": [
+  "/static/3f5384f6b4fe138ed628441c1a757ee9/4a064/complexmcp.png"
+ ],
+ "/blog/computer-use/": [
+  "/static/a12125eee3a2df25fc32df7070c3ba23/4a064/computer-use.png"
+ ],
+ "/blog/cybernetic-development/": [
+  "/static/454afe78916b6d42f635aebff0497ea1/c6e9d/cybernetic-development.png"
+ ],
+ "/blog/dataparade/": [
+  "/static/eb0ed1f5bc0653caaadce3adde8a57b3/4a064/dataparade.png"
+ ],
+ "/blog/decision-models-are-not-calculators/": [
+  "/static/6c6d0c3c588a902990cba788e8b570c0/4a064/decision-models-are-not-calculators.png"
+ ],
+ "/blog/deepseek-r1-recipe/": [
+  "/static/38b4f9a043d39ad0674ccbbbe9e2b713/4a064/deepseek-r1-recipe.png"
+ ],
+ "/blog/desert-ant-little-brains/": [
+  "/static/6f9c6a5d27fa183e79ecdc80e47d69f8/4a064/desert-ant-little-brains.png"
+ ],
+ "/blog/distilling-jev-into-a-classifier/": [
+  "/static/062ecc1c00fc2fdd478680039a60e88a/4a064/distilling-jev-into-a-classifier-cover.png"
+ ],
+ "/blog/domain-specific-turn-detection/": [
+  "/static/5f85ec082c802821acad930cef27e685/4a064/domain-specific-turn-detection.png"
+ ],
+ "/blog/encoding-prejudice/": [
+  "/static/1523cdc57b64d3c75d4fab0ec977823d/4a064/encoding-prejudice-cover.png"
+ ],
+ "/blog/everything-as-code-integration/": [
+  "/static/dcae209432227da8ad254abb20b2b7b8/e035c/deckbot-ai-presentation-assistant.png"
+ ],
+ "/blog/few-shot-learning-isnt-real/": [
+  "/static/88d3ab160e8cd7de3b18e4e0246163d7/53517/ai-model-that-learns.png"
+ ],
+ "/blog/fine-tuned-classification-with-confidence/": [
+  "/static/618fb82fb8419a6af1c4e8fc7cc6fdc4/446e2/llm-text-classifier-cover.jpg"
+ ],
+ "/blog/fine-tuning-jev/": [
+  "/static/22557e9e9ba358b562d464deadbb6c05/4a064/fine-tuning-jev-cover.png"
+ ],
+ "/blog/from-pair-programmer-to-executive/": [
+  "/static/652eab25937ee366e66c978231294b28/c6e9d/from-pair-programmer-to-executive.png"
+ ],
+ "/blog/git-in-the-file/": [
+  "/static/360df905b35b80d306145e9203929b21/4a064/git-in-the-file.png"
+ ],
+ "/blog/give-an-agent-a-tool/": [
+  "/static/462ac54d0f5efb679feda89d24b6d0ae/36dd7/give-an-agent-a-tool.png"
+ ],
+ "/blog/glide-decision-model-ten-seconds/": [
+  "/static/a3a5a811faf3c30f1743343110847492/4a064/glide-decision-model-ten-seconds-preview.png"
+ ],
+ "/blog/grok-bot-gave-my-coding-agents-a-boss/": [
+  "/static/e876445e00f634e5045a688b655d2865/4709e/grok-bot-app-square.png"
+ ],
+ "/blog/gsm-symbolic/": [
+  "/static/d605b25226c4fc9c79ed4101f543695a/4a064/gsm-symbolic.png"
+ ],
+ "/blog/how-ai-agents-do-things/": [
+  "/static/4cf11a4a1b6390ef04cf2f2ea4680162/53517/ai-agent-uses-tools.png"
+ ],
+ "/blog/how-ai-agents-know-things/": [
+  "/static/88d3ab160e8cd7de3b18e4e0246163d7/53517/ai-model-that-learns.png"
+ ],
+ "/blog/inspected-by-pudicus/": [
+  "/static/d6387d545bf24c2ec9a84868d416c635/c6e9d/inspected-by-sticker-cover.png"
+ ],
+ "/blog/jev-vs-laya/": [
+  "/static/c572101ce4d1e88ded75cf59e6772191/4a064/jev-vs-laya-cover.png"
+ ],
+ "/blog/jevons-paradox-ai-slop/": [
+  "/static/2a452eef648fcbd28f8a3eaaef99e01a/4a064/jevons-paradox-ai-slop.png"
+ ],
+ "/blog/kanbus-project-management-as-code/": [
+  "/static/2e9abb984612803b70defcd8cc5e3113/4a064/kanbus-project-management-as-code.png"
+ ],
+ "/blog/langchain-by-example/": [
+  "/static/7c0786ee0ae3178536388dcf1a8d982f/c3b91/API-multiplexer.png"
+ ],
+ "/blog/llm-pricing-comparison/": [
+  "/static/ef7ce089657776bb9bc3422b148addd8/a5e1b/LLMPricingComparison.png"
+ ],
+ "/blog/lobe-chat/": [
+  "/static/d9bb0cd29da1984ab95c7cd227757b5b/f5ec4/LobeChat.png"
+ ],
+ "/blog/looking-around-is-enough/": [
+  "/static/cbcc5b2f355450d36f2d34723c037806/4a064/looking-around-is-enough.png"
+ ],
+ "/blog/making-decisions-instead-of-generating-text/": [
+  "/static/22524e1a4975cac2413fddca92dd5646/c6e9d/jev-confidence.png"
+ ],
+ "/blog/maximize-profit-not-intelligence/": [
+  "/static/4545d7803c9e3e8cb069f4c938aafd54/e532d/profit_per_million_GPT-4_GPT-3.5_Ada_2_BERT.png"
+ ],
+ "/blog/maximize-value-not-intelligence/": [
+  "/static/4545d7803c9e3e8cb069f4c938aafd54/e532d/profit_per_million_GPT-4_GPT-3.5_Ada_2_BERT.png"
+ ],
+ "/blog/metr-time-horizon/": [
+  "/static/796c8ecc4b35bf93dd8b29112b039f84/4a064/metr-time-horizon.png"
+ ],
+ "/blog/microduck-open-source-biped/": [
+  "/static/a243d68a0a27e004c3bf1da08354f670/4a064/microduck-open-source-biped.png"
+ ],
+ "/blog/mixture-of-agents/": [
+  "/static/4b2ab3ae433dd622e689ba8e4f0ccd17/d47c0/mixture-of-agents.jpg"
+ ],
+ "/blog/model-context-protocol/": [
+  "/static/74a0187606e3d3588e276d36e6d2d9b3/4a064/model-context-protocol.png"
+ ],
+ "/blog/never-use-fast/": [
+  "/static/65a42d81344f309100e9e38f674f8ebd/4a064/never-use-fast-toll-plaza.png"
+ ],
+ "/blog/notebooklm-interactive-mode/": [
+  "/static/c0cce7405f9f9e3f58f4d28bdb7ae900/9d2cf/Google-NotebookLM.png"
+ ],
+ "/blog/notebooklm/": [
+  "/static/8b0cde0363c9c75eccb6970464fe5e0d/ba794/NotebookLM.png"
+ ],
+ "/blog/null/": [
+  "/static/54e56703776b845b73d36f693171572b/607a2/anthropic-citations.png"
+ ],
+ "/blog/one-word-test/": [
+  "/static/d99ad88f1c7003366d21276f93eda1b5/4a064/one-word-test-cover.png"
+ ],
+ "/blog/openai-decisions-api-preview/": [
+  "/static/b936851ba1d17e58938bf2f2dee818ef/4a064/openai-decisions-api-preview-preview.png"
+ ],
+ "/blog/openai-o1/": [
+  "/static/d81aae55d0c58fe7689df44e74df4818/0b01f/OpenAIo1.png"
+ ],
+ "/blog/openclaw/": [
+  "/static/e27a6547209ed2e3c2777abee5cec769/4a064/openclaw.png"
+ ],
+ "/blog/page/2/": [
+  "/static/fe4c7eafa272fec2c7d977d297cbcd80/0e7f8/serverless-ai-software-solutions.png"
+ ],
+ "/blog/page/3/": [
+  "/static/fe4c7eafa272fec2c7d977d297cbcd80/0e7f8/serverless-ai-software-solutions.png"
+ ],
+ "/blog/page/4/": [
+  "/static/fe4c7eafa272fec2c7d977d297cbcd80/0e7f8/serverless-ai-software-solutions.png"
+ ],
+ "/blog/page/5/": [
+  "/static/fe4c7eafa272fec2c7d977d297cbcd80/0e7f8/serverless-ai-software-solutions.png"
+ ],
+ "/blog/paradox-of-automation/": [
+  "/static/902497e3f72729f2c75c3e27c582563a/2e92c/mechanical-turk.jpg"
+ ],
+ "/blog/people-skills-are-vital-for-leveraging-artificial-people/": [
+  "/static/7409285c54c6a773b23b0aceaaaa2bca/53517/bob.png"
+ ],
+ "/blog/perplexity-agent-api/": [
+  "/static/518db6754a74a7e22c7b5e938aff4261/4a064/perplexity-agent-api.png"
+ ],
+ "/blog/perplexity-sonar-api/": [
+  "/static/252a7017b505ee547968f15fabc70850/09c28/perplexity-sonar.png"
+ ],
+ "/blog/perplexity-supports-o1/": [
+  "/static/8d7e91a4a3bddd7387b354b8776d32dd/ccb37/Perplexity-o1-preview-reasoning-focus.png"
+ ],
+ "/blog/plexus-classifier-lab/": [
+  "/static/938fa1a535efcc9aa2aa1e8f4cd04f2d/4a064/plexus-classifier-lab.png"
+ ],
+ "/blog/plexus/": [
+  "/static/8140ade93833cb379eac3e5d406723e3/08e5a/plexus-logo.png"
+ ],
+ "/blog/predictive-attention-mechanism/": [
+  "/static/8edd61e81902dbc4d34aed03a03d1f6a/53d48/predictive-attention-mechanism-neural-decoding.png"
+ ],
+ "/blog/procedural-film/": [
+  "/static/68b8b8c56fe44d19b215b6537a637684/4a064/procedural-film.png"
+ ],
+ "/blog/prompt-repetition/": [
+  "/static/ebe00190f6c03953f1feb6228c254aa1/4a064/prompt-repetition.png"
+ ],
+ "/blog/ralph-loops/": [
+  "/static/56ad275f6b291b47002cd115f2e1dd5c/4a064/ralph-loops.png"
+ ],
+ "/blog/regeneration-test/": [
+  "/static/38380efeefee0c80ee34b998b9a59898/4a064/regeneration-test.png"
+ ],
+ "/blog/rethinking-ai-hallucination/": [
+  "/static/0cc4b359f2e25dc9c8c470f03d586faf/654c8/autocorrect-fails.jpg"
+ ],
+ "/blog/rtk/": [
+  "/static/64fbff8f8bff3c18d87aa0af4de4fba2/8cd76/rtk.png"
+ ],
+ "/blog/rubrics-for-ai-alignment/": [
+  "/static/c6dd0b8622844b803845d540aa89848b/4a064/rubrics-for-ai-alignment.png"
+ ],
+ "/blog/rubygems-agent-data-channel/": [
+  "/static/0e5d9ef08c330c93995f4195e423121c/4a064/rubygems-agent-data-channel.png"
+ ],
+ "/blog/saas-isnt-dead-sameness-is/": [
+  "/static/c54f8415e93b6a7d3913281055d2f620/4a064/saas-isnt-dead-sameness-is.png"
+ ],
+ "/blog/sam-altman-intelligence-age/": [
+  "/static/3497f4390f03dddea3d1ab43fdbd309c/6e84f/The-Intelligence-Age.png"
+ ],
+ "/blog/sol-coming-out-on-top/": [
+  "/static/213e14160685c185701bb76a7c90a2ec/985f5/sol-coming-out-on-top.png"
+ ],
+ "/blog/speaker-role-classifier/": [
+  "/static/d08aa2d4b80df1f07d6283a51bff311c/83ef9/speaker-role-classifier.png"
+ ],
+ "/blog/sqlbot/": [
+  "/static/8de79a715b101754cf51b820a1492495/ca236/sqlbot.png"
+ ],
+ "/blog/superwhisper-cursor-productivity/": [
+  "/static/14573346009c5e9297e1febcf039a635/80636/superwhisper_logo.png"
+ ],
+ "/blog/teaching-via-data/": [
+  "/static/de0e7303d3c1943285e868e96c913195/53517/draft-1.png"
+ ],
+ "/blog/text-as-image-lensvlm/": [
+  "/static/c788ad4a933d9c47a9afbf9246fa31a7/4a064/text-as-image-lensvlm.png"
+ ],
+ "/blog/text-classifier-cookbook/": [
+  "/static/cb32977b8f6ee2f97dd11e5f750d86d0/53517/draft-2.png"
+ ],
+ "/blog/textgrad/": [
+  "/static/d604518c30b41a6907d7ac24aeec1cee/186a7/TextGrad.png"
+ ],
+ "/blog/the-dominance-of-ones/": [
+  "/static/7ae297c37efba33ecc3b5abf3205583b/cdc3e/benford-distribution.png"
+ ],
+ "/blog/the-rise-of-single-use-software/": [
+  "/static/0d9eacaa740755228481c2ff8957d25d/53517/under-pressure.png"
+ ],
+ "/blog/the-simulation-told-them-they-would-win/": [
+  "/static/c428b8024f95848e0c5c65092106b0e6/36dd7/the-simulation-told-them-they-would-win.png"
+ ],
+ "/blog/thrifty-tokenmaxxing/": [
+  "/static/ebb6cea8d7334ac4e5501578bbfb7708/4a064/thrifty-tokenmaxxing.png"
+ ],
+ "/blog/vault/": [
+  "/static/d5644298553622637e9910f86ba011d5/36dd7/vault.png"
+ ],
+ "/blog/vending-bench/": [
+  "/static/f82ecbb55af016e7b9c8f5f182d65270/4a064/vending-bench.png"
+ ],
+ "/blog/venue-driver/": [
+  "/static/a80838e64764353fdca8bc8362a96682/2190d/vd_logo.png"
+ ],
+ "/blog/vibe-coding-client/": [
+  "/static/252388154b45e3a1143ff467fbc98925/52aa8/vibe-coding-client.png"
+ ],
+ "/blog/who-is-responsible-after-you-deploy-a-decision-model/": [
+  "/static/4c00f971c407bc0c6e7ac1b2ec3260ce/4a064/who-is-responsible-after-you-deploy-a-decision-model-cover.png"
+ ],
+ "/blog/wiki-that-only-gets-bigger/": [
+  "/static/daa5abf2cfbb5d21f12715d3e933dc6b/4a064/wiki-that-only-gets-bigger.png"
+ ],
+ "/decision-models/": [
+  "/static/fe4c7eafa272fec2c7d977d297cbcd80/0e7f8/serverless-ai-software-solutions.png"
+ ],
+ "/platform/": [
+  "/static/fe4c7eafa272fec2c7d977d297cbcd80/0e7f8/serverless-ai-software-solutions.png"
+ ],
+ "/posts/": [
+  "/static/fe4c7eafa272fec2c7d977d297cbcd80/0e7f8/serverless-ai-software-solutions.png"
+ ],
+ "/posts/page/2/": [
+  "/static/fe4c7eafa272fec2c7d977d297cbcd80/0e7f8/serverless-ai-software-solutions.png"
+ ],
+ "/posts/page/3/": [
+  "/static/fe4c7eafa272fec2c7d977d297cbcd80/0e7f8/serverless-ai-software-solutions.png"
+ ],
+ "/posts/page/4/": [
+  "/static/fe4c7eafa272fec2c7d977d297cbcd80/0e7f8/serverless-ai-software-solutions.png"
+ ],
+ "/posts/page/5/": [
+  "/static/fe4c7eafa272fec2c7d977d297cbcd80/0e7f8/serverless-ai-software-solutions.png"
+ ],
+ "/reading/": [
+  "/static/fe4c7eafa272fec2c7d977d297cbcd80/0e7f8/serverless-ai-software-solutions.png"
+ ],
+ "/research/": [
+  "/static/fe4c7eafa272fec2c7d977d297cbcd80/0e7f8/serverless-ai-software-solutions.png"
+ ],
+ "/ryan/": [
+  "/static/fe4c7eafa272fec2c7d977d297cbcd80/0e7f8/serverless-ai-software-solutions.png"
+ ]
+}
