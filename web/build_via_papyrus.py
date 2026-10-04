@@ -85,14 +85,20 @@ from anthus_content import (  # noqa: E402
 )
 from anthus_mdx import normalize_body, split_front_matter, staged_markdown, write_if_changed  # noqa: E402
 
-CONTENT_SUBMODULE = REPO_ROOT / "content" / "anthus-site-content"
+#: `ANTHUS_CONTENT_DIR`, `ANTHUS_BUILD_DIR` exist for diagnostics only: build the
+#: corpus the live site was built from (content 4b80f02) into a scratch tree, to
+#: tell content-driven differences from design ones. The pin is not changed.
+CONTENT_SUBMODULE = Path(
+    os.environ.get("ANTHUS_CONTENT_DIR", REPO_ROOT / "content" / "anthus-site-content")
+).resolve()
+_BUILD_DIR = Path(os.environ["ANTHUS_BUILD_DIR"]).resolve() if os.environ.get("ANTHUS_BUILD_DIR") else POD_ROOT
 SITE_ASSETS = POD_ROOT / "assets" / "site"
-STAGING = POD_ROOT / "staging"
-DIST = POD_ROOT / "dist-papyrus"
+STAGING = _BUILD_DIR / "staging"
+DIST = _BUILD_DIR / "dist-papyrus"
 #: Generated image renditions, kept OUTSIDE both `STAGING` and `DIST` because
 #: this script wipes the first and `build_markus_site` wipes the second. Put it
 #: on the CI cache path; a cold build is ~230 sources x 6 widths x 2 formats.
-IMAGE_CACHE = POD_ROOT / ".image-cache"
+IMAGE_CACHE = _BUILD_DIR / ".image-cache"
 
 # ---- Papyrus content-markup capabilities (docs/markus-content-markup.md) ---
 #
@@ -287,6 +293,8 @@ def _rewrite_internal_links(html: str, *, active_href: str) -> str:
 
 _DEFAULT_COVER = "/assets/site/serverless-ai-software-solutions.png"
 _PAGE_META: dict[str, tuple[str, str]] = {}  # active_href -> (description, image)
+#: active_href -> JSON-LD `Article` object, for published articles only (as live).
+_ARTICLE_LD: dict[str, dict] = {}
 
 
 def _canonical_url(active_href: str) -> str:
@@ -310,8 +318,18 @@ def _inject_social_meta(html: str, *, active_href: str) -> str:
     if not image:
         image = _DEFAULT_COVER
     page_title = (title or "").strip() or pages.SITE_TITLE
-    is_home = active_href in ("", "index.html")
     url = _canonical_url(active_href)
+    article_ld = _ARTICLE_LD.get(active_href)
+    ld_json = ""
+    if article_ld is not None:
+        data = dict(article_ld, mainEntityOfPage=url)
+        if image != _DEFAULT_COVER:
+            data["image"] = _absolute(image)
+        ld_json = (
+            '<script type="application/ld+json">'
+            + json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
+            + "</script>\n"
+        )
 
     def q(value: str) -> str:
         return escape(value, quote=True)
@@ -320,7 +338,7 @@ def _inject_social_meta(html: str, *, active_href: str) -> str:
         f'<meta name="description" content="{q(description)}">\n'
         f'<link rel="canonical" href="{q(url)}">\n'
         f'<meta property="og:site_name" content="{q(pages.SITE_TITLE)}">\n'
-        f'<meta property="og:type" content="{"website" if is_home else "article"}">\n'
+        f'<meta property="og:type" content="{"article" if article_ld is not None else "website"}">\n'
         f'<meta property="og:title" content="{q(page_title)}">\n'
         f'<meta property="og:description" content="{q(description)}">\n'
         f'<meta property="og:url" content="{q(url)}">\n'
@@ -334,6 +352,7 @@ def _inject_social_meta(html: str, *, active_href: str) -> str:
         # full copy of the marketing site out of search results while the port
         # is under review; robots.txt alone does not stop an already-known URL.
         '<meta name="robots" content="noindex, nofollow">\n'
+        + ld_json
     )
     if 'property="og:title"' in html:
         return html
@@ -367,6 +386,17 @@ def _generated(href: str, title: str, fragment: str, *, meta_key: str | None = N
     meta = anthus_page_html.PAGE_META.get(meta_key) if meta_key else None
     if meta:
         _register_meta(href, meta["description"], None)
+
+
+def _collection_page(directory: str, title: str, number: int, fragment: str) -> None:
+    """One page of a `collection.jsx` listing, at its canonical Papyrus href."""
+    href = (
+        f"{directory}/index.html"
+        if number == 1
+        else f"{directory}/page/{number}/index.html"
+    )
+    _generated(href, title if number == 1 else f"{title}, page {number}", fragment)
+    _register_meta(href, pages.COLLECTION_DESCRIPTIONS[title], None)
 
 
 def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
@@ -424,9 +454,21 @@ def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
         )
 
     for node in collections.blog:
-        _register_meta(
-            f"articles/{node.slug}.html", node.excerpt_text, pages._preview(node, images)
-        )
+        href = f"articles/{node.slug}.html"
+        _register_meta(href, node.excerpt_text, pages._preview(node, images))
+        if node.published:
+            _ARTICLE_LD[href] = {
+                "@context": "https://schema.org",
+                "@type": "Article",
+                "headline": node.title,
+                "description": node.excerpt_text,
+                "datePublished": node.date_raw,
+                "author": [
+                    {"@type": "Person", "name": name}
+                    for name in node.author_names
+                ],
+                "publisher": {"@type": "Organization", "name": "Anthus AI Solutions"},
+            }
 
     # Generated pages: HTML in the production DOM, never through Markus.
     meta = anthus_page_html.PAGE_META
@@ -440,7 +482,8 @@ def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
             blog=collections.blog,
         ),
     )
-    _generated("articles/index.html", "Blog", pages.articles_index(collections.articles, images))
+    for number, text in pages.articles_collection(collections.articles, images).items():
+        _collection_page("articles", "Articles", number, text)
     _generated("platform/index.html", "Anthus Platform", pages.platform_index(collections.platform))
     _register_meta(
         "platform/index.html",
@@ -454,7 +497,7 @@ def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
     _generated(
         "ai-solutions.html",
         _page_title(meta["/ai-solutions/"]["title"]),
-        pages.ai_solutions_page(collections.solutions, images),
+        pages.ai_solutions_page(collections.blog, images),
         meta_key="/ai-solutions/",
     )
     _generated(
@@ -491,10 +534,8 @@ def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
         meta_key="/research/",
     )
 
-    for name, text in pages.posts_pages(collections.posts, images, POSTS_PER_PAGE).items():
-        page = 1 if name == "index" else int(name.removeprefix("page-"))
-        title = "Posts" if page == 1 else f"Posts \u2014 Page {page}"
-        _generated(f"posts/{name}.html", title, text)
+    for number, text in pages.posts_collection(collections.posts, images).items():
+        _collection_page("posts", "Posts", number, text)
 
     for slug, (label, text) in pages.tag_pages(collections.tags).items():
         _generated(f"tags/{slug}.html", label if slug != "index" else "Tags", text)
@@ -615,6 +656,9 @@ def write_generated(result) -> None:
             result.pages.append(page_path)
 
 
+_CELL_ALIGN_RE = re.compile(r'<(th|td) style="text-align:(?:left|right|center)">')
+
+
 def finish_pages(result) -> None:
     """Post-pass over every rendered page, before relocation to canonical paths.
 
@@ -629,6 +673,17 @@ def finish_pages(result) -> None:
         text = _rewrite_internal_links(text, active_href=active_href)
         text = _inject_social_meta(text, active_href=active_href)
         text = text.replace('<body class="">', "<body>", 1)
+        # Markus renders a Markdown table's `---:` column alignment as an inline
+        # style; production's MDX pipeline emits none (cells stay left-aligned).
+        text = _CELL_ALIGN_RE.sub(r"<\1>", text)
+        if "twitter-tweet" in text and "platform.twitter.com/widgets.js" not in text:
+            # Production's /about/ embeds a tweet and loads Twitter's widget
+            # script from its head; without it the blockquote never renders.
+            text = text.replace(
+                "</head>",
+                '<script src="https://platform.twitter.com/widgets.js"></script>\n</head>',
+                1,
+            )
         dom.assert_no_markus_classes(text, active_href)
         if 'name="robots" content="noindex, nofollow"' not in text:
             raise RuntimeError(f"{active_href}: staging noindex guard missing")
@@ -696,7 +751,7 @@ def relocate_pages(result) -> int:
 #: Where the generated Amplify rules are written. Not part of the deployed
 #: artifact: `customRules` is Amplify *app* configuration, not a repo file, so
 #: `bin/apply_custom_rules.py` reads this and calls `amplify update-app`.
-CUSTOM_RULES = POD_ROOT / "custom-rules.json"
+CUSTOM_RULES = _BUILD_DIR / "custom-rules.json"
 
 
 def write_custom_rules(site_urls: urls.SiteUrls) -> urls.RuleSet:

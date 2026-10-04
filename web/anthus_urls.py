@@ -101,6 +101,22 @@ RESERVED_SEGMENTS = frozenset(
     }
 )
 
+#: `collection.jsx`: 4 featured items then a grid of 8 on page 1, 8 per later page.
+FEATURED_COUNT = 4
+GRID_SIZE = 8
+
+
+def collection_page_count(count: int) -> int:
+    return 1 + -(-max(0, count - (FEATURED_COUNT + GRID_SIZE)) // GRID_SIZE)
+
+
+def collection_href(directory: str, number: int) -> str:
+    """Papyrus href of page ``number`` of the ``directory`` collection."""
+    if number == 1:
+        return f"{directory}/index.html"
+    return f"{directory}/page/{number}/index.html"
+
+
 #: Top-level generated pages, one Papyrus href each (``<name>.html``).
 STANDALONE_PAGES = (
     "about",
@@ -215,8 +231,7 @@ class SiteUrls:
         for tag in collections.tags:
             urls.tag_by_name.setdefault(tag.strip().lower(), tag_slug(tag))
             urls.tag_names.setdefault(tag.strip(), tag_slug(tag))
-        total = max(1, -(-len(collections.posts) // posts_per_page))
-        urls.posts_pages = total
+        urls.posts_pages = collection_page_count(len(collections.posts))
         return urls
 
     def _add_article(self, node) -> None:
@@ -225,6 +240,11 @@ class SiteUrls:
             legacy = [legacy]
         names = [node.slug, node.authored_slug, slugify(node.authored_slug)]
         names += [str(old).strip() for old in legacy]
+        if not node.front_matter.get("slug"):
+            # `gatsby-node.js` builds `/blog/${frontmatter.slug}/`, and a post
+            # without a `slug` therefore publishes at `/blog/null/`. Production
+            # serves it (it is in its sitemap), so it redirects here too.
+            names.append("null")
         for name in names:
             if not name:
                 continue
@@ -282,8 +302,8 @@ class SiteUrls:
         if head == "blog":
             if not rest:
                 return "articles/index.html"
-            if len(rest) == 2 and rest[0].lower() == "page":
-                return "articles/index.html"
+            if len(rest) == 2 and rest[0].lower() == "page" and rest[1].isdigit():
+                return collection_href("articles", int(rest[1]))
             if len(rest) == 1:
                 name = rest[0].lower()
                 # Article before tag: that is what production serves where a
@@ -297,6 +317,8 @@ class SiteUrls:
         if head == "articles":
             if not rest:
                 return "articles/index.html"
+            if len(rest) == 2 and rest[0].lower() == "page" and rest[1].isdigit():
+                return collection_href("articles", int(rest[1]))
             if len(rest) == 1:
                 name = rest[0].lower()
                 return f"articles/{self.article_by_name.get(name, name)}.html"
@@ -321,11 +343,10 @@ class SiteUrls:
             elif len(rest) == 1 and rest[0].lower().startswith("page-"):
                 tail = rest[0][len("page-") :]
                 number = int(tail) if tail.isdigit() else None
-            if number == 1:
-                return "posts/index.html"
-            if number and number <= self.posts_pages:
-                return f"posts/page-{number}.html"
-            return None
+            return collection_href("posts", number) if number else None
+
+        if head in ("research", "reading") and len(rest) == 2 and rest[0].lower() == "page":
+            return collection_href(head, int(rest[1])) if rest[1].isdigit() else None
 
         if head == "tags":
             if not rest:
@@ -423,25 +444,26 @@ def legacy_rules(urls: SiteUrls) -> RuleSet:
         return page_url(href)
 
     # 1. Listings and pagination. Specific, so they precede the patterns.
+    #    Production now serves /blog/page/<n>/ and /posts/page/<n>/ (and
+    #    /posts/<n>/ as a meta-refresh stub); the canonical namespace here is
+    #    /articles/page/<n>/ and /posts/page/<n>/.
     out.add("blog index", "/blog/", articles_url)
-    out.add("blog pagination", "/blog/page/<n>/", articles_url)
+    out.add("blog pagination", "/blog/page/1/", articles_url)
+    out.add("blog pagination", "/blog/page/<n>/", "/articles/page/<n>/")
     posts_index = page_url("posts/index.html")
     out.add("posts pagination", "/posts/1/", posts_index)
     out.add("posts pagination", "/posts/page/1/", posts_index)
     # `/posts/<n>/` has to be enumerated: as a pattern, `<n>` would also match
-    # the canonical `/posts/page-2/`, and a 301 rule beats the filesystem, so
-    # the canonical pages would redirect to `/posts/page-page-2/`.
+    # the literal `/posts/page/`, and a 301 rule beats the filesystem.
     for number in range(2, urls.posts_pages + 1):
         out.add(
             "posts pagination",
             f"/posts/{number}/",
-            canonical(f"posts/page-{number}.html"),
+            canonical(collection_href("posts", number)),
         )
-    # `/posts/page/<n>/` is three segments, so it cannot collide with the
-    # two-segment canonical form. A pattern here keeps the rules correct when
-    # the content submodule gains posts and grows a page this build has not
-    # seen -- production already publishes `/posts/page/5/`.
-    out.add("posts pagination", "/posts/page/<n>/", canonical("posts/page-<n>.html"))
+    # Shapes this staging site published before the canonical form moved:
+    # `/posts/page-<n>/`. Two segments, so it cannot collide with `/posts/page/<n>/`.
+    out.add("posts pagination", "/posts/page-<n>/", "/posts/page/<n>/")
 
     # 2. Everything else in the shared /blog/ namespace, resolved to one
     #    target per authored spelling. Articles are inserted first and win any

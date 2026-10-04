@@ -500,18 +500,21 @@ _WRAPPER_RE = re.compile(
     r"</(?P=tag)>",
     re.S,
 )
-_FLOAT_STYLES = {
-    # JSX `style={{ float: "right", width: "260px", ... }}`, by its width.
-    "260px": "float-260",
-    "300px": "float-300",
+#: Authored `style={{ ... }}` wrappers around an image, as the CSS they render
+#: to (see `_jsx_style_to_css`), mapped to `anthus_dom.IMAGE_WRAPPERS` keys.
+#: An unknown style raises: guessing would silently drop layout.
+_STYLE_WRAPPERS = {
+    "float:right;width:260px;max-width:40%;margin-left:24px;margin-bottom:16px": "float-260",
+    "float:right;width:300px;margin-left:20px;margin-bottom:20px": "float-300",
+    "max-width:420px;margin:0 auto var(--base-line-height)": "box-420",
+    "max-width:26rem;margin:0 auto var(--base-line-height)": "box-26rem",
 }
 
 
 def _wrapper_key(tag: str, attrs: str) -> str | None:
     """Which production wrapper an authored element is, or ``None``.
 
-    ``None`` leaves the element for the generic unwrap. The ``<p>`` wrapper is
-    ``None`` on purpose: see ``anthus_dom.IMAGE_WRAPPERS``.
+    ``None`` leaves the element for the generic unwrap.
     """
     cls = re.search(r'class(?:Name)?\s*=\s*"([^"]*)"', attrs)
     classes = cls.group(1).split() if cls else []
@@ -519,13 +522,16 @@ def _wrapper_key(tag: str, attrs: str) -> str | None:
         return "div-cfi"
     if tag == "figure" and "center-full-image" in classes:
         return "figure-cfi"
+    if tag == "p" and "center-full-image" in classes:
+        return "p-cfi"
     if tag == "div" and "center-small-image" in classes:
         return "div-csi"
-    if tag == "div" and "style=" in attrs and "float" in attrs:
-        width = re.search(r'width:\s*"([^"]+)"', attrs)
-        key = _FLOAT_STYLES.get(width.group(1)) if width else None
+    if tag == "div" and "style=" in attrs:
+        css = _JSX_STYLE_RE.search(attrs)
+        css = _jsx_style_to_css(css)[len('style="') : -1] if css else ""
+        key = _STYLE_WRAPPERS.get(css)
         if key is None:
-            raise ValueError(f"unrecognised floated image wrapper: {attrs!r}")
+            raise ValueError(f"unrecognised styled image wrapper: {attrs!r}")
         return key
     return None
 
@@ -565,7 +571,9 @@ def _convert_image_wrappers(text: str) -> str:
 # --------------------------------------------------------------------------
 
 _JSX_COMMENT_RE = re.compile(r"[ \t]*\{/\*.*?\*/\}[ \t]*\n?", re.S)
-_DIAGRAM_OPEN_RE = re.compile(r'^<div\s+className="[^"]*\bblockDiagram\b[^"]*"[^>]*>', re.M)
+_DIAGRAM_OPEN_RE = re.compile(
+    r'^<div\s+class(?:Name)?="[^"]*\b(?:blockDiagram|comparisonChart)\b[^"]*"[^>]*>', re.M
+)
 _DIV_TAG_RE = re.compile(r"<(/?)div\b[^>]*>")
 _JSX_STYLE_RE = re.compile(r"style=\{\{(.*?)\}\}", re.S)
 _JSX_STYLE_ENTRY_RE = re.compile(r"""(\w+)\s*:\s*(?:"([^"]*)"|'([^']*)'|`([^`]*)`|([\d.]+))""")
@@ -585,6 +593,100 @@ def _jsx_style_to_css(match: re.Match[str]) -> str:
     return 'style="' + ";".join(entries) + '"'
 
 
+_TAG_RE = re.compile(r"<(/?)([A-Za-z][A-Za-z0-9]*)\b[^<>]*?(/?)>")
+_VOID_TAGS = frozenset("br hr img input meta link source col wbr area base embed param track".split())
+
+
+def _mdx_flow_paragraphs(markup: str) -> str:
+    """MDX wraps a line of text inside a *flow* JSX element in ``<p>``.
+
+    An element whose opening tag is alone on its line holds flow content: a run
+    of lines that starts with text is Markdown and renders as a paragraph (live
+    production shows ``<div class="title"><p>...</p></div>``). An element whose
+    opening tag is followed by text on the same line is inline, and its
+    children are not wrapped. A line that starts with ``<`` is JSX and is left
+    alone. The paragraph's margin is part of the block's height, so this
+    matters to layout.
+    """
+    out: list[str] = []
+    buffer: list[str] = []
+    stack: list[bool] = []  # one entry per open element: is its content flow?
+
+    def flush() -> None:
+        if buffer:
+            out.append("<p>" + " ".join(buffer) + "</p>")
+            buffer.clear()
+
+    for line in markup.split("\n"):
+        stripped = line.strip()
+        if not stripped:
+            flush()
+            continue
+        if not stripped.startswith(("<", "\x01")):
+            if stack and stack[-1]:
+                buffer.append(stripped)
+            else:
+                flush()
+                out.append(line)
+            continue
+        flush()
+        out.append(line)
+        for tag in _TAG_RE.finditer(stripped):
+            closing, name, selfclosing = tag.group(1), tag.group(2).lower(), tag.group(3)
+            if name in _VOID_TAGS or selfclosing:
+                continue
+            if closing:
+                if stack:
+                    stack.pop()
+            else:
+                stack.append(tag.end() == len(stripped))
+    flush()
+    return "\n".join(out)
+
+
+#: JSX camelCase props that are kebab-case in SVG/HTML attributes. Others that
+#: are camelCase in SVG itself (`viewBox`, `preserveAspectRatio`, ...) are not here.
+_KEBAB_ATTRS = (
+    "strokeWidth strokeDasharray strokeDashoffset strokeLinecap strokeLinejoin "
+    "strokeOpacity strokeMiterlimit fillOpacity fillRule clipRule fontSize "
+    "fontWeight fontStyle fontFamily textAnchor dominantBaseline alignmentBaseline "
+    "markerEnd markerStart markerMid stopColor stopOpacity letterSpacing "
+    "textDecoration clipPath vectorEffect"
+).split()
+_KEBAB_RE = re.compile(r"(?<=[\s\"'])(" + "|".join(_KEBAB_ATTRS) + r")(?==)")
+
+
+def _svg_attribute_names(markup: str) -> str:
+    return _KEBAB_RE.sub(
+        lambda m: re.sub(r"([A-Z])", lambda c: "-" + c.group(1).lower(), m.group(1)),
+        markup,
+    )
+
+
+def _jsx_to_html(markup: str) -> str:
+    """JSX attribute spellings -> HTML: ``className``, ``style={{}}``, quotes."""
+    markup = _JSX_STYLE_RE.sub(_jsx_style_to_css, markup)
+    markup = re.sub(r"\bclassName\s*=\s*'([^']*)'", r'class="\1"', markup)
+    markup = re.sub(r"\bclassName\s*=", "class=", markup)
+    markup = re.sub(r"(\bclass)=\'([^\']*)\'", r'\1="\2"', markup)
+    # A tag's attributes may continue on following lines (a long `aria-label`);
+    # fold each tag onto one line so those continuations are not read as text.
+    markup = re.sub(
+        r"<[A-Za-z][^<>]*>",
+        lambda m: re.sub(r"\s*\n\s*", " ", m.group(0)),
+        markup,
+    )
+    markup = _svg_attribute_names(markup)
+    markup = _mdx_flow_paragraphs(markup)
+    # JSX whitespace: a newline (with its indentation) next to a tag is
+    # dropped; one inside text collapses to a single space. HTML would keep
+    # both as text nodes, which shows up as stray inline gaps.
+    markup = re.sub(r">\s*\n\s*", ">", markup)
+    markup = re.sub(r"\s*\n\s*<", "<", markup)
+    markup = re.sub(r"\s*\n\s*", " ", markup)
+    return markup.replace("\x01", "")
+
+
 def _expand_jsx_map(match: re.Match[str]) -> str:
     """Expand ``{[[...], ...].map(([a, b]) => ( <jsx/> ))}`` into its rows.
 
@@ -601,9 +703,54 @@ def _expand_jsx_map(match: re.Match[str]) -> str:
             raise ValueError(f"cannot expand JSX map row {row!r}")
         body = re.sub(r"\s+key=\{\w+\}", "", match.group("body"))
         for name, value in zip(names, values):
-            body = body.replace("${" + name + "}", value).replace("{" + name + "}", value)
+            # \x01 marks text that came from a JSX expression: it is not
+            # Markdown, so `_mdx_flow_paragraphs` must not wrap it in a <p>.
+            body = body.replace("${" + name + "}", value).replace("{" + name + "}", "\x01" + value)
         out.append(body.strip())
     return "\n".join(out)
+
+
+_PRE_RE = re.compile(r"^<pre>\s*\n<code>\n(.*?)\n</code>\s*\n</pre>[ \t]*$", re.M | re.S)
+
+
+def _convert_pre_blocks(text: str) -> str:
+    """`<pre>` / `<code>` on their own lines, as MDX renders them.
+
+    MDX reads the text between the two tags as a Markdown paragraph, so
+    production's DOM is `<pre><code><p>text</p></code></pre>` (the paragraph's
+    margin is part of the block's height). Re-emitted verbatim as a block
+    sentinel instead of letting the generic HTML pass turn it into a fenced
+    block with stray backticks.
+    """
+    return _PRE_RE.sub(
+        lambda m: "\n\n"
+        + block_sentinel(f"<pre><code><p>{_html.escape(m.group(1), quote=False)}</p></code></pre>")
+        + "\n\n",
+        text,
+    )
+
+
+_PICTURE_RE = re.compile(r"<picture>.*?</picture>", re.S)
+
+
+def _convert_picture_blocks(text: str) -> str:
+    """Hand-authored `<picture>` (dark/light `<source>`s + a styled `<img>`).
+
+    Re-emitted as written, JSX spellings translated, with the site-static
+    `/images/<name>` references pointed at the copies committed under
+    `web/assets/site/` (the images live in the Anth.us repo's `static/`, not in
+    the content submodule). The responsive pipeline cannot express either the
+    `prefers-color-scheme` sources or the inline `style`.
+    """
+
+    def repl(match: re.Match[str]) -> str:
+        markup = _jsx_to_html(match.group(0))
+        markup = re.sub(r"\bsrcSet=", "srcset=", markup)
+        markup = re.sub(r"\s*/>", ">", markup)
+        markup = re.sub(r'(src|srcset)="/images/([^"]+)"', r'\1="/assets/site/\2"', markup)
+        return "\n\n" + block_sentinel(markup) + "\n\n"
+
+    return _PICTURE_RE.sub(repl, text)
 
 
 def _convert_jsx_diagrams(text: str, report: ConversionReport) -> str:
@@ -637,8 +784,7 @@ def _convert_jsx_diagrams(text: str, report: ConversionReport) -> str:
         markup = text[match.start() : end]
         markup = _JSX_MAP_RE.sub(_expand_jsx_map, markup)
         markup = re.sub(r"<(span|div|p|b|i|br)\b([^>]*?)\s*/>", lambda m: f"<{m.group(1)}{m.group(2)}></{m.group(1)}>" if m.group(1) != "br" else "<br>", markup)
-        markup = _JSX_STYLE_RE.sub(_jsx_style_to_css, markup)
-        markup = re.sub(r"\bclassName=", "class=", markup)
+        markup = _jsx_to_html(markup)
         if "{" in markup.replace("var(", ""):
             raise ValueError(f"JSX expression left in diagram markup: {markup[:200]!r}")
         out.append(text[pos : match.start()])
@@ -722,40 +868,24 @@ _CELL_RE = re.compile(r"<(t[hd])\b([^>]*)>(.*?)</\1>", re.I | re.S)
 
 
 def _convert_tables(text: str, report: ConversionReport) -> str:
-    """Convert raw HTML tables to GFM pipe tables.
+    """Pass authored HTML tables through as block sentinels, verbatim.
 
-    ``colspan``/``rowspan`` have no GFM equivalent at all, so a table that uses
-    either is passed through as a raw sentinel and emitted verbatim instead of
-    being flattened into the wrong shape. Everything else becomes a pipe table,
-    which is what the production site's own Markdown tables render as.
+    Production renders an MDX ``<table className='data'>`` as that exact
+    element, with its ``class`` on the table and on cells (``td.number``), and
+    ``colspan``/``rowspan`` where used. A GFM pipe table has no way to carry any
+    of that, so converting (which this did before) changed both the markup the
+    stylesheet targets and the table's shape. Only the JSX spellings are
+    translated (``_jsx_to_html``). Markdown pipe tables are not touched here;
+    Markus renders those as production's MDX does.
     """
 
     def repl(match: re.Match[str]) -> str:
-        body = match.group(1)
-        if re.search(r"\b(colspan|rowspan)\s*=", body, re.I):
+        markup = _jsx_to_html(match.group(0))
+        if re.search(r"\b(colspan|rowspan)\s*=", markup, re.I):
             report.span_tables += 1
-            return "\n\n" + block_sentinel(match.group(0)) + "\n\n"
-        rows: list[list[str]] = []
-        for row_match in _ROW_RE.finditer(body):
-            cells: list[str] = []
-            for cell in _CELL_RE.finditer(row_match.group(1)):
-                inline = _convert_inline_html(cell.group(3), report)
-                inline = re.sub(r"<[^>]+>", "", inline)
-                inline = re.sub(r"\s+", " ", _html.unescape(inline)).strip()
-                cells.append(inline.replace("|", "\\|"))
-            if cells:
-                rows.append(cells)
-        if not rows:
-            report.dropped_html.append("<table> with no parseable rows")
-            return ""
-        width = max(len(row) for row in rows)
-        rows = [row + [""] * (width - len(row)) for row in rows]
-        report.tables += 1
-        lines = ["", "| " + " | ".join(rows[0]) + " |", "| " + " | ".join(["---"] * width) + " |"]
-        for row in rows[1:]:
-            lines.append("| " + " | ".join(row) + " |")
-        lines.append("")
-        return "\n".join(lines)
+        else:
+            report.tables += 1
+        return "\n\n" + block_sentinel(markup) + "\n\n"
 
     return _TABLE_RE.sub(repl, text)
 
@@ -821,8 +951,14 @@ def _convert_inline_html(text: str, report: "ConversionReport | None" = None) ->
         flags=re.I | re.S,
     )
     text = re.sub(r"<code\b[^>]*>(.*?)</code>", lambda m: f"`{m.group(1)}`", text, flags=re.I | re.S)
-    text = re.sub(r"</?(strong|b)\b[^>]*>", "**", text, flags=re.I)
-    text = re.sub(r"</?(em|i)\b[^>]*>", "*", text, flags=re.I)
+    # Hug the text with the marker: `<em>\n  text\n</em>` would otherwise
+    # become a line starting with `*` and be parsed as a list bullet.
+    def _hug(marker: str):
+        return lambda m: marker + re.sub(r"\s+", " ", m.group(2)).strip() + marker
+
+    text = re.sub(r"<(strong|b)\b[^>]*>(.*?)</\1\s*>", _hug("**"), text, flags=re.I | re.S)
+    text = re.sub(r"<(em|i)\b[^>]*>(.*?)</\1\s*>", _hug("*"), text, flags=re.I | re.S)
+    text = re.sub(r"</?(strong|b|em|i)\b[^>]*>", "", text, flags=re.I)
     text = _convert_marks(text, report)
     text = re.sub(r"<br\s*/?>", "  \n", text, flags=re.I)
     return text
@@ -945,6 +1081,8 @@ def normalize_body(
     text = _IMPORT_RE.sub("", text)
     text = _JSX_EXPR_RE.sub("", text)
 
+    text = _convert_pre_blocks(text)
+    text = _convert_picture_blocks(text)
     text = _convert_jsx_diagrams(text, report)
     text = _convert_citations(text, report)
     text = _convert_blog_images(text, report, resolve_image_name)

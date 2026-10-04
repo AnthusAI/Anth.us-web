@@ -62,8 +62,8 @@ CONTACT_URL = (
 SITE_TITLE = "Anthus"
 SITE_DESCRIPTION = (
     "Anthus builds self-aligning AI systems: custom models, agent harnesses, "
-    "evaluation loops, and unattended automation with a human in the loop. In "
-    "production since 2023."
+    "evaluation loops, and unattended automation with a human in the loop, "
+    "grounded in production operations since 2007."
 )
 
 # gatsby-config.mjs siteMetadata.menuLinks. Kept here for the build's page
@@ -102,6 +102,26 @@ def _preview(node: ContentNode, images: ImageIndex) -> str | None:
     return images.resolve_path(str(raw), relative_to=node.source)
 
 
+_BLOCK_TAG_RE = __import__("re").compile(r"<(p|ul|ol|div|h[1-6]|table|blockquote|pre)\b", __import__("re").I)
+
+
+def _excerpt_container(tag: str, attrs: str, excerpt: str) -> str:
+    """`<p ...>{excerpt}</p>`, as production renders it once React has hydrated.
+
+    The excerpt is injected with `dangerouslySetInnerHTML`, and several contain
+    block elements (`<p>`, `<ul>`). React builds `p > p/ul` in the DOM; an HTML
+    parser would close the outer `<p>` at the first block child and leave empty
+    `<p>`s around the content, changing every height below it. A `<div>` keeps
+    the children inside the box; it takes the margin the `p` element rule would
+    have given (`calc(var(--space-4) / 2)`), which is the only `p` rule that
+    changes the geometry. Excerpts that are plain inline text stay a `<p>`.
+    """
+    if _BLOCK_TAG_RE.search(excerpt):
+        style = ' style="margin-bottom:calc(var(--space-4)/2)"'
+        return f"<div{attrs}{style}>{excerpt}</div>"
+    return f"<{tag}{attrs}>{excerpt}</{tag}>"
+
+
 def _excerpt_html(node: ContentNode) -> str:
     """The excerpt as authored, markup intact.
 
@@ -126,7 +146,7 @@ def _blog_item(
     date: str,
     excerpt_tag: str,
     href: str | None = None,
-    image_class: str = "right",
+    image_class: str = "featured",
 ) -> str:
     """One `ul.blog` row: `blog.jsx`'s `<BlogPostPreview>`.
 
@@ -153,16 +173,25 @@ def _blog_item(
         '<div class="blog-post-preview"><li class="clear-float">'
         f'<a href="{_esc(target)}">{image_html}<h3>{escape(node.title)}</h3></a>'
         f'<div class="date">{escape(date)}</div>'
-        f"<{excerpt_tag}>{excerpt}</{excerpt_tag}>"
-        "</li></div>"
+        + _excerpt_container(excerpt_tag, "", excerpt)
+        + "</li></div>"
     )
 
 
 def _posts_item(node: ContentNode, images: ImageIndex) -> str:
-    """One `.index-module--postsList--d248b` cell: `posts-list.jsx`."""
+    """One `.index-module--postsList--d248b` cell: the home page's Recent Posts.
+
+    Live production puts the thumbnail first inside the link and gives it the
+    `postsListThumbnail` class (it used to be last, classless).
+    """
     image = _preview(node, images)
     image_html = (
-        anthus_dom.image_html(src=image, alt=node.title, class_name="", eager=False)
+        anthus_dom.image_html(
+            src=image,
+            alt=node.title,
+            class_name=C["index:postsListThumbnail"],
+            eager=False,
+        )
         if image
         else ""
     )
@@ -170,13 +199,23 @@ def _posts_item(node: ContentNode, images: ImageIndex) -> str:
         f'<li class="{C["index:postsListItem"]}">'
         f'<div class="{C["index:postsListItemContent"]}">'
         f'<a class="{C["index:postsListItemLink"]}" href="{_esc(blog_href(node))}">'
+        f"{image_html}"
         f'<div><div class="{C["index:listItemTitle"]}">{escape(node.title)}</div>'
         f'<div class="{C["index:listItemDescription"]}">{_excerpt_html(node)}</div>'
         f'<div class="{C["index:listItemRight"]}">'
         f'<div class="{C["index:listItemDate"]}">{escape(node.display_date)}</div>'
-        "<div><i>more...</i></div></div></div>"
-        f"{image_html}</a></div></li>"
+        "<div><i>more...</i></div></div></div></a></div></li>"
     )
+
+
+def _solution_date(node: ContentNode) -> str:
+    """`solutions.js`: date-fns `format(date, "MMMM dd, yyyy")`, raw if invalid.
+
+    Live production ignores `display_date` here (it is used only by the
+    Engagements list on /ai-solutions/).
+    """
+    parsed = node.date
+    return parsed.strftime("%B %d, %Y") if parsed.year > 1 else node.date_raw
 
 
 def solutions_list(
@@ -216,10 +255,12 @@ def solutions_list(
             parts.append(heading)
         parts.append(
             f'<p class="{C["index:listItemDescription"]} date">'
-            f"{escape(node.display_date)}</p>"
+            f"{escape(_solution_date(node))}</p>"
         )
         parts.append(
-            f'<p class="{C["index:listItemDescription"]}">{_excerpt_html(node)}</p>'
+            _excerpt_container(
+                "p", f' class="{C["index:listItemDescription"]}"', _excerpt_html(node)
+            )
         )
         item_class = f'{C["index:listItem"]} {C["index:featuredItem"]}' if featured else f'{C["index:listItem"]} '
         items.append(f'<li class="{item_class}">{"".join(parts)}</li>')
@@ -263,11 +304,11 @@ _CAPABILITIES = (
     ),
     (
         "Machine Learning",
-        "/blog/domain-specific-turn-detection/",
+        "/decision-models/",
         "ai-software-feature.png",
         "Custom and fine-tuned machine learning models",
-        "Custom classifiers, fine-tuned models, and <mark>calibrated "
-        "confidence</mark> that tells you which decisions to trust and which to "
+        "Custom classifiers, fine-tuned models, decision models like Jev, and "
+        "<mark>calibrated confidence</mark> that tells you which decisions to trust and which to "
         "escalate.  We find the cheapest model that clears your bar, prove that "
         "it clears it, and run it in production on AWS—training, serving, and "
         "evaluation included.",
@@ -275,19 +316,16 @@ _CAPABILITIES = (
 )
 
 HOME_TITLE = "Depend on proven experts"
-HOME_SUBHEAD = (
-    "We solve your business problems with AI, then run it securely in production."
-)
+HOME_SUBHEAD = "We build the system, run it in production, and your experts keep it aligned."
 
 
 def _hero() -> str:
     """`src/components/hero.js` + the homepage's two hero images.
 
-    This is the overlay the previous port flattened into a stacked layout:
-    `.hero-overlay` is absolutely positioned over the image by `layout.scss`,
-    and the headline, subhead and CTA live inside it -- not above the image.
+    `.hero-overlay` is absolutely positioned over the image by `layout.scss`.
     Two images are emitted because the stylesheet shows the tall one below
-    941px and the wide one above it.
+    941px and the wide one above it. The button is an internal link to
+    `/engage/` on live production (it used to be the contact form).
     """
     return (
         '<div class="hero">'
@@ -303,7 +341,9 @@ def _hero() -> str:
         )
         + '<div class="hero-overlay">'
         f"<h1>{escape(HOME_TITLE)}</h1><p>{escape(HOME_SUBHEAD)}</p>"
-        f'<a href="{_esc(CONTACT_URL)}" class="button">Tell us the problem</a>'
+        f'<p class="{C["index:heroProof"]}"><mark>A quarter billion dollars</mark> '
+        "processed in production, at nearly 100% uptime.</p>"
+        '<a class="button" href="/engage/">Tell us the problem</a>'
         "</div></div>"
     )
 
@@ -315,13 +355,17 @@ def homepage(
     images: ImageIndex,
     blog: list[ContentNode] | None = None,
 ) -> str:
+    """`src/pages/index.js`, as deployed (Anth.us 96ac29c).
+
+    Section order: What We Do, Case studies, How we work, The Anthus Platform,
+    Recent Articles, Recent Posts. The B0rd spinoff section is gone.
+    """
     out = [_hero()]
 
     out.append(
         f'<p class="{C["index:intro"]}">'
-        "<mark>A quarter billion dollars</mark> in revenue processed at scale, at "
-        "nearly 100% uptime. <mark>180 billion tokens</mark> of production LLM "
-        "workload. AI in production, not just in demos.</p>"
+        "<mark>180 billion tokens</mark> of production LLM workload. AI in "
+        "production, not just in demos.</p>"
     )
 
     out.append("<h2>What We Do</h2>")
@@ -344,17 +388,57 @@ def homepage(
         "<mark>The work rarely stays in one box.</mark></p>"
     )
 
+    def case(slug: str, title: str, facts: str) -> str:
+        return (
+            f'<li class="{C["index:listItem"]}">'
+            f'<a class="{C["index:listItemLink"]}" href="/blog/{slug}/">'
+            f"<h3>{title}</h3></a>"
+            f'<ul class="{C["index:caseFacts"]}">{facts}</ul></li>'
+        )
+
+    out.append("<h2>Case studies</h2>")
+    out.append(
+        f'<ul class="{C["index:list"]}">'
+        + case(
+            "call-criteria",
+            "Call Criteria",
+            "<li>Call-center QA, scored by an outside service&#x27;s fine-tuned classifiers.</li>"
+            "<li>Too expensive and too slow to scale to every new scorecard.</li>"
+            "<li>We built their classifier lab on Plexus in their own AWS account and ran it for years.</li>"
+            "<li><mark>Hundreds of scorecards, millions of calls scored</mark>.</li>",
+        )
+        + case(
+            "venue-driver",
+            "Venue Driver",
+            "<li>Ticketing and reservations backbone for Las Vegas nightlife.</li>"
+            "<li>An AWS data center failed catastrophically.</li>"
+            "<li>We relocated the entire system within hours \u2014 ticket scanning never stopped.</li>"
+            "<li><mark>In continuous operation since 2007</mark>.</li>",
+        )
+        + "</ul>"
+    )
+    out.append(
+        '<div class="clear-float">See our <a href="/ai-solutions/">solution '
+        "patterns</a>.</div>"
+    )
+
     out.append(
         f'<section class="{C["index:approachSection"]}">'
-        f'<h2 class="{C["index:approachHeading"]}">Our Approach: Cybernetic '
-        "Development</h2>"
+        f'<h2 class="{C["index:approachHeading"]}">How we work</h2>'
         f'<div class="{C["index:approachContent"]}"><div>'
-        "<p>AI is an engine for generating code. The differentiator is the "
-        "governor: the constraints, feedback loops, and judgment that keep "
-        "systems reliable in production.</p>"
-        "<p>Modern failures increasingly look less like isolated “bugs” "
+        "<p>You might be wondering whether AI-built means nobody checked. For us it "
+        "means the opposite, and we learned it the hard way: in February 2026 the "
+        "nightly routine was pasting &quot;Continue.&quot; into four Codex sessions "
+        "before bed, because nothing else kept the agents going or told us what "
+        "they&#x27;d done. "
+        '<a href="/about/">That night is on the record.</a> Everything we ship now '
+        "runs under specs, tests, staged rollout, and a person who can say no. We "
+        "call that cybernetic development: we use AI to write code the same way we "
+        "use it to classify calls, inside a governor of constraints, feedback "
+        "loops, and human judgment that keeps systems reliable in production.</p>"
+        "<p>Modern failures increasingly look less like isolated \u201cbugs\u201d "
         "and more like operational, multi-system breakdowns. Great unit tests "
-        "help—but they don’t cover every emergent scenario. So we build "
+        "help\u2014but they don\u2019t cover every emergent scenario. So we build "
         "layered defenses and close the loop with real-world feedback.</p>"
         "<ul><li>Specs first: define behavior before implementation.</li>"
         "<li>Defense in depth: sandboxed tools, CI gates, staged rollouts, and "
@@ -364,9 +448,8 @@ def homepage(
         "<li>Simplify and delete: reduce degrees of freedom to eliminate entire "
         "classes of failure.</li></ul>"
         f'<div class="{C["index:approachActions"]}">'
-        f'<a href="{_esc(CONTACT_URL)}" class="button">Contact us</a>'
         f'<a class="{C["index:approachSecondaryCta"]}" '
-        'href="/blog/cybernetic-development/">Read Cybernetic Development</a>'
+        'href="/blog/cybernetic-development/">How we govern AI-built systems</a>'
         "</div></div></div></section>"
     )
 
@@ -375,79 +458,12 @@ def homepage(
         f'<span class="{C["index:eyebrow"]}">PART OF</span>'
         f'<h2 class="{C["index:platformHeader"]}">The Anthus Platform</h2>'
         "<p>Solve complex business problems with AI and ML using a proven, "
-        "reusable technology stack that grew out of real delivery work — "
+        "reusable technology stack that grew out of real delivery work \u2014 "
         "runtime, agent execution, knowledge, observability, and media, with the "
         "enterprise controls that matter in production.</p>"
         f'<div class="{C["index:approachActions"]}">'
         '<a class="button" href="/platform/">Explore the platform</a>'
         "</div></section>"
-    )
-
-    # B0rd is tagged `solutions`, so it is not in `articles`; look it up in the
-    # whole blog collection, as the homepage query does.
-    b0rd = next((node for node in (blog or articles) if node.slug == "b0rd"), None)
-    if b0rd is not None:
-        preview = _preview(b0rd, images)
-        image_html = (
-            anthus_dom.image_html(
-                src=preview,
-                alt="Glanceable signal when agents run all day",
-                class_name="right",
-                eager=False,
-            )
-            if preview
-            else ""
-        )
-        out.append(
-            f'<section class="{C["index:plexusFeature"]}">'
-            f'<span class="{C["index:eyebrow"]}">SPINOFF</span>'
-            f'<h2 class="{C["index:platformHeader"]}">B0rd — desk displays for '
-            "agent monitoring</h2>"
-            '<ul class="blog"><div class="blog-post-preview">'
-            '<li class="clear-float"><a href="/blog/b0rd/">'
-            f"{image_html}<h3>Glanceable signal when agents run all day</h3></a>"
-            "<p><strong>Anthus Microelectronics</strong> grew out of the same "
-            "workflow problem: when coding agents run for hours, the bottleneck "
-            "moves to monitoring and steering them. B0rd is a standalone "
-            "LED-matrix desk display — launch countdowns, agent status, "
-            "notifications, an idle clock — readable from across the room. "
-            "Handbuilt hardware running a handbuilt (AI-assisted) OS. Matching "
-            "units stay in sync without pairing or a hub.</p>"
-            '<ul class="branded">'
-            "<li>Standalone appliance — browser setup, no app store</li>"
-            "<li>Glanceable cues for long-running agent sessions</li>"
-            "<li>In sync by design across matching units</li></ul>"
-            '<a class="button" href="/blog/b0rd/">Read the B0rd story</a>'
-            f'<a href="https://b0rd.info" class="{C["index:approachSecondaryCta"]}">'
-            "b0rd.info</a>"
-            '<a href="https://www.etsy.com/shop/AnthusMicronics" '
-            f'class="{C["index:approachSecondaryCta"]}">Etsy shop</a>'
-            "</li></div></ul></section>"
-        )
-
-    out.append("<h2>Case studies</h2>")
-    out.append(
-        f'<ul class="{C["index:list"]}">'
-        f'<li class="{C["index:listItem"]}">'
-        f'<a class="{C["index:listItemLink"]}" href="/blog/call-criteria/">'
-        "<h3>Call Criteria</h3></a>"
-        f'<p class="{C["index:listItemDescription"]}">'
-        "<mark>100% of calls reviewed</mark>, up from a sample. Call Criteria&#x27;s "
-        "human QA couldn&#x27;t scale without scaling headcount, so we built a "
-        "self-evolving RLHF system: reviewers correct the AI and say why, and the "
-        "system turns the explanation into policy it applies from then on.</p></li>"
-        f'<li class="{C["index:listItem"]}">'
-        f'<a class="{C["index:listItemLink"]}" href="/blog/venue-driver/">'
-        "<h3>Venue Driver</h3></a>"
-        f'<p class="{C["index:listItemDescription"]}">'
-        "<mark>16 years of continuous operation</mark> across Las Vegas nightlife. "
-        "When an AWS data center failed catastrophically, we relocated the entire "
-        "system within hours — ticket scanning at the nightclubs never "
-        "stopped.</p></li></ul>"
-    )
-    out.append(
-        '<div class="clear-float">See our <a href="/ai-solutions/">solution '
-        "patterns</a>.</div>"
     )
 
     out.append("<h2>Recent Articles</h2>")
@@ -466,8 +482,8 @@ def homepage(
         + "</ul>"
     )
     out.append(
-        f'<div class="clear-float {C["index:seeMoreFooter"]}">Please see our '
-        '<a href="/blog/">Articles</a> for more.</div>'
+        f'<div class="clear-float {C["index:seeMoreFooter"]}">More in '
+        '<a href="/blog/">Articles</a>.</div>'
     )
 
     out.append("<h2>Recent Posts</h2>")
@@ -477,76 +493,128 @@ def homepage(
         + "</ul>"
     )
     out.append(
-        f'<div class="clear-float {C["index:seeMoreFooter"]}">Please see our '
-        '<a href="/posts/">Posts</a> for more.</div>'
+        f'<div class="clear-float {C["index:seeMoreFooter"]}">More in '
+        '<a href="/posts/">Posts</a>.</div>'
     )
     return "".join(out)
 
 
 # --------------------------------------------------------------------------
-# Listings
+# Collections: collection.jsx -- /blog/, /posts/, /research/, /reading/
 # --------------------------------------------------------------------------
 
+from anthus_urls import FEATURED_COUNT, GRID_SIZE, collection_page_count  # noqa: E402
 
-def articles_index(articles: list[ContentNode], images: ImageIndex) -> str:
-    """`src/templates/blog.jsx`."""
+COLLECTION_DESCRIPTIONS = {
+    "Articles": (
+        "Long-form articles from Anthus on decision models, agent systems, "
+        "classifiers in production, and the economics of AI-built software."
+    ),
+    "Research": (
+        "Experiments on how Jev, Laya and other decision models actually behave "
+        "in production: bias, calibration, fine-tuning and distillation, with the "
+        "method and the measurements."
+    ),
+    "Reading List": (
+        "Papers and books behind the work at Anthus, one short note each on what "
+        "they say and what we checked."
+    ),
+    "Posts": (
+        "Short posts from Anthus on what shipped, what we read, and what changed "
+        "in AI this week."
+    ),
+}
+
+
+def collection_page_path(base: str, page: int) -> str:
+    """Production route of a collection page (rewritten by the link mapper)."""
+    return f"/{base}/" if page == 1 else f"/{base}/page/{page}/"
+
+
+def _grid_html(nodes: list[ContentNode], images: ImageIndex) -> str:
     return (
-        "<article><div><h1>Blog articles</h1>"
-        '<ul class="blog">'
-        + "".join(
-            _blog_item(node, images, date=node.display_date, excerpt_tag="p")
-            for node in articles
-        )
-        + "</ul></div></article>"
+        f'<ul class="{C["platform:grid"]}">'
+        + "".join(_research_card(n, images) for n in nodes)
+        + "</ul>"
     )
 
 
-def posts_pages(posts: list[ContentNode], images: ImageIndex, per_page: int) -> dict[str, str]:
-    """`src/templates/posts-list.jsx`, paginated exactly as production is.
+def collection_slices(nodes: list[ContentNode], page: int):
+    """(featured, grid) node lists for one page of a collection."""
+    if page == 1:
+        return nodes[:FEATURED_COUNT], nodes[FEATURED_COUNT : FEATURED_COUNT + GRID_SIZE]
+    start = FEATURED_COUNT + GRID_SIZE + (page - 2) * GRID_SIZE
+    return [], nodes[start : start + GRID_SIZE]
 
-    Production serves page 1 at `/posts/` and page N at `/posts/N/`; those are
-    the hrefs emitted here, and the build's link mapper turns them into whatever
-    static paths this site uses.
-    """
-    pages: dict[str, str] = {}
-    total = max(1, -(-len(posts) // per_page))
-    for page in range(1, total + 1):
-        chunk = posts[(page - 1) * per_page : page * per_page]
-        heading = "Recent Posts" if page == 1 else f"Recent Posts — Page {page}"
-        out = [f"<h1>{escape(heading)}</h1>"]
-        out.append(
-            f'<ul class="{C["index:postsList"]}">'
-            + "".join(_posts_item(node, images) for node in chunk)
-            + "</ul>"
+
+def collection_lists(
+    nodes: list[ContentNode], images: ImageIndex, page: int = 1
+) -> tuple[str, str]:
+    """The (featured `ul.blog`, grid `ul`) HTML for one collection page."""
+    featured_nodes, grid_nodes = collection_slices(nodes, page)
+    featured = (
+        '<ul class="blog">'
+        + "".join(
+            _blog_item(
+                n, images, date=n.display_date, excerpt_tag="p", image_class="featured"
+            )
+            for n in featured_nodes
         )
-        if total > 1:
-            previous = (
-                f'<a href="{_esc(posts_page_href(page - 1))}">← Previous</a>'
-                if page > 1
-                else ""
-            )
-            following = (
-                f'<a href="{_esc(posts_page_href(page + 1))}">Next →</a>'
-                if page < total
-                else ""
-            )
-            out.append(
-                '<nav class="clear-float" aria-label="Posts pagination">'
-                f"<div>{previous}</div>"
-                f"<div>Page {page} of {total}</div>"
-                f"<div>{following}</div></nav>"
-            )
-        pages[_posts_page_file(page)] = "".join(out)
-    return pages
+        + "</ul>"
+        if featured_nodes
+        else ""
+    )
+    return featured, _grid_html(grid_nodes, images)
 
 
-def posts_page_href(page: int) -> str:
-    """Production route for a posts page."""
-    return "/posts/" if page == 1 else f"/posts/{page}/"
+def collection_nav(title: str, base: str, page: int, total: int) -> str:
+    """The pagination `<nav>`, rendered only when there is more than one page."""
+    if total <= 1:
+        return ""
+    previous = (
+        f'<a href="{_esc(collection_page_path(base, page - 1))}">\u2190 Previous</a>'
+        if page > 1
+        else "<span></span>"
+    )
+    following = (
+        f'<a href="{_esc(collection_page_path(base, page + 1))}">Next \u2192</a>'
+        if page < total
+        else "<span></span>"
+    )
+    return (
+        '<nav class="clear-float" style="display:flex;justify-content:space-between;'
+        'align-items:center;margin-top:1.5rem" '
+        f'aria-label="{escape(title)} pagination">'
+        f"<div>{previous}</div><div>Page {page} of {total}</div>"
+        f"<div>{following}</div></nav>"
+    )
 
 
-def _posts_page_file(page: int) -> str:
-    return "index" if page == 1 else f"page-{page}"
+def collection_page(
+    title: str, base: str, nodes: list[ContentNode], page: int, images: ImageIndex
+) -> str:
+    """`collection.jsx` for `/blog/` and `/posts/` (every page) and page >= 2 of any base."""
+    total = collection_page_count(len(nodes))
+    featured, grid = collection_lists(nodes, images, page)
+    heading = title if page == 1 else f"{title}, page {page}"
+    return (
+        f"<article><h1>{escape(heading)}</h1>"
+        + featured
+        + ("<h2>Earlier</h2>" if featured else "")
+        + grid
+        + collection_nav(title, base, page, total)
+        + "</article>"
+    )
+
+
+def articles_collection(articles: list[ContentNode], images: ImageIndex) -> dict[int, str]:
+    total = collection_page_count(len(articles))
+    return {p: collection_page("Articles", "blog", articles, p, images) for p in range(1, total + 1)}
+
+
+def posts_collection(posts: list[ContentNode], images: ImageIndex) -> dict[int, str]:
+    total = collection_page_count(len(posts))
+    return {p: collection_page("Posts", "posts", posts, p, images) for p in range(1, total + 1)}
 
 
 def tag_pages(tags: dict[str, list[ContentNode]]) -> dict[str, tuple[str, str]]:
@@ -621,12 +689,6 @@ _STACK_RECIPES = (
         "Korporus supplies the shared shell while product-specific modules from "
         "Plexus, Kanbus, Biblicus, and future tools appear as interoperable "
         "applications instead of one-off surfaces.",
-    ),
-    (
-        "Multi-user agent workplace",
-        "Chatticus is the shared room for people and named bots, Antharchy is the "
-        "agentic desktop those bots can run, and Tactus encodes the durable "
-        "procedures they execute with human approval boundaries.",
     ),
 )
 
@@ -756,7 +818,6 @@ _MAP_COLUMNS = (
         "Runtime and control plane",
         (
             ("Korporus", "standardizes the shell and hosting model for platform-powered services."),
-            ("Chatticus", "gives people and bots a shared room with approvals."),
             ("Plexus", "manages evaluation, feedback loops, and MLOps."),
             ("Kanbus", "keeps work orchestration and project memory durable."),
         ),
@@ -765,7 +826,6 @@ _MAP_COLUMNS = (
         "Agent execution and data",
         (
             ("Tactus", "defines durable, sandboxed agent procedures."),
-            ("Antharchy", "is the agentic Linux desktop for long-running bot work."),
             ("Biblicus", "turns corpora into extractable, retrievable knowledge."),
             ("Virtuus", "makes structured JSON data queryable on disk."),
         ),
@@ -824,8 +884,7 @@ def platform_index(platform: list[ContentNode]) -> str:
         f'<section class="{C["platform:section"]}">'
         f'<h2 class="{C["platform:sectionHeading"]}">How the platform fits together</h2>'
         "<p>We think about the platform in layers because complete AI systems need more "
-        "than a model call. Korporus is the host shell. Chatticus is the shared room for "
-        "people and bots. Antharchy is the agentic desktop those bots can run. Tactus "
+        "than a model call. Korporus is the host shell. Tactus "
         "defines the durable procedure. Kanbus keeps workflow memory and state. Plexus "
         "closes the evaluation loop. Biblicus and Virtuus make evidence and structured "
         "data portable. Caducus gives operators visibility. Babulus and VideoML apply the "
@@ -901,25 +960,40 @@ def platform_product_tail(node: ContentNode) -> str:
 # --------------------------------------------------------------------------
 
 
-def _solution_groups(solutions: list[ContentNode]):
-    def has(node, tag):
-        return tag in node.tags
-
-    featured = [n for n in solutions if has(n, "featured") and not has(n, "integrations")]
-    plain = [n for n in solutions if not has(n, "featured") and not has(n, "integrations")]
-    integrations = [n for n in solutions if has(n, "integrations")]
-    return featured, plain, integrations
-
-
 def about_page() -> str:
     return anthus_page_html.about_html()
 
 
-def ai_solutions_page(solutions: list[ContentNode], images: ImageIndex) -> str:
-    featured, plain, integrations = _solution_groups(solutions)
+def ai_solutions_page(blog: list[ContentNode], images: ImageIndex) -> str:
+    """`ai-solutions.js` as deployed: Engagements / Projects / Integrations.
+
+    Engagements: posts tagged `solutions` AND `engagement` (not `integrations`),
+    as `ul.blog` rows with the free-text `display_date` and a `<div>` excerpt.
+    Projects: other `solutions` posts (not engagement/integrations) merged with
+    published `project` posts, as the same research cards the collections use.
+    """
+    solutions = [n for n in blog if "solutions" in n.tags]
+    engagements = [
+        n for n in solutions if "engagement" in n.tags and "integrations" not in n.tags
+    ]
+    projects = {
+        n.slug: n
+        for n in solutions
+        if "engagement" not in n.tags and "integrations" not in n.tags
+    }
+    projects.update({n.slug: n for n in blog if n.published and "project" in n.tags})
+    integrations = [n for n in solutions if "integrations" in n.tags]
+    by_date = lambda nodes: sorted(nodes, key=lambda n: n.date, reverse=True)  # noqa: E731
     return anthus_page_html.ai_solutions_html(
-        featured=solutions_list(featured, images, with_image=True, extra_class="smallImageList"),
-        portfolio=solutions_list(plain, images, with_image=True, extra_class="smallImageList"),
+        engagements=(
+            '<ul class="blog">'
+            + "".join(
+                _blog_item(n, images, date=n.display_date, excerpt_tag="div", image_class="featured")
+                for n in by_date(engagements)
+            )
+            + "</ul>"
+        ),
+        projects=_grid_html(by_date(list(projects.values())), images),
         integrations=solutions_list(integrations, images, with_image=False),
     )
 
@@ -943,7 +1017,7 @@ def not_found_page() -> str:
 
 
 # --------------------------------------------------------------------------
-# Collection pages: /reading/ and /research/ (live-site additions)
+# Collection pages: /reading/ and /research/ (static copy + the two lists)
 # --------------------------------------------------------------------------
 
 
@@ -987,38 +1061,23 @@ def _research_card(node: ContentNode, images: ImageIndex) -> str:
         f'<li class="{C["platform:card"]}">{image}'
         f'<a class="{C["platform:cardTitleLink"]}" href="{href}"><h3>{escape(node.title)}</h3></a>'
         f'<div class="{C["platform:metaRow"]}"><span class="{C["platform:pill"]}">'
-        f"{escape(node.display_date)}</span></div>"
-        f"<p>{_excerpt_html(node)}</p>"
-        f'<div class="{C["platform:cardActions"]}"><a href="{href}">Read more</a>{code}</div></li>'
+        f"{escape(node.formatted_date)}</span></div>"
+        + _excerpt_container("p", "", _excerpt_html(node))
+        + f'<div class="{C["platform:cardActions"]}"><a href="{href}">Read more</a>{code}</div></li>'
     )
-
-
-def _collection_lists(nodes: list[ContentNode], images: ImageIndex) -> tuple[str, str]:
-    featured = (
-        '<ul class="blog">'
-        + "".join(
-            _blog_item(
-                n, images, date=n.display_date, excerpt_tag="p", image_class="featured"
-            )
-            for n in nodes[:4]
-        )
-        + "</ul>"
-    )
-    earlier = (
-        f'<ul class="{C["platform:grid"]}">'
-        + "".join(_research_card(n, images) for n in nodes[4:12])
-        + "</ul>"
-    )
-    return featured, earlier
 
 
 def reading_page(blog: list[ContentNode], images: ImageIndex) -> str:
-    featured, earlier = _collection_lists(collection_nodes(blog, "reading"), images)
+    nodes = collection_nodes(blog, "reading")
+    assert collection_page_count(len(nodes)) == 1, "reading outgrew one page"
+    featured, earlier = collection_lists(nodes, images)
     return anthus_page_html.reading_html(featured=featured, earlier=earlier)
 
 
 def research_page(blog: list[ContentNode], images: ImageIndex) -> str:
-    featured, earlier = _collection_lists(collection_nodes(blog, "research"), images)
+    nodes = collection_nodes(blog, "research")
+    assert collection_page_count(len(nodes)) == 1, "research outgrew one page"
+    featured, earlier = collection_lists(nodes, images)
     return anthus_page_html.research_html(featured=featured, earlier=earlier)
 
 

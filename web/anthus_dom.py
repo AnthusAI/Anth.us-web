@@ -52,11 +52,13 @@ SITE_TITLE = "Anthus"
 # route shapes; `build_via_papyrus._rewrite_internal_links` maps them to this
 # build's static paths, so the chrome and the content go through one mapper.
 MENU_LINKS = (
-    ("AI Solutions", "/ai-solutions/"),
-    ("Platform", "/platform/"),
-    ("About", "/about/"),
-    ("Articles", "/blog/"),
-    ("Posts", "/posts/"),
+    ("AI Solutions", "/ai-solutions/", "What we build and run for clients, with the case studies."),
+    ("Platform", "/platform/", "The components behind the work: Plexus, Kanbus, and the rest."),
+    ("Research", "/research/", "Experiments on how decision models behave, with the numbers."),
+    ("Reading List", "/reading/", "Papers and books we keep coming back to, one note each."),
+    ("About", "/about/", "Who we are, and the track record since 2007."),
+    ("Articles", "/blog/", "Long-form pieces on classifiers, agents, and the economics of AI."),
+    ("Posts", "/posts/", "Short takes on what shipped this week."),
 )
 
 # The real `anthus-footer` React component's rendered output, captured from
@@ -100,12 +102,16 @@ def _header_html(active_path: str) -> str:
     as in production, so the nav works with JavaScript disabled.
     """
     items = []
-    for label, href in MENU_LINKS:
+    for label, href, description in MENU_LINKS:
         attrs = f'href="{html.escape(href, quote=True)}"'
         if _same_route(href, active_path):
             # Gatsby's <Link activeClassName="active"> on an exact route match.
             attrs = f'aria-current="page" class="active" {attrs}'
-        items.append(f"<li><a {attrs}>{html.escape(label)}</a></li>")
+        items.append(
+            f"<li><a {attrs}>"
+            f'<span class="menu-title">{html.escape(label)}</span>'
+            f'<span class="menu-subtitle">{html.escape(description)}</span></a></li>'
+        )
     home = _same_route("/", active_path)
     logo = (
         '<a aria-current="page" class="logo active" href="/">Anthus&nbsp;</a>'
@@ -307,19 +313,35 @@ def image_html(
 
 #: Wrapper elements the corpus authors around an ``::image{}`` (production
 #: renders them verbatim, and the stylesheet keys on them: ``.center-full-image
-#: {text-align:center}`` centres a caption, ``.center-small-image`` is a 60%
-#: box). ``anthus_mdx`` encodes the wrapper into the image's layout as
-#: ``<layout>@<key>`` because ``::image{}`` has no other channel for it; the
-#: wrap hook decodes it here. ``<p class="center-full-image">`` is deliberately
-#: absent: production nests a block ``<div>`` in that ``<p>``, so the parser
-#: closes the ``<p>`` before the ``<div>`` and the class never applies to it.
+#: {text-align:center}`` centres a caption and an inline-block image, and
+#: ``.center-small-image`` is a 60% box). ``anthus_mdx`` encodes the wrapper into
+#: the image's layout as ``<layout>@<key>`` because ``::image{}`` has no other
+#: channel for it; the wrap hook decodes it here.
+#:
+#: ``p-cfi`` stands in for ``<p class="center-full-image"><div ...>``: that is
+#: invalid HTML (a parser closes the ``<p>`` before the ``<div>``), but
+#: production's React client render builds the ``<p>>div`` DOM, so a reader sees
+#: a centred image with the ``<p>``'s bottom margin. A ``<div>`` with the same
+#: class and the ``<p>`` margin is the valid static equivalent.
 IMAGE_WRAPPERS: dict[str, tuple[str, str]] = {
+    "p-cfi": (
+        '<div class="center-full-image" style="margin:0 0 var(--space-4) 0">',
+        "</div>",
+    ),
     "div-cfi": ('<div class="center-full-image">', "</div>"),
     "figure-cfi": ('<figure class="center-full-image">', "</figure>"),
     "div-csi": ('<div class="center-small-image">', "</div>"),
     "float-260": (
         '<div style="float:right;width:260px;max-width:40%;margin-left:24px;'
         'margin-bottom:16px">',
+        "</div>",
+    ),
+    "box-420": (
+        '<div style="max-width:420px;margin:0 auto var(--base-line-height)">',
+        "</div>",
+    ),
+    "box-26rem": (
+        '<div style="max-width:26rem;margin:0 auto var(--base-line-height)">',
         "</div>",
     ),
     "float-300": (
@@ -366,7 +388,9 @@ def anthus_image_wrap(wrap) -> str:
     the box height from the sizer ``div`` (a transparent SVG of the source's
     aspect ratio), so that element is load-bearing.
     """
-    layout, _, wrapper = (wrap.layout or "").partition("@")
+    # No authored layout: gatsby-plugin-image adds no extra class (Papyrus's
+    # own default layout name, `inline`, is not a production class).
+    layout, _, wrapper = (wrap.request.layout and wrap.layout or "").partition("@")
     sizer = _sizer(wrap.width, wrap.height) if wrap.width and wrap.height else ""
     markup = (
         f'<div class="gatsby-image-wrapper gatsby-image-wrapper-constrained {layout}">'
@@ -445,6 +469,7 @@ class ArticleHeading:
     date: str = ""
     authors_html: str = ""
     assistants_html: str = ""
+    repository: str = ""
     draft: bool = False
 
     def html(self) -> str:
@@ -455,6 +480,13 @@ class ArticleHeading:
             parts.append(f'<div class="authors">{self.authors_html}</div>')
         if self.assistants_html:
             parts.append(f'<div class="assistants">{self.assistants_html}</div>')
+        if self.repository:
+            label = re.sub(r"^https?://(www\.)?github\.com/", "", self.repository)
+            parts.append(
+                '<div class="repository"><span class="byline">code and data at </span>'
+                f'<a href="{html.escape(self.repository, quote=True)}" target="_blank" '
+                f'rel="noopener noreferrer">{html.escape(label)}</a></div>'
+            )
         heading = '<div class="heading">' + "".join(parts) + "</div>"
         if self.draft:
             # Production renders a diagonal watermark over the whole article
@@ -512,6 +544,21 @@ def _joined(entries: list[str], css: str) -> str:
     return "".join(out)
 
 
+#: `src/components/engage-cta.jsx`, rendered; last child of `<article>` for
+#: posts tagged `client-acquisition`.
+ENGAGE_CTA_HTML = (
+    '<div class="engage-cta-module--box--92c7c">'
+    '<h2 class="engage-cta-module--heading--f8246">We do this for clients, at scale</h2>'
+    '<p class="engage-cta-module--text--60ac0">Anthus has run this kind of loop in '
+    "production for years: reviewers correct the model and say why, the explanation "
+    "becomes policy, and the system gets more trustworthy month over month across "
+    "hundreds of scorecards and millions of interactions. Bring us the judgment task "
+    "and we&#x27;ll run it on Plexus with your reviewers in the loop, and hand you a "
+    "scorecard you can inspect after the first month.</p>"
+    '<a class="button" href="/engage/">See how an engagement works</a></div>'
+)
+
+
 def article_heading(node) -> ArticleHeading:
     """`blog-post.jsx`'s heading, from a discovered content node."""
     front = node.front_matter
@@ -539,5 +586,6 @@ def article_heading(node) -> ArticleHeading:
         date=node.display_date,
         authors_html=authors_html,
         assistants_html=assistants_html,
+        repository=str(front.get("repository") or ""),
         draft=not node.published,
     )
