@@ -59,6 +59,7 @@ from papyrus_content.markus_renderer.build import build_markus_site  # noqa: E40
 from papyrus_content.markus_renderer.citations import CitationRendering  # noqa: E402
 from papyrus_content.markus_renderer.images import (  # noqa: E402
     DEFAULT_LAYOUT_SIZES,
+    FADE_IN_SCRIPT,
     ImagePipeline,
 )
 from papyrus_content.markus_renderer.shell import (  # noqa: E402
@@ -98,7 +99,7 @@ STAGING = _BUILD_DIR / "staging"
 DIST = _BUILD_DIR / "dist-papyrus"
 #: Generated image renditions, kept OUTSIDE both `STAGING` and `DIST` because
 #: this script wipes the first and `build_markus_site` wipes the second. Put it
-#: on the CI cache path; a cold build is ~230 sources x 6 widths x 2 formats.
+#: on the CI cache path; a cold build is ~230 sources x several widths x AVIF+WebP, which is slow.
 IMAGE_CACHE = _BUILD_DIR / ".image-cache"
 
 # ---- Papyrus content-markup capabilities (docs/markus-content-markup.md) ---
@@ -115,19 +116,19 @@ IMAGE_CACHE = _BUILD_DIR / ".image-cache"
 # instead, so `::image{}` is the only responsive path. Making them responsive
 # too would mean giving the pipeline a second source root.
 #
-# `widths`/`max_width` are capped at 1366 on purpose. Every layout's `sizes`
-# tops out at 48rem (768 CSS px), so a browser never asks for more than ~1536
-# px even at 2x DPR, and the pipeline otherwise also offers each source's own
-# intrinsic width -- the originals here run to 26 MB and several thousand
-# pixels. The cap matters more than it looks: the source format is always
-# emitted as the <picture> fallback, so each PNG rendition ships at PNG size
-# (290 MB of PNG against 38 MB of WebP for the same renditions at a 1920 cap),
-# and the artifact is uploaded as a zip.
+# `gatsby_parity=True` makes the pipeline emit what gatsby-plugin-image does on
+# live anth.us: AVIF + WebP (needs Pillow>=11.3 for AVIF) at gatsby's
+# breakpoints up to each source's own width. That is slow cold (AVIF up to
+# 4096 px), hence the cache below. `placeholder=None` matches live (empty
+# placeholder div, no blur-up); `eager_first=1000` matches live's eager loading.
 IMAGES = ImagePipeline(
     source_dir=CONTENT_SUBMODULE,
     cache_dir=IMAGE_CACHE,
-    widths=(480, 768, 1024, 1366),
-    max_width=1366,
+    # gatsby-plugin-image parity: AVIF + WebP at gatsby's breakpoints, source
+    # width as the cap, live's eager/lazy split, no blurred placeholder.
+    gatsby_parity=True,
+    placeholder=None,
+    eager_first=1000,
     upgrade_plain_images=False,
     # gatsby-plugin-image's constrained DOM, which the production stylesheet
     # positions absolutely; see anthus_dom.anthus_image_wrap.
@@ -162,8 +163,13 @@ def _render_masthead(ctx: PageContext) -> str:
 
 
 def _render_body(ctx: PageContext, parts: BodyParts) -> str:
+    # Papyrus's main images start at opacity 0 (gatsby-plugin-image's own
+    # behaviour); without the fade-in script they would never appear.
+    scripts = parts.scripts
+    if "data-main-image" in ctx.fragment:
+        scripts += f"<script>{FADE_IN_SCRIPT}</script>"
     return dom.render_envelope(
-        fragment=ctx.fragment, route=_route(ctx.active_href), scripts=parts.scripts
+        fragment=ctx.fragment, route=_route(ctx.active_href), scripts=scripts
     )
 
 

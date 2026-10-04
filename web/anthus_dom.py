@@ -384,10 +384,25 @@ def anthus_image_wrap(wrap) -> str:
     # No authored layout: gatsby-plugin-image adds no extra class (Papyrus's
     # own default layout name, `inline`, is not a production class).
     layout, _, wrapper = (wrap.request.layout and wrap.layout or "").partition("@")
-    sizer = _sizer(wrap.width, wrap.height) if wrap.width and wrap.height else ""
+    sizer = ""
+    if wrap.width and wrap.height:
+        shown = wrap.display_width or wrap.width
+        sizer = _sizer(shown, round(wrap.height * shown / wrap.width))
+    # Live emits an empty aria-hidden placeholder div (no blur-up); the fade-in
+    # script hides it once the main image decodes. A real placeholder, if the
+    # pipeline is ever configured with one, goes in as an <img>.
+    placeholder_style = 'style="opacity:1;transition:opacity 500ms linear"'
+    if wrap.placeholder:
+        placeholder = (
+            f'<img aria-hidden="true" data-placeholder-image="" alt="" '
+            f'src="{html.escape(wrap.placeholder, quote=True)}" {placeholder_style}>'
+        )
+    else:
+        placeholder = f'<div aria-hidden="true" data-placeholder-image="" {placeholder_style}></div>'
     markup = (
-        f'<div class="gatsby-image-wrapper gatsby-image-wrapper-constrained {layout}">'
-        f"{sizer}{wrap.inner}</div>"
+        '<div data-gatsby-image-wrapper="" '
+        f'class="gatsby-image-wrapper gatsby-image-wrapper-constrained {layout}">'
+        f"{sizer}{placeholder}{wrap.inner}<noscript>{wrap.inner}</noscript></div>"
     )
     caption = (wrap.request.caption or "").strip()
     if wrapper:
