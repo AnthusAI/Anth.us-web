@@ -616,9 +616,40 @@ def _mdx_flow_paragraphs(markup: str) -> str:
     stack: list[tuple[bool, bool]] = []  # (content is flow, `<p>` rewritten to `<div>`)
 
     def flush() -> None:
-        if buffer:
-            out.append("<p>" + " ".join(buffer) + "</p>")
-            buffer.clear()
+        # Markdown flow: text lines become a paragraph; `1. ` / `- ` lines
+        # become a list (one item per line), as MDX renders them.
+        paragraph: list[str] = []
+        items: list[str] = []
+        kind = ""
+
+        def close_paragraph() -> None:
+            if paragraph:
+                out.append("<p>" + " ".join(paragraph) + "</p>")
+                paragraph.clear()
+
+        def close_list() -> None:
+            nonlocal kind
+            if items:
+                out.append(f"<{kind}>" + "".join(f"<li>{i}</li>" for i in items) + f"</{kind}>")
+                items.clear()
+                kind = ""
+
+        for text in buffer:
+            ordered = re.match(r"\d+\.\s+(.*)", text)
+            bullet = re.match(r"[-*]\s+(.*)", text)
+            if ordered or bullet:
+                close_paragraph()
+                want = "ol" if ordered else "ul"
+                if kind and kind != want:
+                    close_list()
+                kind = want
+                items.append((ordered or bullet).group(1))
+            else:
+                close_list()
+                paragraph.append(text)
+        close_paragraph()
+        close_list()
+        buffer.clear()
 
     for line in markup.split("\n"):
         stripped = line.strip()
@@ -627,7 +658,7 @@ def _mdx_flow_paragraphs(markup: str) -> str:
             continue
         in_flow = bool(stack and stack[-1][0])
         if not stripped.startswith(("<", "\x01")) or (
-            _INLINE_START_RE.match(stripped) and (buffer or in_flow)
+            _INLINE_START_RE.match(stripped) and buffer
         ):
             if in_flow:
                 buffer.append(stripped)
@@ -649,7 +680,7 @@ def _mdx_flow_paragraphs(markup: str) -> str:
             and not tags[0].group(3)
         )
         if convert:
-            line = line.replace("<p", "<div", 1)
+            line = line.replace("<p", "<pconv", 1)
         elif (
             alone
             and tags[0].group(1)
@@ -657,7 +688,7 @@ def _mdx_flow_paragraphs(markup: str) -> str:
             and stack
             and stack[-1][1]
         ):
-            line = line.replace("</p>", "</div>")
+            line = line.replace("</p>", "</pconv>")
         out.append(line)
         for tag in tags:
             closing, name, selfclosing = tag.group(1), tag.group(2).lower(), tag.group(3)
@@ -669,7 +700,14 @@ def _mdx_flow_paragraphs(markup: str) -> str:
             else:
                 stack.append((tag.end() == len(stripped), convert))
     flush()
-    return "\n".join(out)
+    text = "\n".join(out)
+
+    def settle(m: re.Match[str]) -> str:
+        # Only a `<p>` that really ended up holding a paragraph becomes a `<div>`.
+        tag = "div" if "<p>" in m.group(2) else "p"
+        return f"<{tag}{m.group(1)}>{m.group(2)}</{tag}>"
+
+    return re.sub(r"<pconv\b([^>]*)>(.*?)</pconv>", settle, text, flags=re.S)
 
 
 #: JSX camelCase props that are kebab-case in SVG/HTML attributes. Others that
@@ -782,6 +820,27 @@ def _convert_picture_blocks(text: str) -> str:
         return "\n\n" + block_sentinel(markup) + "\n\n"
 
     return _PICTURE_RE.sub(repl, text)
+
+
+_STYLED_P_RE = re.compile(
+    r"^<p\s+style=\{\{(?P<style>[^}]*)\}\}\s*>(?P<text>[^<{}]*?)</p>[ \t]*$", re.M | re.S
+)
+
+
+def _convert_styled_paragraphs(text: str) -> str:
+    """`<p style={{...}}>plain text</p>` (the italic captions under diagrams).
+
+    The inline style is the layout (`margin-top:-1em` pulls the caption up under
+    its figure); the generic unwrap used to drop it. Plain text only: anything
+    with markup or an expression is left to the generic path.
+    """
+
+    def repl(m: re.Match[str]) -> str:
+        css = _JSX_STYLE_RE.sub(_jsx_style_to_css, "style={{" + m.group("style") + "}}")
+        body = _html.escape(re.sub(r"\s+", " ", m.group("text")).strip(), quote=False)
+        return "\n\n" + block_sentinel(f"<p {css}>{body}</p>") + "\n\n"
+
+    return _STYLED_P_RE.sub(repl, text)
 
 
 def _convert_jsx_diagrams(text: str, report: ConversionReport) -> str:
@@ -1112,6 +1171,7 @@ def normalize_body(
     text = _IMPORT_RE.sub("", text)
     text = _JSX_EXPR_RE.sub("", text)
 
+    text = _convert_styled_paragraphs(text)
     text = _convert_pre_blocks(text)
     text = _convert_picture_blocks(text)
     text = _convert_jsx_diagrams(text, report)

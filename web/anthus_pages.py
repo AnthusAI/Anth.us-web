@@ -117,7 +117,8 @@ def _excerpt_container(tag: str, attrs: str, excerpt: str) -> str:
     changes the geometry. Excerpts that are plain inline text stay a `<p>`.
     """
     if _BLOCK_TAG_RE.search(excerpt):
-        style = ' style="margin-bottom:calc(var(--space-4)/2)"'
+        # A `<div>` excerpt wrapper (`tag == "div"`) has no `p` margin to keep.
+        style = ' style="margin-bottom:calc(var(--space-4)/2)"' if tag == "p" and not attrs else ""
         return f"<div{attrs}{style}>{excerpt}</div>"
     return f"<{tag}{attrs}>{excerpt}</{tag}>"
 
