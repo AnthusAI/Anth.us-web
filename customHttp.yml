@@ -2,14 +2,13 @@
 # A customHttp.yml in the repo root overrides console-configured headers.
 # Patterns must NOT start with a slash (Amplify Hosting quirk).
 #
-# STAGING: X-Robots-Tag belts-and-braces the per-page `<meta name="robots">`
-# and the Disallow-all robots.txt the build emits. This app is a review copy
-# of a live marketing site; it must never be indexed.
+# NO X-Robots-Tag here, deliberately (PPY-f1f0a8). This file is app-wide: any
+# Amplify app connected to this repo would apply it, including a production app
+# serving anth.us from `main`. The noindex header lives in the STAGING app's own
+# configuration (AMPLIFY_APP_ID, `aws amplify update-app --custom-headers`) and
+# stays there permanently. Per-page noindex, robots.txt and the staging note are
+# build-time and follow SITE_ENV; see AGENTS.md "Environment switch".
 customHeaders:
-  - pattern: "**"
-    headers:
-      - key: X-Robots-Tag
-        value: "noindex, nofollow"
   - pattern: "**/*.html"
     headers:
       - key: Cache-Control
@@ -20,7 +19,7 @@ customHeaders:
         value: "public, max-age=0, s-maxage=60, must-revalidate"
   # Asset filenames are NOT content-hashed (an image keeps its authored name),
   # so `immutable` would pin a stale image for a year. One hour is enough to
-  # help a browse session without fighting iteration on a staging site.
+  # help a browse session without fighting iteration.
   - pattern: "assets/**"
     headers:
       - key: Cache-Control

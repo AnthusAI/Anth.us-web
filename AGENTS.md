@@ -18,12 +18,12 @@ reader site. It is not the live marketing site.
   `anth.us`. Review happens on the default `*.amplifyapp.com` hostname.
   Promotion to a domain is an explicit decision Ryan makes after reviewing the
   port — not an agent's call.
-* Keep the staging notice in `README.md`, the visible staging note in the
-  footer (`_STAGING_NOTE` in `web/anthus_dom.py`; the theme is now the compiled
-  production stylesheet, which has no banner rule, so the footer note is the
-  visible marker), the `noindex` robots meta that `build_via_papyrus.finish_pages`
-  requires on every page, and the `noindex` headers in `customHttp.yml`. They
-  exist so nobody mistakes this for production. Do not quietly remove them.
+* The staging guards are **automatic and fail-safe**; see
+  [Environment switch](#environment-switch-site_env). Never hand-edit a guard
+  out to "go live" -- set `SITE_ENV=production` on the production build and
+  the build removes them itself (and fails if any survive). Keep the staging
+  notice in `README.md` and the staging banner in `web/css/anthus-theme.css`
+  (`body.markus-site::before`).
 
 ## Read-only boundaries
 
@@ -210,14 +210,71 @@ assumed:
 ### Manual deployment caveat: customHttp.yml does not apply
 
 `customHttp.yml` is only read by Amplify during a **repo-connected CI build**.
-A manual deployment ships only the artifact, so the file is never seen. The
-same headers are therefore also set on the app itself
-(`aws amplify update-app --custom-headers …`) and `X-Robots-Tag: noindex` is
-verified live. If the repo is later connected, `customHttp.yml` takes over —
-keep the two in sync, and keep `noindex` in both.
+A manual deployment ships only the artifact, so the file is never seen.
+`customHttp.yml` is **app-wide** (every branch of whichever app is connected to
+this repo), so it carries **only cache headers and never `X-Robots-Tag`**:
+if it did, a production app connected to `main` would ship a noindex header.
 
-Each page also carries `<meta name="robots" content="noindex, nofollow">` and
-`robots.txt` is `Disallow: /`, so indexing is blocked three independent ways.
+`X-Robots-Tag: noindex, nofollow` is instead **app configuration on the staging
+app** (`aws amplify update-app --app-id AMPLIFY_APP_ID --custom-headers ...`),
+kept there permanently as a safety net, and verified live by
+`bin/check-guards.py`. Caveat: if the staging app is ever connected to this
+repo, `customHttp.yml` overrides console headers and the app-level
+`X-Robots-Tag` would disappear -- re-run `bin/check-guards.py` after connecting.
+
+### Environment switch (`SITE_ENV`)
+
+`web/site_env.py` reads `SITE_ENV` once (hooks in `build_via_papyrus.py` and
+`anthus_dom.py` only call into it). The build prints the resolved mode and
+origin first.
+
+| Condition | Mode |
+| --- | --- |
+| `SITE_ENV=production` and `AWS_BRANCH` unset or `main` | **production** |
+| `SITE_ENV=production`, `AWS_BRANCH` is another branch | guarded + loud warning |
+| `SITE_ENV` unset / `staging` / `local` / ... | guarded |
+| any other `SITE_ENV` value (typos, `Production`) | guarded + warning |
+
+| | guarded (default) | production |
+| --- | --- | --- |
+| origin (canonical, og:url, sitemaps) | `https://<AWS_BRANCH>.<AWS_APP_ID>.amplifyapp.com`, else `ANTHUS_SITE_ORIGIN`, else `http://localhost:8080` | `https://anth.us` (fixed) |
+| `<meta name="robots" content="noindex, nofollow">` | every page | none |
+| footer staging note | yes | no |
+| `robots.txt` | `Disallow: /` | `Allow: /` + `Sitemap: https://anth.us/sitemap-index.xml` (matches live) |
+| analytics (`analytics_enabled`) | off | on (TODO: wired to Papyrus's analytics capability when it lands; the decision is `site_env.ENV.analytics_enabled`) |
+
+Both modes publish `/sitemap-index.xml` (a sitemapindex) and `/sitemap-0.xml`
+(the urlset of canonical 200 pages, no 404) -- the same URLs live anth.us
+serves -- plus `<link rel="sitemap" href="/sitemap-index.xml">` on every page.
+There is no `/sitemap.xml`.
+
+**Build-time assertions** (end of the build, over every written HTML page; the
+build fails with a list of offenders): production -- origin is
+`https://anth.us`, no robots noindex, no staging note, canonical/og:url on
+`https://anth.us`; guarded -- every page has noindex and the staging note, no
+analytics, canonical on the guarded origin; both -- `robots.txt` matches the
+mode, sitemaps are valid XML and every `<loc>` is a file in the output.
+Tests: `python3 tests/test_site_env.py`.
+
+**Verify a deployed host** (read-only GETs):
+
+```bash
+python3 bin/check-guards.py https://staging.AMPLIFY_APP_ID.amplifyapp.com --expect guarded
+python3 bin/check-guards.py https://<production-host> --expect production
+```
+
+Guarded expects the `X-Robots-Tag` header present; production expects it
+absent. Exits non-zero on any mismatch. `--no-sitemap` skips the sitemap checks
+for a host still serving a pre-sitemap-index build.
+
+**Topology (recommended, NOT yet confirmed by Ryan; the code is
+topology-independent):** two Amplify apps. The existing staging app
+(`AMPLIFY_APP_ID`) keeps `X-Robots-Tag` permanently and never sets
+`SITE_ENV=production`. A separate production app for anth.us, connected to
+`main`, sets the environment variable `SITE_ENV=production` and never has the
+`X-Robots-Tag` header. Cutover is then a domain association on the production
+app, with no code edits; run `check-guards.py --expect production` against it
+first. Do not create that app or any domain from this repo without Ryan.
 
 ### Known quirk: the 404 rule
 
@@ -227,18 +284,22 @@ status. Acceptable for a staging review site; revisit before any promotion.
 
 ### Canonical URLs
 
-`build_via_papyrus.py` derives `SITE_ORIGIN` from `AWS_APP_ID`/`AWS_BRANCH`,
-which Amplify injects during a CI build. A **local** build has neither, so it
-falls back to `http://localhost:8080` — which is what then ships in
-`<link rel="canonical">` and `og:url`. When deploying manually, build with:
+The origin comes from the [environment switch](#environment-switch-site_env):
+production is always `https://anth.us`; guarded builds derive it from
+`AWS_APP_ID`/`AWS_BRANCH` (injected by Amplify CI). A **local** build has
+neither, so it falls back to `http://localhost:8080`, which would ship in
+`<link rel="canonical">` and `og:url`. When deploying manually to staging,
+build with:
 
 ```bash
 ANTHUS_SITE_ORIGIN=https://staging.AMPLIFY_APP_ID.amplifyapp.com \
   PAPYRUS_ROOT=/Users/home/Projects/Papyrus python3 web/build_via_papyrus.py
 ```
 
+(Do **not** set `SITE_ENV=production` for a manual staging build.)
+
 `amplify.yml` is committed and correct, so connecting the repository in the
-console (Amplify → this app → Hosting → Connect repository, pick
+console (Amplify -> this app -> Hosting -> Connect repository, pick
 `AnthusAI/Anth.us-Papyrus`, branch `staging`) switches it to CI builds with no
 code change. That is a one-click step for a human.
 
