@@ -225,6 +225,16 @@
     "status": "301"
   },
   {
+    "source": "/blog/an-agent-skill-for-not-sounding-like-ai/",
+    "target": "/articles/an-agent-skill-for-not-sounding-like-an-agent/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/an-agent-skill-for-not-sounding-like-ai/index.html",
+    "target": "/articles/an-agent-skill-for-not-sounding-like-an-agent/",
+    "status": "301"
+  },
+  {
     "source": "/blog/architecture/",
     "target": "/tags/architecture/",
     "status": "301"
@@ -395,6 +405,16 @@
     "status": "301"
   },
   {
+    "source": "/blog/inspected-by-sticker/",
+    "target": "/articles/inspected-by-pudicus/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/inspected-by-sticker/index.html",
+    "target": "/articles/inspected-by-pudicus/",
+    "status": "301"
+  },
+  {
     "source": "/blog/integrations/",
     "target": "/tags/integrations/",
     "status": "301"
@@ -502,6 +522,16 @@
   {
     "source": "/blog/project%20management/index.html",
     "target": "/tags/project-management/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/pudicus/",
+    "target": "/articles/inspected-by-pudicus/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/pudicus/index.html",
+    "target": "/articles/inspected-by-pudicus/",
     "status": "301"
   },
   {
