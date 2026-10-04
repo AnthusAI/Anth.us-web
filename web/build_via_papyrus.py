@@ -874,7 +874,7 @@ def main() -> int:
     print(f"\nLegacy URL redirects (Amplify customRules -> {CUSTOM_RULES}):")
     for group, count in sorted(ruleset.counts.items(), key=lambda kv: -kv[1]):
         print(f"    {count:5d}  {group}")
-    print(f"    {1:5d}  catch-all 404 (pre-existing, kept last)")
+    print(f"    {1:5d}  catch-all 404-200 (real 404 with custom page, kept last)")
     if ruleset.skipped:
         print(
             f"  {len(ruleset.skipped)} legacy URL(s) need no rule of their own; "
