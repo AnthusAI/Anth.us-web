@@ -139,9 +139,8 @@ CITATIONS = CitationRendering()
 # --- SITE_ENV guards (PPY-f1f0a8): all logic lives in site_env.py -----------
 ENV = site_env.ENV
 SITE_ORIGIN = ENV.origin
-# TODO(analytics): pass ENV.analytics_enabled to Papyrus's Markus analytics
-# capability (provider config for live anth.us) once it lands. Off unless production.
-ANALYTICS_ENABLED = ENV.analytics_enabled
+# Live anth.us GA4 property. Emitted (with the owner opt-out) only in production.
+GA_MEASUREMENT_ID = "G-31SC26SDGX"
 
 
 # --------------------------------------------------------------------------
@@ -185,6 +184,8 @@ ANTHUS_CHROME = SiteChrome(
     asset_root="/",
     render_masthead=_render_masthead,
     render_body=_render_body,
+    ga_measurement_id=GA_MEASUREMENT_ID if ENV.analytics_enabled else None,
+    ga_owner_opt_out=ENV.analytics_enabled,
 )
 
 #: Markus -> production class vocabulary for converted content bodies.
