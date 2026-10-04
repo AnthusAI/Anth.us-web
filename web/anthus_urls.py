@@ -427,11 +427,6 @@ def _creator_path(node) -> str | None:
 # Amplify customRules
 # --------------------------------------------------------------------------
 
-#: Kept last; every generated rule has to come before it or an unmatched legacy
-#: URL 404s instead of redirecting. Status MUST be "404-200": measured on
-#: Amplify (PPY-fdb5e9), "404-200" serves 404.html AT the requested URL with
-#: HTTP 404, while plain "404" answers 302 -> /404.html (200), and having no
-#: catch-all at all gives a real 404 with an EMPTY body.
 BENCHMARK_SUBDOMAIN_ORIGIN = "https://biased-decisions.anth.us"
 
 BENCHMARK_SUBDOMAIN_REDIRECT_RULES = (
@@ -444,6 +439,11 @@ BENCHMARK_SUBDOMAIN_REDIRECT_RULES = (
     },
 )
 
+#: Kept last; every generated rule has to come before it or an unmatched legacy
+#: URL 404s instead of redirecting. Status MUST be "404-200": measured on
+#: Amplify (PPY-fdb5e9), "404-200" serves 404.html AT the requested URL with
+#: HTTP 404, while plain "404" answers 302 -> /404.html (200), and having no
+#: catch-all at all gives a real 404 with an EMPTY body.
 CATCH_ALL_RULE = {"source": "/<*>", "target": "/404.html", "status": "404-200"}
 
 
