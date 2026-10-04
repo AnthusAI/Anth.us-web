@@ -97,6 +97,8 @@ _BUILD_DIR = Path(os.environ["ANTHUS_BUILD_DIR"]).resolve() if os.environ.get("A
 SITE_ASSETS = POD_ROOT / "assets" / "site"
 STAGING = _BUILD_DIR / "staging"
 DIST = _BUILD_DIR / "dist-papyrus"
+#: Files copied verbatim to the dist root (see `copy_static_root`).
+STATIC_ROOT = _BUILD_DIR / "static-root"
 #: Generated image renditions, kept OUTSIDE both `STAGING` and `DIST` because
 #: this script wipes the first and `build_markus_site` wipes the second. Put it
 #: on the CI cache path; a cold build is ~230 sources x several widths x AVIF+WebP, which is slow.
@@ -715,6 +717,23 @@ def staged_page_hrefs() -> set[str]:
     return hrefs
 
 
+def copy_static_root(out_dir: Path) -> int:
+    """Copy `web/static-root/` to the dist root, byte for byte.
+
+    Live serves the Gatsby manifest and icons at the site root
+    (`/favicon-32x32.png`, `/icons/*`, `/manifest.webmanifest`), and installed
+    PWAs / home-screen shortcuts still request them there.
+    """
+    count = 0
+    for path in sorted(STATIC_ROOT.rglob("*")):
+        if path.is_file():
+            target = out_dir / path.relative_to(STATIC_ROOT)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, target)
+            count += 1
+    return count
+
+
 def relocate_pages(result) -> int:
     """Move Papyrus's rendered pages to their canonical output locations.
 
@@ -846,6 +865,7 @@ def main() -> int:
 
     finish_pages(result)
     moved = relocate_pages(result)
+    copy_static_root(result.out_dir)
     ruleset = write_custom_rules(_SITE_URLS)
     redirects = len(ruleset.rules)
 

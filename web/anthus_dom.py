@@ -132,7 +132,17 @@ _FONTS = (
 
 #: Markup placed after ``</title>`` by ``SiteChrome.head_html``.
 HEAD_HTML = (
-    '<link rel="icon" href="/assets/site/favicon-32x32.png" type="image/png">\n'
+    # Same tags, same order and same `?v=` as the live Gatsby head.
+    '<link rel="icon" href="/favicon-32x32.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50" type="image/png"/>\n'
+    '<link rel="manifest" href="/manifest.webmanifest" crossorigin="anonymous"/>\n'
+    '<link rel="apple-touch-icon" sizes="48x48" href="/icons/icon-48x48.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
+    '<link rel="apple-touch-icon" sizes="72x72" href="/icons/icon-72x72.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
+    '<link rel="apple-touch-icon" sizes="96x96" href="/icons/icon-96x96.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
+    '<link rel="apple-touch-icon" sizes="144x144" href="/icons/icon-144x144.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
+    '<link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
+    '<link rel="apple-touch-icon" sizes="256x256" href="/icons/icon-256x256.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
+    '<link rel="apple-touch-icon" sizes="384x384" href="/icons/icon-384x384.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
+    '<link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512x512.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
     f'<link href="{_FONTS}" rel="stylesheet">\n'
 )
 
