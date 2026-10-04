@@ -30,7 +30,7 @@ whole <ul> element(s)) and it is concatenated in place:
     ai_solutions_html(engagements=...): <ul class="blog"> under <h2>Engagements</h2>: the client-work posts (the same blog-post-preview items as /blog/ featured lists, <li class="clear-float"> with a gatsby-image className="featured")
     ai_solutions_html(projects=...): <ul class="platform-module--grid--279c8"> under <h2>Projects and examples</h2>: research-cards.jsx cards (platform-module--card, research-cards-module--imageLink headline image) for the smaller builds/spinoffs/worked examples
     ai_solutions_html(integrations=...): the index-module--list <ul> under <h2>Integrations</h2> (Paytronix ... Marketo)
-    ryan_html(portfolio=...): TWO adjacent index-module--list <ul>s under <h2>Portfolio</h2>: the featured set (B0rd ... Call Criteria, smallImageList) immediately followed by the portfolio set (Plexus ... Checkout Driver)
+    ryan_html(portfolio=...): TWO adjacent index-module--list <ul>s under <h2>Portfolio</h2>: the featured set (B0rd ... Call Criteria, smallImageList) immediately followed by the portfolio set (Primus ... Checkout Driver)
     ryan_html(integrations=...): the index-module--list <ul> under <h2>Integrations</h2>
     reading_html(featured=...): <ul class="blog"> of the 4 newest published posts tagged 'reading' (collection.jsx featured items)
     reading_html(earlier=...): <ul class="platform-module--grid--279c8"> of the next 8 (research-cards.jsx)
@@ -120,7 +120,7 @@ _ABOUT_0 = (
     '<p>When we started using AI to write the code and make the decisions, the chat way of working broke under the volume. A person had to sit there keeping the agents going or the whole process stopped, and a person had to hold in their head what was happening across every parallel session in every project for every client, because nothing else did. The low point is on the record, like everything else we do.</p>'
     '<blockquote class="twitter-tweet" data-dnt="true">'
     '<p lang="en" dir="ltr">Stupid new nightly routine that I never wanted: Pasting &quot;Continue.&quot; into Codex 20 times in a row before I go to bed, in four different sessions. I will look back at this like black and white television. Rotary phone dials.</p>— Ryan Porter (@RyanAlynPorter) <a href="https://x.com/RyanAlynPorter/status/2019302489011696010">February 5, 2026, 1:50 AM</a></blockquote>'
-    '<p>So we stopped being the loop. <a href="/platform/tactus">Tactus</a> names the three ways a person can be in the loop, supervised, unattended, and asynchronous, and makes the third one something you can program, so an agent runs on its own and interrupts a human only at a decision point. <a href="/platform/kanbus">Kanbus</a> is the memory that lets work move between Claude Code, Codex, or whatever comes next, because we&#x27;ve held since 2023 that <a href="/blog/a-world-with-no-moats">models are commodities</a>. <a href="/platform/plexus">Plexus</a> is the scorecard where reviewers correct a decision model&#x27;s verdicts and their explanations become policy. We ran all of it on our own work first, in public.</p>'
+    '<p>So we stopped being the loop. <a href="/platform/tactus">Tactus</a> names the three ways a person can be in the loop, supervised, unattended, and asynchronous, and makes the third one something you can program, so an agent runs on its own and interrupts a human only at a decision point. <a href="/platform/kanbus">Kanbus</a> is the memory that lets work move between Claude Code, Codex, or whatever comes next, because we&#x27;ve held since 2023 that <a href="/blog/a-world-with-no-moats">models are commodities</a>. <a href="/platform/primus">Primus</a> is the scorecard where reviewers correct a decision model&#x27;s verdicts and their explanations become policy. We ran all of it on our own work first, in public.</p>'
     '<h2>How We Build Today</h2>'
     '<p>The AI era doesn’t remove the need for operational excellence—it raises the stakes. We use a cybernetic approach: clear intent, layered safeguards, and production feedback loops that continuously harden the system. Delegating the work turned out to be easy; observing it is the whole job. Read more in <a href="/blog/cybernetic-development">Cybernetic Development</a>.</p>'
     '<h2>Spinoffs</h2>'
@@ -146,9 +146,9 @@ _ABOUT_0 = (
     '<dt>Services</dt>'
     '<dd>LLM fine-tuning, agentic AI, MLOps and LLMOps, serverless architecture, AI-assisted operations</dd>'
     '<dt>Track record</dt>'
-    '<dd>Team together for over a decade; revenue-critical platforms in continuous operation since 2007; a call-center QA classifier lab run on Plexus for years, across hundreds of scorecards and millions of interactions</dd>'
+    '<dd>Team together for over a decade; revenue-critical platforms in continuous operation since 2007; a call-center QA classifier lab run on Primus for years, across hundreds of scorecards and millions of interactions</dd>'
     '<dt>Platform</dt>'
-    '<dd>Plexus, an MLOps platform</dd>'
+    '<dd>Primus, an MLOps platform</dd>'
     '<dt>Spinoff</dt>'
     '<dd>Anthus Microelectronics (B0rd LED-matrix desk display)</dd>'
     '<dt>Contact</dt>'
@@ -205,7 +205,7 @@ _AI_SOLUTIONS_2 = (
 # ai-solutions: after hole 'integrations' .. end of <main>
 _AI_SOLUTIONS_3 = (
     '<h2>The Process</h2>'
-    '<figure><a href="https://plexus.anth.us">'
+    '<figure><a href="https://primus.anth.us">'
     '<img src="/assets/site/Anthus AI Application Lifecycle.png" alt="AI Application Lifecycle"/></a></figure></div></article>'
 )
 
@@ -316,7 +316,7 @@ _ENGAGE_0 = (
     '<p>These are shapes engagements often take. They aren&#x27;t a menu. Most real problems don&#x27;t fit one box, and we take on AI solutions work of any kind.</p>'
     '<div class="engage-module--offerGrid--62f7b">'
     '<div class="engage-module--offerCard--61446">'
-    '<h3>Classifier lab on Plexus</h3>'
+    '<h3>Classifier lab on Primus</h3>'
     '<p>We take a high-volume judgment call your team already makes — a score, a flag, a routing decision — and turn it into a classifier with confidence gating: the model handles the clear cases and routes the rest to your reviewers. We&#x27;ve run this pattern for a call-center QA operation across years of production, hundreds of models, and millions of interactions, with expert feedback compounding into a data flywheel the whole time. You get that architecture, sized to your judgment task.</p></div>'
     '<div class="engage-module--offerCard--61446">'
     '<h3>Factory-run software project</h3>'
@@ -386,7 +386,7 @@ _DECISION_MODELS_0 = (
     '<dt>'
     '<h3>How do I align Jev to my own data?</h3></dt>'
     '<dd>'
-    '<p>Start classifying immediately, review the decisions as it makes them, and label the ones a reviewer disagrees with. Those labels refit the decision head and calibrate its confidence, and when disagreements keep coming, they tell you which question to add. That loop is far cheaper than building a labelled dataset before you start. <a href="/blog/plexus-classifier-lab/">Plexus Is a Classifier Lab</a>.</p></dd>'
+    '<p>Start classifying immediately, review the decisions as it makes them, and label the ones a reviewer disagrees with. Those labels refit the decision head and calibrate its confidence, and when disagreements keep coming, they tell you which question to add. That loop is far cheaper than building a labelled dataset before you start. <a href="/blog/primus-classifier-lab/">Primus Is a Classifier Lab</a>.</p></dd>'
     '<dt>'
     '<h3>Can you trust Jev&#x27;s confidence?</h3></dt>'
     '<dd>'
@@ -412,10 +412,10 @@ _DECISION_MODELS_0 = (
     '<li><strong>Change the questions when refits stall.</strong> Let the system read the disagreements and propose one question; a person approves it.</li>'
     '<li><strong>Gate every change by slice.</strong> Promote a version only when it clears held-out labels on every slice reviewers care about.</li>'
     '<li><strong>Distill when you&#x27;re ready to own it.</strong> Train a small model from the aligned system and ship it behind the same gate.</li></ol>'
-    '<p>Every step is a published experiment on the <a href="/research/">research page</a>, the public leaderboards are on the <a href="/benchmarks/">benchmarks page</a>, and <a href="/platform/plexus/">Plexus</a> is where we run the loop in production.</p></section>'
+    '<p>Every step is a published experiment on the <a href="/research/">research page</a>, the public leaderboards are on the <a href="/benchmarks/">benchmarks page</a>, and <a href="/platform/primus/">Primus</a> is where we run the loop in production.</p></section>'
     '<div class="engage-cta-module--box--92c7c">'
     '<h2 class="engage-cta-module--heading--f8246">We do this for clients, at scale</h2>'
-    '<p class="engage-cta-module--text--60ac0">Anthus has run this kind of loop in production for years: reviewers correct the model and say why, the explanation becomes policy, and the system gets more trustworthy month over month across hundreds of scorecards and millions of interactions. Bring us the judgment task and we&#x27;ll run it on Plexus with your reviewers in the loop, and hand you a scorecard you can inspect after the first month.</p><a class="button" href="/engage/">See how an engagement works</a></div></article>'
+    '<p class="engage-cta-module--text--60ac0">Anthus has run this kind of loop in production for years: reviewers correct the model and say why, the explanation becomes policy, and the system gets more trustworthy month over month across hundreds of scorecards and millions of interactions. Bring us the judgment task and we&#x27;ll run it on Primus with your reviewers in the loop, and hand you a scorecard you can inspect after the first month.</p><a class="button" href="/engage/">See how an engagement works</a></div></article>'
 )
 
 # benchmarks: start of <main> .. end of <main>
@@ -439,7 +439,7 @@ _BENCHMARKS_0 = (
     '<p>The articles that explain these findings are on the <a href="/research/">research page</a>, and the guide to aligning a decision model to your own data is <a href="/decision-models/">here</a>.</p></section>'
     '<div class="engage-cta-module--box--92c7c">'
     '<h2 class="engage-cta-module--heading--f8246">We do this for clients, at scale</h2>'
-    '<p class="engage-cta-module--text--60ac0">Anthus has run this kind of loop in production for years: reviewers correct the model and say why, the explanation becomes policy, and the system gets more trustworthy month over month across hundreds of scorecards and millions of interactions. Bring us the judgment task and we&#x27;ll run it on Plexus with your reviewers in the loop, and hand you a scorecard you can inspect after the first month.</p><a class="button" href="/engage/">See how an engagement works</a></div></article>'
+    '<p class="engage-cta-module--text--60ac0">Anthus has run this kind of loop in production for years: reviewers correct the model and say why, the explanation becomes policy, and the system gets more trustworthy month over month across hundreds of scorecards and millions of interactions. Bring us the judgment task and we&#x27;ll run it on Primus with your reviewers in the loop, and hand you a scorecard you can inspect after the first month.</p><a class="button" href="/engage/">See how an engagement works</a></div></article>'
 )
 
 

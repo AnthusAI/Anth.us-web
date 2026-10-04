@@ -28,7 +28,7 @@ corpus, which is more than the ``/blog/<slug>/`` one that is obvious from
 2. ``/blog/<tag>/``              — ``gatsby-node.js`` tag collections, sharing
    the ``/blog/`` namespace with (1). Where a tag and an article slug collide
    the **article** is what production serves (verified live on
-   ``/blog/plexus/``, ``/blog/sqlbot/``, ``/blog/call-criteria/``).
+   ``/blog/primus/``, ``/blog/sqlbot/``, ``/blog/call-criteria/``).
 3. ``/<file-stem>/`` and ``/solutions/<File-Stem>/`` —
    ``gatsby-plugin-page-creator`` is pointed at the content directory in
    ``gatsby-config.mjs``, so **every** MDX file also gets a URL derived from
