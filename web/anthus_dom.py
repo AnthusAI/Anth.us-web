@@ -40,6 +40,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+import site_env  # PPY-f1f0a8: SITE_ENV guards
+
 POD_ROOT = Path(__file__).resolve().parent
 
 # --------------------------------------------------------------------------
@@ -71,16 +73,7 @@ MENU_LINKS = (
 # is ever updated upstream (github:AnthusAI/anthus-footer).
 _FOOTER_SOURCE = POD_ROOT / "anthus_footer.html"
 
-# Staging guard. AGENTS.md requires a visible "this is not production" marker
-# in the footer; it is deliberately the smallest thing that still reads as a
-# notice, inside the footer's own dark band so it does not disturb layout
-# above it. Remove this only when the port is promoted.
-_STAGING_NOTE = (
-    '<div style="max-width:1120px;margin:1.25rem auto 0 auto;padding:0 1rem">'
-    '<p style="margin:0;font-size:0.78rem;line-height:1.5;font-weight:300;'
-    'color:#cbbfef">Staging preview of the Papyrus/Markus port of anth.us. '
-    "Not the production site.</p></div>"
-)
+# Staging note: text and on/off decision live in site_env (PPY-f1f0a8).
 
 
 def _footer_html() -> str:
@@ -88,7 +81,7 @@ def _footer_html() -> str:
     closing = "</footer>"
     if not markup.endswith(closing):
         raise RuntimeError(f"{_FOOTER_SOURCE} does not end with </footer>")
-    return markup[: -len(closing)] + _STAGING_NOTE + closing
+    return markup[: -len(closing)] + site_env.footer_note() + closing
 
 
 FOOTER_HTML = _footer_html()

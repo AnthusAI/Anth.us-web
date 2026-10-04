@@ -8,8 +8,17 @@
 # `npm run build` — this is a static WEB app, not the SSR/WEB_COMPUTE shape
 # used by Papyrus's own root amplify.yml. See Papyrus docs/site-hosting.md.
 #
-# STAGING: this app serves a review copy of the Anth.us port on its default
-# *.amplifyapp.com hostname. No custom domain is attached and none should be.
+# ENVIRONMENT SWITCH (PPY-f1f0a8): the build is GUARDED (noindex, staging note,
+# Disallow-all robots.txt, branch-host canonicals, no analytics) unless the app
+# sets the environment variable SITE_ENV=production AND builds branch `main`.
+# Do not set SITE_ENV on the staging app. The recommended (unconfirmed)
+# topology is a separate production app on `main` with SITE_ENV=production;
+# customHttp.yml is app-wide and therefore carries no X-Robots-Tag -- that
+# header is configuration of the staging app only. The build prints the
+# resolved mode first and fails if any page contradicts it. See AGENTS.md.
+#
+# The staging app serves a review copy of the Anth.us port on its default
+# *.amplifyapp.com hostname with no custom domain.
 
 version: 1
 frontend:
