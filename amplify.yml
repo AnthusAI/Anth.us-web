@@ -38,8 +38,10 @@ frontend:
         # pinned source clone is enough — no need to install Papyrus itself.
         # Reuse the checkout whenever the Amplify build cache restores it.
         - |
-          # AnthusAI/Papyrus develop @ 3fdd6fd (2026-10-03) -- the exact
+          # AnthusAI/Papyrus develop @ a39cb53 (2026-10-03) -- the exact
           # commit this build was developed and verified against locally.
+          # Includes #86 (Markus analytics), #89 (slug derivation) and #90
+          # (citeproc-py citations).
           # Bump deliberately, never float to a branch name: the renderer's
           # public surface (build_markus_site, SiteChrome and its
           # render_masthead/render_body hooks, FragmentTransform and the
@@ -53,7 +55,7 @@ frontend:
           # in, plus the page-shell seams and fragment transforms the exact
           # design-parity build needs. Anything older fails every article with
           # `Unknown directive 'image'` or lacks the SiteChrome hooks.
-          PAPYRUS_PIN=3fdd6fd8b819adf88a7c026bd362a0f3719e8ebd
+          PAPYRUS_PIN=a39cb534e6036636cb9c4f234d68c24d25a40162
           PAPYRUS_DIR="$PWD/.amplify-cache/papyrus-src"
           if [ ! -d "$PAPYRUS_DIR/.git" ]; then
             git clone --depth 1 https://github.com/AnthusAI/Papyrus.git "$PAPYRUS_DIR"
@@ -70,6 +72,8 @@ frontend:
         # not go through the pipeline — see anthus_content._copy_image.
         - pip install --cache-dir "$PWD/.amplify-cache/pip" "Pillow>=10,<12"
         - pip install --cache-dir "$PWD/.amplify-cache/pip" "PyYAML>=6"
+        # Papyrus #90 renders citations through citeproc-py.
+        - pip install --cache-dir "$PWD/.amplify-cache/pip" "citeproc-py>=0.8.2,<1"
     build:
       commands:
         # Always rebuild HTML clean; never restore web/dist-papyrus from cache.
