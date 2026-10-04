@@ -685,9 +685,6 @@ def finish_pages(result) -> None:
 # Canonical output shape
 # --------------------------------------------------------------------------
 
-#: Papyrus's collection discovery filter. A staged file it rejects is a page
-#: that silently never renders, so link resolution has to apply the same test.
-_PAPYRUS_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]*\.md$")
 _RENDERED_DIRS = ("articles", "platform")
 
 
@@ -695,7 +692,8 @@ def staged_page_hrefs() -> set[str]:
     """Predict the Papyrus hrefs this build renders.
 
     `build_markus_site` walks `articles/` plus the `platform` section and
-    accepts only `_PAGE_SLUG`-shaped filenames; everything in `GENERATED` is
+    renders every non-hidden `*.md` at `slugify(stem)` (Papyrus #89, which
+    replaced the old lowercase-only filename filter); everything in `GENERATED` is
     written by `write_generated`. Predicting the set here lets every internal
     link be resolved against real pages during rendering, and `main` then
     asserts the prediction against what was actually written -- which is how a
@@ -705,8 +703,8 @@ def staged_page_hrefs() -> set[str]:
     hrefs = set(GENERATED)
     for directory in _RENDERED_DIRS:
         for path in sorted((STAGING / directory).glob("*.md")):
-            if _PAPYRUS_SLUG_RE.match(path.name):
-                hrefs.add(f"{directory}/{path.stem}.html")
+            if not path.name.startswith(("_", ".")):
+                hrefs.add(f"{directory}/{markus_build.slugify(path.stem)}.html")
     return hrefs
 
 
