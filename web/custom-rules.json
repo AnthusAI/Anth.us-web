@@ -1076,12 +1076,12 @@
   },
   {
     "source": "/plexus-classifier-lab/",
-    "target": "/articles/plexus-classifier-lab/",
+    "target": "/articles/primus-classifier-lab/",
     "status": "301"
   },
   {
     "source": "/plexus-classifier-lab/index.html",
-    "target": "/articles/plexus-classifier-lab/",
+    "target": "/articles/primus-classifier-lab/",
     "status": "301"
   },
   {
@@ -1206,12 +1206,12 @@
   },
   {
     "source": "/solutions/Plexus/",
-    "target": "/articles/plexus/",
+    "target": "/articles/primus/",
     "status": "301"
   },
   {
     "source": "/solutions/Plexus/index.html",
-    "target": "/articles/plexus/",
+    "target": "/articles/primus/",
     "status": "301"
   },
   {
@@ -1771,12 +1771,12 @@
   },
   {
     "source": "/static/938fa1a535efcc9aa2aa1e8f4cd04f2d/4a064/plexus-classifier-lab.png",
-    "target": "/assets/content/images/plexus-classifier-lab.png",
+    "target": "/assets/content/images/primus-classifier-lab.png",
     "status": "301"
   },
   {
     "source": "/static/8140ade93833cb379eac3e5d406723e3/08e5a/plexus-logo.png",
-    "target": "/assets/content/solutions/images/plexus-logo.png",
+    "target": "/assets/content/solutions/images/primus-logo.png",
     "status": "301"
   },
   {
@@ -1937,6 +1937,56 @@
   {
     "source": "/biased-decisions/<*>",
     "target": "https://biased-decisions.anth.us/<*>",
+    "status": "301"
+  },
+  {
+    "source": "/platform/plexus/",
+    "target": "/articles/primus/",
+    "status": "301"
+  },
+  {
+    "source": "/platform/plexus/index.html",
+    "target": "/articles/primus/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/plexus/",
+    "target": "/articles/primus/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/plexus/index.html",
+    "target": "/articles/primus/",
+    "status": "301"
+  },
+  {
+    "source": "/articles/plexus/",
+    "target": "/articles/primus/",
+    "status": "301"
+  },
+  {
+    "source": "/articles/plexus/index.html",
+    "target": "/articles/primus/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/plexus-classifier-lab/",
+    "target": "/articles/primus-classifier-lab/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/plexus-classifier-lab/index.html",
+    "target": "/articles/primus-classifier-lab/",
+    "status": "301"
+  },
+  {
+    "source": "/articles/plexus-classifier-lab/",
+    "target": "/articles/primus-classifier-lab/",
+    "status": "301"
+  },
+  {
+    "source": "/articles/plexus-classifier-lab/index.html",
+    "target": "/articles/primus-classifier-lab/",
     "status": "301"
   },
   {
