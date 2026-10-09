@@ -158,11 +158,34 @@ Amplify app for this project:
 | Review URL | <https://staging.d2hbn1ig6nqyhy.amplifyapp.com> |
 | Custom domain | **none, by design** |
 
-Repository connection is **not** wired through the CLI. Amplify Hosting's
-supported GitHub integration is a GitHub App installation that requires the
-console OAuth handshake, which a non-interactive session cannot perform, and
-the legacy access-token path is deprecated for new apps. So this app deploys by
-**manual deployment**: build locally, zip `web/dist-papyrus`, and upload.
+The app is currently in **manual-deployment** mode; the procedure below is the
+fallback and today's method. The intended path is Amplify's own git-connected
+build (`amplify.yml`; branch env var `SITE_ENV=production` on `main`, none on
+`staging`). Not GitHub Actions: this repository is private and private
+repositories do not deploy through Actions. `bin/deploy-amplify.sh` automates
+the manual steps (create-deployment, upload, start-deployment, poll).
+
+#### Connecting the repository (owner, console)
+
+The CLI cannot do this: `update-app --repository` needs a GitHub access token
+(never create or store one), and Amplify rejects it while a manually deployed
+branch exists ("delete all branches and try again"). The Amplify GitHub App
+(`aws-amplify-us-east-1`) is already installed on AnthusAI for all repositories.
+
+Deleting this app's `main` would drop the `anth.us`/`www.anth.us` domain
+mappings, so prefer a cutover with a new app:
+
+1. Amplify console -> Create new app -> GitHub -> authorize -> repository
+   `AnthusAI/Anth.us-Papyrus`, branch `main`, auto-build on. Use the repo's
+   `amplify.yml`. Add branch env var `SITE_ENV=production` on `main`.
+2. Also add branch `staging` (no `SITE_ENV`) if wanted.
+3. Apply the redirects to the new app (adapt the app id in
+   `bin/apply_custom_rules.py`) and set the app-level headers.
+4. Verify `bin/check-guards.py <new main url> --expect production`, then move
+   the `anth.us` domain from `d2hbn1ig6nqyhy` to the new app.
+
+Alternative: delete branches `main` and `staging` from `d2hbn1ig6nqyhy`, then
+Hosting -> Connect repository on that app (accepts downtime on anth.us).
 
 ```bash
 export AWS_PROFILE=legacy AWS_REGION=us-east-1
