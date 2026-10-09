@@ -17,6 +17,11 @@
 # prints the resolved mode first and fails if any page contradicts it. See
 # AGENTS.md.
 #
+# CD: the Amplify app is connected to AnthusAI/Anth.us-Papyrus, so a push to
+# `main` or `staging` runs this spec (see README "Deployment"). SITE_ENV comes
+# from the BRANCH environment variables, not from this file: `main` has
+# SITE_ENV=production, `staging` has none. AWS_BRANCH is set by Amplify itself.
+#
 # The staging app serves a review copy of the Anth.us port on its default
 # *.amplifyapp.com hostname with no custom domain.
 
@@ -25,6 +30,11 @@ frontend:
   phases:
     preBuild:
       commands:
+        # Papyrus needs Python >= 3.10 (its own pin says 3.12). The build image
+        # carries several under pyenv but defaults to an older one: select the
+        # newest 3.10+ and fail loudly if there is none.
+        - if command -v pyenv >/dev/null; then V=$(pyenv versions --bare | grep -E '^3\.1[0-9]+(\.[0-9]+)?$' | sort -V | tail -1); if [ -n "$V" ]; then pyenv global "$V"; fi; fi
+        - python3 -c 'import sys; assert sys.version_info >= (3, 10), sys.version' && python3 --version
         # The content submodule (AnthusAI/anthus-site-content) holds every MDX
         # source and image. Amplify's default clone is shallow and skips
         # submodules, so fetch it explicitly or the build has no content.
