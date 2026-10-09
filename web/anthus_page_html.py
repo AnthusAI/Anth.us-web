@@ -317,7 +317,7 @@ _ENGAGE_0 = (
     '<div class="engage-module--offerGrid--62f7b">'
     '<div class="engage-module--offerCard--61446">'
     '<h3>Classifier lab on Plexus</h3>'
-    '<p>We take a high-volume judgment call your team already makes — a score, a flag, a routing decision — and turn it into a classifier with confidence gating: the model handles the clear cases and routes the rest to your reviewers. We&#x27;ve run this pattern for a call-center QA operation across years of production, hundreds of models, and millions of interactions, with expert feedback compounding into a data flywheel the whole time. You get that architecture, sized to your judgment task.</p></div>'
+    '<p>We take a high-volume judgment call your team already makes — a score, a flag, a routing decision — and turn it into a classifier with confidence gating: the model handles the clear cases and routes the rest to your reviewers. We&#x27;ve run this pattern for a call-center QA operation across years of production, hundreds of models, and millions of interactions, with expert feedback compounding into a data flywheel the whole time. You get that architecture, sized to your judgment task. The loop itself is now open source as <a href="https://cyclotron.anth.us/">Cyclotron</a>: a cyclotron is one AI decision that learns from your team&#x27;s corrections, and <a href="https://cyclotron.anth.us/services">we build it into your product and run it</a>.</p></div>'
     '<div class="engage-module--offerCard--61446">'
     '<h3>Factory-run software project</h3>'
     '<p>We build your software the way we build our own: work tracked as Kanbus issues in the repository, agents doing the implementation, and a human approval trail on every merge. Anthus runs its own projects this way, including this site — the commits are public, so you can see the process instead of taking it on faith.</p></div>'
@@ -400,6 +400,10 @@ _DECISION_MODELS_0 = (
     '<dd>'
     '<p>Yes. Once the hosted model is aligned, you can distill it into a small model you serve yourself. A 66-million-parameter student trained from an aligned Jev system scored 91.2 percent against the human label, above its teacher&#x27;s 89.0, at 5 to 15 milliseconds an item, with a per-slice ship gate deciding when it was ready. <a href="/blog/distilling-jev-into-a-classifier/">Distilling an Aligned Jev System into a Classifier You Own</a>.</p></dd>'
     '<dt>'
+    '<h3>Can I run this loop myself?</h3></dt>'
+    '<dd>'
+    '<p>Yes. The loop is open source as <a href="https://cyclotron.anth.us/">Cyclotron</a>, under the MIT license. A cyclotron is one AI decision that learns from your reviewers&#x27; corrections: it starts on day one with the decision model&#x27;s general training, refits a small model on each correction, and lets an LLM propose better questions that code tests before they go live. Run it yourself, have Anthus run it, or have Anthus <a href="https://cyclotron.anth.us/services">build it into your product</a>.</p></dd>'
+    '<dt>'
     '<h3>Should I use Jev or an open-weights decision model like Laya?</h3></dt>'
     '<dd>'
     '<p>The same reviewer loop aligns either one. On the same 140 labels and the same questions, Jev led Laya by 4.7 points alone and 6.8 with the feedback layer, and fully fine-tuning Laya on those labels beat both. Which engine you pick depends on whether you need to own the weights. <a href="/blog/jev-vs-laya/">Jev vs Laya</a>.</p></dd></dl></section>'
@@ -415,7 +419,7 @@ _DECISION_MODELS_0 = (
     '<p>Every step is a published experiment on the <a href="/research/">research page</a>, the public leaderboards are on the <a href="/benchmarks/">benchmarks page</a>, and <a href="/platform/plexus/">Plexus</a> is where we run the loop in production.</p></section>'
     '<div class="engage-cta-module--box--92c7c">'
     '<h2 class="engage-cta-module--heading--f8246">We do this for clients, at scale</h2>'
-    '<p class="engage-cta-module--text--60ac0">Anthus has run this kind of loop in production for years: reviewers correct the model and say why, the explanation becomes policy, and the system gets more trustworthy month over month across hundreds of scorecards and millions of interactions. Bring us the judgment task and we&#x27;ll run it on Plexus with your reviewers in the loop, and hand you a scorecard you can inspect after the first month.</p><a class="button" href="/engage/">See how an engagement works</a></div></article>'
+    '<p class="engage-cta-module--text--60ac0">Anthus has run this kind of loop in production for years: reviewers correct the model and say why, the explanation becomes policy, and the system gets more trustworthy month over month across hundreds of scorecards and millions of interactions. Bring us the judgment task and we&#x27;ll run it with your reviewers in the loop, and hand you a report you can inspect after the first month. The engine is open source: <a href="https://cyclotron.anth.us/">Cyclotron</a>.</p><a class="button" href="/engage/">See how an engagement works</a></div></article>'
 )
 
 # benchmarks: start of <main> .. end of <main>
