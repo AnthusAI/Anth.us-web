@@ -164,6 +164,41 @@ one pass over the rendered HTML, so no internal link lands on a redirect. That
 pass resolves *relative* references too, because the canonical shape moves each
 page into its own directory; see the comment above `_absolutize`.
 
+## Deployment
+
+Pushes deploy automatically (`.github/workflows/site.yml`):
+
+* **`main`** builds with `SITE_ENV=production` and deploys to Amplify app
+  `d2hbn1ig6nqyhy`, branch `main` (anth.us).
+* **`staging`** builds the guarded variant (no `SITE_ENV`) and deploys to the
+  `staging` Amplify branch.
+* Manual runs: Actions -> "Site build and deploy" -> Run workflow, on `main` or `staging`.
+
+The workflow checks out the content submodule and `AnthusAI/Papyrus` at the
+commit pinned in `amplify.yml` (keep the workflow's `PAPYRUS_PIN` in step),
+builds, uploads the zip with `bin/deploy-amplify.sh`
+(`create-deployment` / upload / `start-deployment` / poll `get-job`, failing on
+FAILED), then runs `bin/check-guards.py` and `bin/check-404.py` against the
+branch host. AWS access is GitHub OIDC: roles
+`AnthusPapyrusGitHubDeploy-main` and `AnthusPapyrusGitHubDeploy-staging`,
+trusted only for pushes to that branch of this repository and allowed only
+`amplify:CreateDeployment/StartDeployment/GetJob` on that app branch. No
+GitHub secrets are needed (Papyrus and the content repo are public).
+
+The workflow does **not** apply the redirect rules. When `web/custom-rules.json`
+changes, run `bin/apply_custom_rules.py --apply` by hand (below).
+
+### Emergency fallback: manual deploy
+
+If Actions is unavailable, deploy by hand; the procedure is in
+[AGENTS.md](AGENTS.md) ("Deploy"):
+
+```bash
+export AWS_PROFILE=legacy AWS_REGION=us-east-1
+PAPYRUS_ROOT=../Papyrus SITE_ENV=production python3 web/build_via_papyrus.py
+bash bin/deploy-amplify.sh web/dist-papyrus   # AMPLIFY_APP_ID=d2hbn1ig6nqyhy AMPLIFY_BRANCH=main
+```
+
 ## Hosting
 
 Platform **`WEB`**, its own Amplify app, built from
