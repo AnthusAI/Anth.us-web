@@ -119,7 +119,7 @@ HOLE_DOCS = {
     ("ryan", "portfolio"):
         "TWO adjacent index-module--list <ul>s under <h2>Portfolio</h2>: the "
         "featured set (B0rd ... Call Criteria, smallImageList) immediately "
-        "followed by the portfolio set (Plexus ... Checkout Driver)",
+        "followed by the portfolio set (Primus ... Checkout Driver)",
     ("ryan", "integrations"):
         "the index-module--list <ul> under <h2>Integrations</h2>",
     ("reading", "featured"):
@@ -209,11 +209,20 @@ def rewrite_imgs(s: str) -> str:
     return _IMG_SRC.sub(sub, s)
 
 
+BIASED_DECISIONS_PATH_LINK = 'href="/biased-decisions/'
+BIASED_DECISIONS_SUBDOMAIN_LINK = 'href="https://biased-decisions.anth.us/'
+
+
+def point_benchmark_links_at_subdomain(s: str) -> str:
+    return s.replace(BIASED_DECISIONS_PATH_LINK, BIASED_DECISIONS_SUBDOMAIN_LINK)
+
+
 def normalize(s: str) -> str:
     """The reference normalisation used for both emission and verification."""
     s = _SCRIPT.sub("", s)
     s = _NOSCRIPT.sub("", s)
     s = s.replace("<!-- -->", "")
+    s = point_benchmark_links_at_subdomain(s)
     return rewrite_imgs(s)
 
 
