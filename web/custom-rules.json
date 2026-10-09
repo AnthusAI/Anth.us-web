@@ -90,6 +90,16 @@
     "status": "301"
   },
   {
+    "source": "/posts/6/",
+    "target": "/posts/page/6/",
+    "status": "301"
+  },
+  {
+    "source": "/posts/6/index.html",
+    "target": "/posts/page/6/",
+    "status": "301"
+  },
+  {
     "source": "/posts/page-<n>/",
     "target": "/posts/page/<n>/",
     "status": "301"
@@ -1065,13 +1075,13 @@
     "status": "301"
   },
   {
-    "source": "/plexus-classifier-lab/",
-    "target": "/articles/plexus-classifier-lab/",
+    "source": "/primus-classifier-lab/",
+    "target": "/articles/primus-classifier-lab/",
     "status": "301"
   },
   {
-    "source": "/plexus-classifier-lab/index.html",
-    "target": "/articles/plexus-classifier-lab/",
+    "source": "/primus-classifier-lab/index.html",
+    "target": "/articles/primus-classifier-lab/",
     "status": "301"
   },
   {
@@ -1195,13 +1205,13 @@
     "status": "301"
   },
   {
-    "source": "/solutions/Plexus/",
-    "target": "/articles/plexus/",
+    "source": "/solutions/Primus/",
+    "target": "/articles/primus/",
     "status": "301"
   },
   {
-    "source": "/solutions/Plexus/index.html",
-    "target": "/articles/plexus/",
+    "source": "/solutions/Primus/index.html",
+    "target": "/articles/primus/",
     "status": "301"
   },
   {
@@ -1760,18 +1770,18 @@
     "status": "301"
   },
   {
+    "source": "/static/8edd61e81902dbc4d34aed03a03d1f6a/53d48/predictive-attention-mechanism-neural-decoding.png",
+    "target": "/assets/content/images/posts/predictive-attention-mechanism-neural-decoding.png",
+    "status": "301"
+  },
+  {
     "source": "/static/938fa1a535efcc9aa2aa1e8f4cd04f2d/4a064/plexus-classifier-lab.png",
-    "target": "/assets/content/images/plexus-classifier-lab.png",
+    "target": "/assets/content/images/primus-classifier-lab.png",
     "status": "301"
   },
   {
     "source": "/static/8140ade93833cb379eac3e5d406723e3/08e5a/plexus-logo.png",
-    "target": "/assets/content/solutions/images/plexus-logo.png",
-    "status": "301"
-  },
-  {
-    "source": "/static/8edd61e81902dbc4d34aed03a03d1f6a/53d48/predictive-attention-mechanism-neural-decoding.png",
-    "target": "/assets/content/images/posts/predictive-attention-mechanism-neural-decoding.png",
+    "target": "/assets/content/solutions/images/primus-logo.png",
     "status": "301"
   },
   {
@@ -1912,6 +1922,91 @@
   {
     "source": "/static/daa5abf2cfbb5d21f12715d3e933dc6b/4a064/wiki-that-only-gets-bigger.png",
     "target": "/assets/content/images/wiki-that-only-gets-bigger.png",
+    "status": "301"
+  },
+  {
+    "source": "/biased-decisions",
+    "target": "https://biased-decisions.anth.us/",
+    "status": "301"
+  },
+  {
+    "source": "/biased-decisions/",
+    "target": "https://biased-decisions.anth.us/",
+    "status": "301"
+  },
+  {
+    "source": "/biased-decisions/<*>",
+    "target": "https://biased-decisions.anth.us/<*>",
+    "status": "301"
+  },
+  {
+    "source": "/solutions/Plexus/",
+    "target": "/articles/primus/",
+    "status": "301"
+  },
+  {
+    "source": "/solutions/Plexus/index.html",
+    "target": "/articles/primus/",
+    "status": "301"
+  },
+  {
+    "source": "/platform/plexus/",
+    "target": "/articles/primus/",
+    "status": "301"
+  },
+  {
+    "source": "/platform/plexus/index.html",
+    "target": "/articles/primus/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/plexus/",
+    "target": "/articles/primus/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/plexus/index.html",
+    "target": "/articles/primus/",
+    "status": "301"
+  },
+  {
+    "source": "/articles/plexus/",
+    "target": "/articles/primus/",
+    "status": "301"
+  },
+  {
+    "source": "/articles/plexus/index.html",
+    "target": "/articles/primus/",
+    "status": "301"
+  },
+  {
+    "source": "/plexus-classifier-lab/",
+    "target": "/articles/primus-classifier-lab/",
+    "status": "301"
+  },
+  {
+    "source": "/plexus-classifier-lab/index.html",
+    "target": "/articles/primus-classifier-lab/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/plexus-classifier-lab/",
+    "target": "/articles/primus-classifier-lab/",
+    "status": "301"
+  },
+  {
+    "source": "/blog/plexus-classifier-lab/index.html",
+    "target": "/articles/primus-classifier-lab/",
+    "status": "301"
+  },
+  {
+    "source": "/articles/plexus-classifier-lab/",
+    "target": "/articles/primus-classifier-lab/",
+    "status": "301"
+  },
+  {
+    "source": "/articles/plexus-classifier-lab/index.html",
+    "target": "/articles/primus-classifier-lab/",
     "status": "301"
   },
   {
