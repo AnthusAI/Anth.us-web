@@ -1,0 +1,13 @@
+{
+  "name": "anth-us-infra",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "synth": "papyrus-infra synth --site site.json"
+  },
+  "dependencies": {
+    "@anthusai/papyrus": "1.0.0-next.41",
+    "aws-cdk-lib": "^2.257.0",
+    "constructs": "^10.4.2"
+  }
+}
