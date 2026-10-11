@@ -20,3 +20,55 @@ node_modules/
 
 # Generated responsive image renditions. A build cache, not output.
 web/.image-cache/
+
+# Papyrus publication app (CMS build; the static Python build never reads these)
+.next/
+.uv-cache/
+.npm/
+cdk.out/
+content-export/
+amplify_outputs.json
+next-env.d.ts
+*.tsbuildinfo
+.amplify/
+# >>> papyrus-app sync (generated route shims)
+/app/%5F_preview/[[...path]]/route.ts
+/app/[year]/[month]/[day]/[articleSlug]/page.tsx
+/app/[year]/[month]/[day]/page.tsx
+/app/[year]/[month]/[day]/page/[pageNumber]/page.tsx
+/app/[year]/[month]/[day]/section/[sectionKey]/page.tsx
+/app/api/archive/editions/route.ts
+/app/api/media/[...path]/route.ts
+/app/api/revalidate/route.ts
+/app/archive/page.tsx
+/app/articles/[slug]/page.tsx
+/app/layout.tsx
+/app/newsroom/[section]/[...selection]/page.tsx
+/app/newsroom/[section]/page.tsx
+/app/newsroom/articles/[id]/page.tsx
+/app/newsroom/articles/page.tsx
+/app/newsroom/forum/[threadId]/page.tsx
+/app/newsroom/insights/[threadId]/page.tsx
+/app/newsroom/insights/page.tsx
+/app/newsroom/layout.tsx
+/app/newsroom/page.tsx
+/app/newsroom/sections/[sectionId]/page.tsx
+/app/page.tsx
+/app/robots.ts
+/app/settings/page.tsx
+/.papyrus/
+# <<< papyrus-app sync
+# Generated route shims whose paths contain glob characters (papyrus-app sync does not escape them)
+/app/%5F_preview/\[\[...path\]\]/route.ts
+/app/\[year\]/\[month\]/\[day\]/\[articleSlug\]/page.tsx
+/app/\[year\]/\[month\]/\[day\]/page.tsx
+/app/\[year\]/\[month\]/\[day\]/page/\[pageNumber\]/page.tsx
+/app/\[year\]/\[month\]/\[day\]/section/\[sectionKey\]/page.tsx
+/app/api/media/\[...path\]/route.ts
+/app/articles/\[slug\]/page.tsx
+/app/newsroom/\[section\]/\[...selection\]/page.tsx
+/app/newsroom/\[section\]/page.tsx
+/app/newsroom/articles/\[id\]/page.tsx
+/app/newsroom/forum/\[threadId\]/page.tsx
+/app/newsroom/insights/\[threadId\]/page.tsx
+/app/newsroom/sections/\[sectionId\]/page.tsx
