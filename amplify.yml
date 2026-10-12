@@ -48,7 +48,9 @@ frontend:
         # pinned source clone is enough — no need to install Papyrus itself.
         # Reuse the checkout whenever the Amplify build cache restores it.
         - |
-          # AnthusAI/Papyrus develop @ c98435f (2026-10-03) -- the exact
+          PAPYRUS_PIN=c98435ff60763a3d3c9cb97837b74686fc95d55a
+          # AnthusAI/Papyrus develop @ c98435f. See the notes below.
+          # The exact
           # commit this build was developed and verified against locally.
           # Includes #86 (Markus analytics), #89 (slug derivation) and #90
           # (citeproc-py citations), #91 (plain-string authors), #92 (gatsby-plugin-image parity).
@@ -65,7 +67,6 @@ frontend:
           # in, plus the page-shell seams and fragment transforms the exact
           # design-parity build needs. Anything older fails every article with
           # `Unknown directive 'image'` or lacks the SiteChrome hooks.
-          PAPYRUS_PIN=c98435ff60763a3d3c9cb97837b74686fc95d55a
           PAPYRUS_DIR="$PWD/.amplify-cache/papyrus-src"
           if [ ! -d "$PAPYRUS_DIR/.git" ]; then
             git clone --depth 1 https://github.com/AnthusAI/Papyrus.git "$PAPYRUS_DIR"
