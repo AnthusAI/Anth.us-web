@@ -21,8 +21,6 @@
   },
   "reader": {
     "preBuildCommands": [
-      "git submodule sync --recursive",
-      "git submodule update --init --recursive --depth 1",
       "mkdir -p .amplify-cache/pip",
       "export PIP_CACHE_DIR=\"$PWD/.amplify-cache/pip\"",
       "PAPYRUS_PIN=c98435ff60763a3d3c9cb97837b74686fc95d55a; PAPYRUS_DIR=\"$PWD/.amplify-cache/papyrus-src\"; if [ ! -d \"$PAPYRUS_DIR/.git\" ]; then git clone --depth 1 https://github.com/AnthusAI/Papyrus.git \"$PAPYRUS_DIR\"; fi; git -C \"$PAPYRUS_DIR\" fetch --depth 1 origin \"$PAPYRUS_PIN\" && git -C \"$PAPYRUS_DIR\" checkout \"$PAPYRUS_PIN\"",
@@ -31,8 +29,8 @@
       "pip install --cache-dir \"$PWD/.amplify-cache/pip\" \"PyYAML>=6\"",
       "pip install --cache-dir \"$PWD/.amplify-cache/pip\" \"citeproc-py>=0.8.2,<1\""
     ],
-    "skipContentExport": true,
-    "buildCommand": "rm -rf web/dist-papyrus web/staging && cd web && PAPYRUS_ROOT=\"$PWD/../.amplify-cache/papyrus-src\" python3 build_via_papyrus.py",
+    "skipContentExport": false,
+    "buildCommand": "rm -rf web/dist-papyrus web/staging web/content-root && (cd web && ANTHUS_CONTENT_EXPORT=\"$PWD/../content-export\" PAPYRUS_ROOT=\"$PWD/../.amplify-cache/papyrus-src\" python3 build_via_papyrus.py)",
     "baseDirectory": "web/dist-papyrus",
     "redirects": [
       {
@@ -2059,7 +2057,14 @@
           "Cache-Control": "public, max-age=0, s-maxage=31536000"
         }
       }
-    ]
+    ],
+    "environment": {
+      "PAPYRUS_GRAPHQL_ENDPOINT": "https://shrr3ka6v5cexiv3x27kvvy2qy.appsync-api.us-east-1.amazonaws.com/graphql",
+      "PAPYRUS_IDENTITY_POOL_ID": "us-east-1:61310812-c6b0-4c25-9fd3-9d62b656410a",
+      "PAPYRUS_MEDIA_BUCKET": "amplify-d7s858igkyct5-mai-papyrusmediabucket0dab24-4hs7vmvzsgua",
+      "PAPYRUS_SITE_BRAND": "anth-us",
+      "SITE_ENV": "production"
+    }
   },
   "github": {
     "owner": "AnthusAI",
