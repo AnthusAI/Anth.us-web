@@ -72,3 +72,6 @@ next-env.d.ts
 /app/newsroom/forum/\[threadId\]/page.tsx
 /app/newsroom/insights/\[threadId\]/page.tsx
 /app/newsroom/sections/\[sectionId\]/page.tsx
+
+# Content root derived from a CMS export (CMS-driven build)
+web/content-root/

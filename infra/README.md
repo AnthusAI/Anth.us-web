@@ -19,4 +19,4 @@ Synthesis only prints and writes `cdk.out/`. Deploying is a separate, reviewed s
 
 ## Reader build
 
-`reader.preBuildCommands` mirrors the `amplify.yml` provisioning (content submodule, pinned Papyrus source, Markus, Pillow, PyYAML, citeproc-py) and `reader.skipContentExport` is true because the reader builds from the content submodule, not the CMS.
+`reader.preBuildCommands` provisions the pinned Papyrus source, Markus, Pillow, PyYAML and citeproc-py, and `reader.skipContentExport` is false: the reader runs `papyrus ops content export-published --auth guest --out content-export --clean` and `web/build_via_papyrus.py` builds from that export (`ANTHUS_CONTENT_EXPORT`), so the CMS drives the site. `reader.environment` holds the CMS backend ids the guest export reads (`PAPYRUS_GRAPHQL_ENDPOINT`, `PAPYRUS_IDENTITY_POOL_ID`, `PAPYRUS_MEDIA_BUCKET`, non-secret) plus `SITE_ENV` and `PAPYRUS_SITE_BRAND`; keep them listed here, because a stack update replaces the branch's variables with this list.

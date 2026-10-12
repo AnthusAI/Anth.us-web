@@ -26,6 +26,7 @@ export default defineSite({
   backend: {
     brandId: "anth-us",
     auth: resolvedAuthConfiguration,
+    reader: { amplifyAppId: "d15dpu9buefmq0", branchName: "main" },
     stagingBuild: { enabled: true },
     features: {
       consoleResponder: false,
