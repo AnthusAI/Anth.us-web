@@ -414,60 +414,7 @@ def _collection_page(directory: str, title: str, number: int, fragment: str) -> 
     _register_meta(href, pages.COLLECTION_DESCRIPTIONS[title], None)
 
 
-def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
-    STAGING.mkdir(parents=True, exist_ok=True)
-    GENERATED.clear()
-    report = ConversionReport()
-
-    # The blog corpus. `build_markus_site` hard-requires `articles/`, which is
-    # why the canonical reader path is /articles/<slug>.html; see
-    # anthus_content's module docstring.
-    report.merge(
-        stage_nodes(collections.blog, staging=STAGING, directory="articles", images=images)
-    )
-
-    # Platform products: Markus renders the MDX body; the production template's
-    # heading and "where this fits" section are block sentinels around it.
-    platform_dir = STAGING / "platform"
-    platform_dir.mkdir(parents=True, exist_ok=True)
-    for node in collections.platform:
-        front_matter, body = split_front_matter(node.source.read_text(encoding="utf-8"))
-        text, node_report = normalize_body(
-            body,
-            resolve_image_name=images.content_src,
-            resolve_image_path=lambda src, n=node: images.content_src(
-                src, relative_to=n.source
-            ),
-        )
-        tail = pages.platform_product_tail(node)
-        document = (
-            block_sentinel(pages.platform_product_head(node))
-            + "\n\n"
-            + text
-            + ("\n\n" + block_sentinel(tail) + "\n" if tail else "")
-        )
-        write_if_changed(
-            platform_dir / f"{node.slug}.md",
-            staged_markdown(
-                {
-                    "title": node.title,
-                    "date": node.display_date,
-                    # Read before merge(), which drops per-page citation keys.
-                    "citations": {
-                        **(front_matter.get("citations") or {}),
-                        **node_report.citation_entries,
-                    },
-                },
-                document,
-            ),
-        )
-        report.merge(node_report)
-        _register_meta(
-            f"platform/{node.slug}.html",
-            node.excerpt_text,
-            pages._preview(node, images),
-        )
-
+def register_article_metadata(collections: Collections, images: ImageIndex) -> None:
     for node in collections.blog:
         href = f"articles/{node.slug}.html"
         _register_meta(href, node.excerpt_text, pages._preview(node, images))
@@ -485,7 +432,8 @@ def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
                 "publisher": {"@type": "Organization", "name": "Anthus AI Solutions"},
             }
 
-    # Generated pages: HTML in the production DOM, never through Markus.
+
+def generate_pages(collections: Collections, images: ImageIndex) -> None:
     meta = anthus_page_html.PAGE_META
     _generated(
         "index.html",
@@ -560,6 +508,65 @@ def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
 
     for slug, (label, text) in pages.tag_pages(collections.tags).items():
         _generated(f"tags/{slug}.html", label if slug != "index" else "Tags", text)
+
+
+def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
+    STAGING.mkdir(parents=True, exist_ok=True)
+    GENERATED.clear()
+    report = ConversionReport()
+
+    # The blog corpus. `build_markus_site` hard-requires `articles/`, which is
+    # why the canonical reader path is /articles/<slug>.html; see
+    # anthus_content's module docstring.
+    report.merge(
+        stage_nodes(collections.blog, staging=STAGING, directory="articles", images=images)
+    )
+
+    # Platform products: Markus renders the MDX body; the production template's
+    # heading and "where this fits" section are block sentinels around it.
+    platform_dir = STAGING / "platform"
+    platform_dir.mkdir(parents=True, exist_ok=True)
+    for node in collections.platform:
+        front_matter, body = split_front_matter(node.source.read_text(encoding="utf-8"))
+        text, node_report = normalize_body(
+            body,
+            resolve_image_name=images.content_src,
+            resolve_image_path=lambda src, n=node: images.content_src(
+                src, relative_to=n.source
+            ),
+        )
+        tail = pages.platform_product_tail(node)
+        document = (
+            block_sentinel(pages.platform_product_head(node))
+            + "\n\n"
+            + text
+            + ("\n\n" + block_sentinel(tail) + "\n" if tail else "")
+        )
+        write_if_changed(
+            platform_dir / f"{node.slug}.md",
+            staged_markdown(
+                {
+                    "title": node.title,
+                    "date": node.display_date,
+                    # Read before merge(), which drops per-page citation keys.
+                    "citations": {
+                        **(front_matter.get("citations") or {}),
+                        **node_report.citation_entries,
+                    },
+                },
+                document,
+            ),
+        )
+        report.merge(node_report)
+        _register_meta(
+            f"platform/{node.slug}.html",
+            node.excerpt_text,
+            pages._preview(node, images),
+        )
+
+    register_article_metadata(collections, images)
+
+    generate_pages(collections, images)
 
     # Images: only what pages actually reference, downscaled.
     copied, downscaled = images.stage(STAGING / "assets")
