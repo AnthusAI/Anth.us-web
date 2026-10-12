@@ -2052,6 +2052,12 @@
         "headers": {
           "Cache-Control": "public, max-age=0, s-maxage=60, must-revalidate"
         }
+      },
+      {
+        "pattern": "assets/**",
+        "headers": {
+          "Cache-Control": "public, max-age=0, s-maxage=31536000"
+        }
       }
     ]
   },
