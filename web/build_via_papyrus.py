@@ -510,6 +510,52 @@ def generate_pages(collections: Collections, images: ImageIndex) -> None:
         _generated(f"tags/{slug}.html", label if slug != "index" else "Tags", text)
 
 
+def stage_platform_page(node: ContentNode, images: ImageIndex, *, source_text: str | None = None) -> ConversionReport:
+    """Stage one platform product page into ``STAGING/platform`` and register its page metadata.
+
+    ``source_text`` replaces reading ``node.source`` for callers that hold the
+    item in memory (the projector).
+    """
+    platform_dir = STAGING / "platform"
+    platform_dir.mkdir(parents=True, exist_ok=True)
+    front_matter, body = split_front_matter(
+        node.source.read_text(encoding="utf-8") if source_text is None else source_text
+    )
+    text, node_report = normalize_body(
+        body,
+        resolve_image_name=images.content_src,
+        resolve_image_path=lambda src, n=node: images.content_src(src, relative_to=n.source),
+    )
+    tail = pages.platform_product_tail(node)
+    document = (
+        block_sentinel(pages.platform_product_head(node))
+        + "\n\n"
+        + text
+        + ("\n\n" + block_sentinel(tail) + "\n" if tail else "")
+    )
+    write_if_changed(
+        platform_dir / f"{node.slug}.md",
+        staged_markdown(
+            {
+                "title": node.title,
+                "date": node.display_date,
+                # Read before merge(), which drops per-page citation keys.
+                "citations": {
+                    **(front_matter.get("citations") or {}),
+                    **node_report.citation_entries,
+                },
+            },
+            document,
+        ),
+    )
+    _register_meta(
+        f"platform/{node.slug}.html",
+        node.excerpt_text,
+        pages._preview(node, images),
+    )
+    return node_report
+
+
 def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
     STAGING.mkdir(parents=True, exist_ok=True)
     GENERATED.clear()
@@ -524,45 +570,9 @@ def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
 
     # Platform products: Markus renders the MDX body; the production template's
     # heading and "where this fits" section are block sentinels around it.
-    platform_dir = STAGING / "platform"
-    platform_dir.mkdir(parents=True, exist_ok=True)
+    (STAGING / "platform").mkdir(parents=True, exist_ok=True)
     for node in collections.platform:
-        front_matter, body = split_front_matter(node.source.read_text(encoding="utf-8"))
-        text, node_report = normalize_body(
-            body,
-            resolve_image_name=images.content_src,
-            resolve_image_path=lambda src, n=node: images.content_src(
-                src, relative_to=n.source
-            ),
-        )
-        tail = pages.platform_product_tail(node)
-        document = (
-            block_sentinel(pages.platform_product_head(node))
-            + "\n\n"
-            + text
-            + ("\n\n" + block_sentinel(tail) + "\n" if tail else "")
-        )
-        write_if_changed(
-            platform_dir / f"{node.slug}.md",
-            staged_markdown(
-                {
-                    "title": node.title,
-                    "date": node.display_date,
-                    # Read before merge(), which drops per-page citation keys.
-                    "citations": {
-                        **(front_matter.get("citations") or {}),
-                        **node_report.citation_entries,
-                    },
-                },
-                document,
-            ),
-        )
-        report.merge(node_report)
-        _register_meta(
-            f"platform/{node.slug}.html",
-            node.excerpt_text,
-            pages._preview(node, images),
-        )
+        report.merge(stage_platform_page(node, images))
 
     register_article_metadata(collections, images)
 
