@@ -75,3 +75,6 @@ next-env.d.ts
 
 # Content root derived from a CMS export (CMS-driven build)
 web/content-root/
+
+web/site-state.json
+web/projector-config.json
