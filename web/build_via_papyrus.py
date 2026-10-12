@@ -90,10 +90,23 @@ from anthus_mdx import normalize_body, split_front_matter, staged_markdown, writ
 #: `ANTHUS_CONTENT_DIR`, `ANTHUS_BUILD_DIR` exist for diagnostics only: build the
 #: corpus the live site was built from (content 4b80f02) into a scratch tree, to
 #: tell content-driven differences from design ones. The pin is not changed.
-CONTENT_SUBMODULE = Path(
-    os.environ.get("ANTHUS_CONTENT_DIR", REPO_ROOT / "content" / "anthus-site-content")
-).resolve()
 _BUILD_DIR = Path(os.environ["ANTHUS_BUILD_DIR"]).resolve() if os.environ.get("ANTHUS_BUILD_DIR") else POD_ROOT
+#: `ANTHUS_CONTENT_EXPORT` names a `papyrus ops content export-published`
+#: directory; the CMS-driven build derives its content root from it instead of
+#: reading the content submodule.
+_CONTENT_EXPORT = os.environ.get("ANTHUS_CONTENT_EXPORT")
+if _CONTENT_EXPORT:
+    from cms_content_root import materialize_content_root  # noqa: E402
+
+    CONTENT_SUBMODULE = materialize_content_root(
+        Path(_CONTENT_EXPORT).resolve(),
+        _BUILD_DIR / "content-root",
+        POD_ROOT / "content-redirects",
+    ).resolve()
+else:
+    CONTENT_SUBMODULE = Path(
+        os.environ.get("ANTHUS_CONTENT_DIR", REPO_ROOT / "content" / "anthus-site-content")
+    ).resolve()
 SITE_ASSETS = POD_ROOT / "assets" / "site"
 STAGING = _BUILD_DIR / "staging"
 DIST = _BUILD_DIR / "dist-papyrus"
