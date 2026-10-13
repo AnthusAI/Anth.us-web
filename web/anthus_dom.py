@@ -57,7 +57,7 @@ SITE_TITLE = "Anthus"
 MENU_LINKS = (
     ("AI Solutions", "/ai-solutions/", "What we build and run for clients, with the case studies."),
     ("Decision Models", "/decision-models/", "Aligning Jev and other decision models to your data."),
-    ("Platform", "/platform/", "The components behind the work: Primus, Kanbus, and the rest."),
+    ("Products", "/platform/", "What we have built from the work: Cyclotron, Chatticus, Auritus, Primus."),
     ("Research", "/research/", "Experiments on how decision models behave, with the numbers."),
     ("Benchmarks", "/benchmarks/", "Public leaderboards for decision models: bias and reasoning depth."),
     ("Articles", "/blog/", "Long-form pieces on classifiers, agents, and the economics of AI."),
@@ -107,6 +107,28 @@ def _logo(*, current: bool = False) -> str:
     )
 
 
+#: Flagship products, always in this order: (name, site, one-liner, pictogram, anth.us page).
+PRODUCTS = (
+    ("Cyclotron", "https://cyclotron.anth.us", "One AI decision that learns from your team’s corrections.",
+     "self-aligning", None),
+    ("Chatticus", "https://chattic.us", "Shared rooms where people and bots work together, with approvals.",
+     "chat-room", "/platform/chatticus/"),
+    ("Auritus", "https://aurit.us",
+     "Listen to any page: a drop-in embed that turns your content into speech with open models you choose.",
+     "page-audio", None),
+    ("Primus", "https://primus.anth.us",
+     "The classifier lab: evaluate, deploy and improve AI with reviewer feedback.",
+     "verdict-meter", "/platform/primus/"),
+)
+
+#: Supporting technology: (name, href, one-liner, external).
+SUPPORTING = (
+    ("Kanbus", "https://kanb.us", "Issue tracking in your repository, where agents can participate.", True),
+    ("Tactus", "https://tactus.anth.us", "A programming language for reliable, tool-using AI agents.", True),
+    ("Biblicus", "/platform/biblicus/", "Corpus analysis: extraction, retrieval and evidence-first knowledge workflows.", False),
+)
+
+
 # Footer columns: (heading, ((label, href, external), ...)).
 FOOTER_COLUMNS = (
     (
@@ -129,19 +151,6 @@ FOOTER_COLUMNS = (
             ("AI Solutions", "/ai-solutions/", False),
             ("Decision Models", "/decision-models/", False),
             ("Benchmarks", "/benchmarks/", False),
-        ),
-    ),
-    (
-        "Platform",
-        (
-            ("Overview", "/platform/", False),
-            ("Primus", "https://primus.anth.us/", True),
-            ("Tactus", "https://tactus.anth.us/", True),
-            ("Korporus", "https://korpor.us/", True),
-            ("Biblicus", "https://github.com/AnthusAI/Biblicus", True),
-            ("Babulus", "https://babul.us/", True),
-            ("Kanbus", "https://kanb.us/", True),
-            ("Caducus", "https://caduc.us/", True),
         ),
     ),
     (
@@ -178,12 +187,29 @@ def _footer_html() -> str:
         for title, items in FOOTER_COLUMNS
     )
     note = site_env.footer_note()
+    products = "".join(
+        '<li class="site-footer__product">'
+        f'<a class="site-footer__pname" href="{html.escape(url, quote=True)}" rel="noopener">{html.escape(name)}</a>'
+        f"<p>{html.escape(line)}</p>"
+        + (f'<a class="site-footer__also" href="{page}">On anth.us</a>' if page else "")
+        + "</li>"
+        for name, url, line, _px, page in PRODUCTS
+    )
+    noopener = ' rel="noopener"'
+    supporting = "".join(
+        f'<li><a href="{html.escape(href, quote=True)}"{noopener if ext else ""}>{html.escape(name)}</a></li>'
+        for name, href, _line, ext in SUPPORTING
+    )
     return (
         '<footer class="site-footer"><div class="container site-footer__inner">'
         '<div class="site-footer__brand">'
         + _logo()
         + "<p>Anthus builds AI-native systems with durable procedures, operational "
         "guardrails, and reusable platform components.</p></div>"
+        '<section class="site-footer__products" aria-labelledby="footer-products"><h2 id="footer-products">Products</h2>'
+        f'<ul class="site-footer__plist">{products}</ul>'
+        '<div class="site-footer__support"><h3>Supporting technology</h3>'
+        f'<ul>{supporting}<li><a href="/platform/">All technology &rarr;</a></li></ul></div></section>'
         f'<nav class="site-footer__cols" aria-label="Footer">{columns}</nav>'
         + (f'<div class="site-footer__note">{note}</div>' if note else "")
         + "</div></footer>"

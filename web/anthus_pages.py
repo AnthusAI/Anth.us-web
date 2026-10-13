@@ -284,6 +284,28 @@ def _platform_tile(node: ContentNode) -> str:
     )
 
 
+def _product_card(name: str, url: str, line: str, pictogram: str, page: str | None) -> str:
+    also = f'<a href="{_esc(page)}">On anth.us</a>' if page else ""
+    return (
+        '<li class="card notch product card--static">'
+        f'<div class="card__px">{_px(pictogram)}</div><h3>{escape(name)}</h3><p>{escape(line)}</p>'
+        f'<div class="card__links"><a href="{_esc(url)}" rel="noopener">Visit {escape(name)}</a>{also}</div></li>'
+    )
+
+
+def _products_grid() -> str:
+    return '<ul class="grid grid--products">' + "".join(_product_card(*p) for p in anthus_dom.PRODUCTS) + "</ul>"
+
+
+def _supporting_row(*, more: bool = True) -> str:
+    noopener = ' rel="noopener"'
+    links = " ".join(
+        f'<a href="{_esc(href)}"{noopener if ext else ""}>{escape(name)}</a>'
+        for name, href, _line, ext in anthus_dom.SUPPORTING
+    )
+    return f'<p class="supporting"><strong>Supporting technology</strong> {links}</p>'
+
+
 def homepage(
     *,
     articles: list[ContentNode],
@@ -336,15 +358,12 @@ def homepage(
         )
     )
 
-    tiles = "".join(_platform_tile(n) for n in (platform or []))
     out.append(
         _section(
-            "04", "Platform", "The tools we built doing the work.",
-            lead="A reusable stack that grew out of real delivery: runtime, agent execution, "
-            "knowledge, observability and media, with the enterprise controls that matter in production.",
-            head_extra='<div class="hero__art platform__art">' + _px("platform-stack") + "</div>"
-            '<div class="btn-row platform__cta">' + _btn("Explore the platform", "/platform/") + "</div>",
-            body=f'<ul class="grid">{tiles}</ul>' if tiles else "",
+            "04", "Products", "What we’ve built from the work.",
+            lead="Four products from a stack that grew out of real delivery work.",
+            body=_products_grid() + _supporting_row()
+            + '<p class="more"><a href="/platform/">The whole platform</a></p>',
             band=True,
         )
     )
@@ -727,14 +746,6 @@ def tag_pages(tags: dict[str, list[ContentNode]], images: ImageIndex | None = No
 # --------------------------------------------------------------------------
 # Platform constants, carried over unchanged from the Markdown-era module.
 # --------------------------------------------------------------------------
-
-_CATEGORY_ORDER = (
-    "Platform Runtime",
-    "Agent Execution",
-    "Data and Knowledge",
-    "Observability",
-    "Media Automation",
-)
 
 _STACK_RECIPES = (
     (
@@ -1306,12 +1317,12 @@ def _platform_cards(nodes: list[ContentNode]) -> str:
     return '<ul class="grid">' + "".join(_platform_card(n) for n in nodes) + "</ul>"
 
 
+_FLAGSHIP_SLUGS = frozenset({"chatticus", "primus", "kanbus", "tactus", "biblicus"})
+
+
 def platform_index(platform: list[ContentNode]) -> str:
     """`platform` arrives already sorted by `platform_order`."""
-    grouped: dict[str, list[ContentNode]] = {}
-    for node in platform:
-        grouped.setdefault(_fm(node, "platform_category") or "Platform", []).append(node)
-    featured = [n for n in platform if n.slug in ("tactus", "videoml")]
+    rest = [n for n in platform if n.slug not in _FLAGSHIP_SLUGS]
 
     columns = "".join(
         _card(
@@ -1326,10 +1337,19 @@ def platform_index(platform: list[ContentNode]) -> str:
         "<li>The result is one stack for systems, workflows, and communication.</li></ul>",
     )
     recipes = "".join(_card(title, f"<p>{escape(summary)}</p>") for title, summary in _STACK_RECIPES)
+    supporting = '<ul class="grid grid--thirds">' + "".join(
+        _card(
+            name, f"<p>{escape(line)}</p>",
+            extra=_links(
+                ([("Visit " + name, href)] if ext else []) + [("On anth.us", f"/platform/{name.lower()}/")]
+            ),
+        )
+        for name, href, line, ext in anthus_dom.SUPPORTING
+    ) + "</ul>"
 
-    out = [
+    return _page(
         _page_hero(
-            "THE ANTHUS PLATFORM", "The tools we built doing the work.",
+            "PRODUCTS AND PLATFORM", "The tools we built doing the work.",
             "<strong>A technology stack that grew out of real delivery work.</strong> "
             "It is not a speculative architecture diagram. This is the product line that emerged from building "
             "RLHF systems, durable agent workflows, retrieval-backed automation, hosted operator applications, "
@@ -1339,8 +1359,18 @@ def platform_index(platform: list[ContentNode]) -> str:
             actions=_btn("See the solutions we deliver", "/ai-solutions/")
             + _btn("Read the cybernetic development thesis", "/blog/cybernetic-development/", ghost=True),
         ),
+        _section("01", "Products", "Four products", body=_products_grid()),
         _section(
-            "01", "Layers", "How the platform fits together",
+            "02", "Supporting technology", "What the products run on",
+            lead="Smaller tools we use and ship alongside them.",
+            body=supporting, band=True,
+        ),
+        _section(
+            "03", "The rest of the platform", "Also in the platform",
+            body='<ul class="grid grid--list">' + "".join(_platform_card(n) for n in rest) + "</ul>",
+        ),
+        _section(
+            "04", "Layers", "How the platform fits together",
             lead="Complete AI systems need more than a model call, so we think about the platform in layers.",
             body='<ul class="grid grid--mini">' + columns + "</ul>"
             + _prose(
@@ -1349,27 +1379,10 @@ def platform_index(platform: list[ContentNode]) -> str:
                 "workflows, or outward-facing content systems."
             )
             + '<h3 class="subhead">Common combinations</h3><ul class="grid grid--2">' + recipes + "</ul>",
-        ),
-        _section(
-            "02", "Featured", "Two to start with",
-            lead="Tactus and VideoML express the broader Anthus point of view: treat complex operational "
-            "systems as code, keep them inspectable, and make agent collaboration governable.",
-            body=_platform_cards(featured),
             band=True,
         ),
-    ]
-    number = 3
-    for category in _CATEGORY_ORDER:
-        if grouped.get(category):
-            out.append(
-                _section(
-                    f"{number:02d}", "Platform", category, body=_platform_cards(grouped[category]),
-                    band=number % 2 == 0,
-                )
-            )
-            number += 1
-    out.append(_cta())
-    return _page(*out)
+        _cta(),
+    )
 
 
 def platform_product_head(node: ContentNode) -> str:
@@ -1419,13 +1432,14 @@ def engage_page() -> str:
         "architecture, sized to your judgment task.</p>"
         "<p>The loop itself is now open source as Cyclotron: a cyclotron is "
         "one AI decision that learns from your team’s corrections.</p>",
-        extra=_links([("Cyclotron", "https://cyclotron.anth.us/"), ("We build it into your product and run it", "https://cyclotron.anth.us/services")]),
+        extra=_links([("Primus", "https://primus.anth.us"), ("Cyclotron", "https://cyclotron.anth.us/"), ("We build it into your product and run it", "https://cyclotron.anth.us/services")]),
     ) + _card(
         "Factory-run software project",
         "<p>We build your software the way we build our own: work tracked as Kanbus issues in the repository, agents "
         "doing the implementation, and a human approval trail on every merge.</p>"
         "<p>Anthus runs its own projects this way, including this site. The commits are public, so you can see the "
         "process instead of taking it on faith.</p>",
+        extra=_links([("Kanbus", "https://kanb.us")]),
     ) + _card(
         "Newsroom for a publication",
         "<p>We stand up Papyrus as your editorial pipeline: stories move through Kanbus-governed stages from pitch to "
@@ -1555,7 +1569,7 @@ def decision_models_page() -> str:
             + _prose(
                 'Every step is a published experiment on the <a href="/research/">research page</a>, the public '
                 'leaderboards are on the <a href="/benchmarks/">benchmarks page</a>, and '
-                '<a href="/platform/primus/">Primus</a> is where we run the loop in production.'
+                '<a href="https://primus.anth.us" rel="noopener">Primus</a> is where we run the loop in production.'
             ),
             band=True,
         ),
