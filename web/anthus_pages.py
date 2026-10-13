@@ -1,49 +1,33 @@
-"""The production Anth.us page templates, emitting the production DOM.
+"""Anth.us page templates in the arcade design language (web/DESIGN.md).
 
-Each generator here replaces one Gatsby page or template and returns the
-**inner HTML of `<main>`** for that page. It returns HTML rather than Markdown
-on purpose: the port reuses the production site's own compiled stylesheet
-(`web/css/anthus-theme.css`), and that stylesheet targets the DOM these
-templates produce -- `ul.blog > .blog-post-preview > li.clear-float`,
-`.index-module--postsList--d248b`, `.platform-module--card--0e0b8`,
-`.gatsby-image-wrapper.right`. Markdown routed through `markus convert` cannot
-express any of it, so these pages bypass Markus entirely; only the MDX corpus
-(articles and platform-product bodies) is converted.
+Each generator returns the **inner HTML of `<main>`** for one page. Pages are
+generated HTML rather than Markdown because they use the site's own component
+vocabulary (`arcade.css`): page hero, section header, cards, steps, timeline.
+Only the MDX corpus (articles and platform-product bodies) goes through Markus.
 
-| Gatsby source                      | Generator                 | Reference page                   |
-| ---------------------------------- | ------------------------- | -------------------------------- |
-| `src/pages/index.js`               | `homepage`                | `Anth.us/public/index.html`      |
-| `src/pages/about.js`               | `about_page`              | `public/about/index.html`        |
-| `src/pages/ai-solutions.js`        | `ai_solutions_page`       | `public/ai-solutions/index.html` |
-| `src/pages/platform.js`            | `platform_index`          | `public/platform/index.html`     |
-| `src/pages/ryan.js`                | `ryan_page`               | `public/ryan/index.html`         |
-| `src/pages/404.js`                 | `not_found_page`          | `public/404.html`                |
-| `src/templates/blog.jsx`           | `articles_index`          | `public/blog/index.html`         |
-| `src/templates/posts-list.jsx`     | `posts_pages`             | `public/posts/index.html`        |
-| `src/templates/blog-tag.jsx`       | `tag_pages`               | `public/blog/<tag>/index.html`   |
-| `src/templates/platform-product`   | `platform_product_*`      | see note below                   |
+| Page                    | Generator                                   |
+| ----------------------- | ------------------------------------------- |
+| `/`                     | `homepage`                                  |
+| `/about/`               | `about_page`                                |
+| `/ai-solutions/`        | `ai_solutions_page`                         |
+| `/ryan/`                | `ryan_page`                                 |
+| `/engage/`              | `engage_page`                               |
+| `/decision-models/`     | `decision_models_page`                      |
+| `/benchmarks/`          | `benchmarks_page`                           |
+| `/research/` `/reading/`| `research_page`, `reading_page`             |
+| `/platform/`            | `platform_index`                            |
+| `/platform/<product>/`  | `platform_product_head`, `..._tail`         |
+| `/blog/`, `/posts/`     | `articles_collection`, `posts_collection`   |
+| `/tags/`                | `tag_pages`                                 |
+| `/404.html`             | `not_found_page`                            |
 
-The four pages whose bodies are pure static copy (`about`, `ai-solutions`,
-`ryan`, `404`) live in `anthus_page_html`, lifted verbatim from the rendered
-reference pages, because their copy is in the Gatsby repo's JSX rather than in
-the content submodule -- transcribing it by hand would only introduce drift.
+A page that composes its own full-bleed sections starts with `BARE`; the
+envelope (`anthus_dom.render_envelope`) then skips the standard content
+container. **Hrefs are emitted in production shape** (`/blog/<slug>/`) and
+rewritten to this build's static paths by `build_via_papyrus`.
 
-**Hrefs are emitted in production shape** (`/blog/<slug>/`, `/platform/`,
-`/posts/2/`) and rewritten to this build's static paths by
-`build_via_papyrus._rewrite_internal_links`. One mapper, one place to change,
-and the emitted DOM stays directly comparable to `Anth.us/public/`.
-
-**Platform product pages have no usable visual reference.** In the 2026-09-24
-production build, `/platform/<product>/index.html` (and `/solutions/<x>/`, and
-the bare-slug article duplicates) render with *no chrome at all* -- no
-`.layout`, no header, no footer, just the MDX body. `platform-product.jsx`
-clearly intends the full template, so what is implemented here is the DOM that
-JSX would produce. Flagged rather than silently matched.
-
-Hero and capability imagery comes from `web/assets/site/`, which is committed
-in this repo: those files live in the **Anth.us** repo's `src/images`/`static`
-trees, not in the content submodule, and the Amplify build has no access to a
-sibling checkout.
+Copy rules: first person plural, plain and specific, every fact from the
+previous page copy or the content front matter (DESIGN.md section 8).
 """
 
 from __future__ import annotations
@@ -51,8 +35,11 @@ from __future__ import annotations
 from html import escape
 
 import anthus_dom
-import anthus_page_html
+import arcade_pictograms
 from anthus_content import ContentNode, ImageIndex
+from anthus_urls import FEATURED_COUNT, GRID_SIZE, collection_page_count, tag_slug
+
+BARE = anthus_dom.BARE_MARKER
 
 CONTACT_URL = (
     "https://docs.google.com/forms/d/e/"
@@ -66,15 +53,44 @@ SITE_DESCRIPTION = (
     "grounded in production operations since 2007."
 )
 
-# gatsby-config.mjs siteMetadata.menuLinks. Kept here for the build's page
-# registry; the rendered nav is `anthus_dom.MENU_LINKS`, which is the same set
-# in production href shape.
-MENU = anthus_dom.MENU_LINKS
+_SHARED_DESCRIPTION = (
+    "Anthus builds and operates self-aligning AI systems — custom models, agent harnesses, "
+    "and evaluation loops with a human in the loop, grounded in production operations since 2007."
+)
 
-# index.module.css / platform.module.css, as Gatsby hashes them. Read from the
-# same committed JSON that `bin/build-theme-css.py` uses to rewrite the CSS, so
-# a class name can never exist in one and not the other.
-C = anthus_dom.css_modules()
+#: Production `<title>` text and meta description per page URL.
+PAGE_META: dict[str, dict[str, str]] = {
+    "/about/": {
+        "title": "About Us | Anthus",
+        "description": "Anthus builds and operates self-aligning AI systems, grounded in production operations since 2007 — the reliability and security behind a multi-million-dollar platform, now applied to AI.",
+    },
+    "/ai-solutions/": {"title": "AI Solutions | Anthus", "description": _SHARED_DESCRIPTION},
+    "/ryan/": {"title": "Ryan Porter | Anthus", "description": _SHARED_DESCRIPTION},
+    "/404.html": {"title": "404: Not Found | Anthus", "description": _SHARED_DESCRIPTION},
+    "/engage/": {
+        "title": "Engage Anthus | Anthus",
+        "description": "What an Anthus engagement looks like: bring any problem you think AI might solve, and we scope a first month with a record you can inspect. Classifier labs, factory-run software, and newsrooms are three examples.",
+    },
+    "/reading/": {
+        "title": "Reading List | Anthus",
+        "description": "Papers and books behind the work at Anthus, one short note each on what they say and what we checked.",
+    },
+    "/research/": {
+        "title": "Research | Anthus",
+        "description": "Experiments on how Jev, Laya and other decision models actually behave in production: bias, calibration, fine-tuning and distillation, with the method and the measurements.",
+    },
+    "/decision-models/": {
+        "title": "Aligning Jev and Other Decision Models to Your Data | Anthus",
+        "description": "You can't fine-tune Jev. Here is how to align a decision model to your own data instead: review its decisions, label the disagreements, calibrate its confidence, change the questions, gate by slice, and distill a classifier you own. Published measurements at every step.",
+    },
+    "/benchmarks/": {
+        "title": "Decision Model Benchmarks: Biased-Decisions and Hard-Decisions | Anthus",
+        "description": "Two public benchmarks for decision models: Biased-Decisions measures how often an answer changes when one personal detail changes, and Hard-Decisions measures how accuracy falls as reasoning gets deeper.",
+    },
+}
+
+# Primary navigation (production href shape); the rendered nav is `anthus_dom.MENU_LINKS`.
+MENU = anthus_dom.MENU_LINKS
 
 
 def _esc(value: str) -> str:
@@ -90,271 +106,228 @@ def platform_href(node: ContentNode) -> str:
     return f"/platform/{node.slug}/"
 
 
-# Kept under the old names so the build script and any callers keep working.
 def article_href(node: ContentNode) -> str:
     return blog_href(node)
 
 
 def _preview(node: ContentNode, images: ImageIndex) -> str | None:
+    """The item's preview image path (listing visual and social-share image)."""
     raw = node.front_matter.get("preview_image")
     if not raw:
         return None
     return images.resolve_path(str(raw), relative_to=node.source)
 
 
-_BLOCK_TAG_RE = __import__("re").compile(r"<(p|ul|ol|div|h[1-6]|table|blockquote|pre)\b", __import__("re").I)
-
-
-def _excerpt_container(tag: str, attrs: str, excerpt: str) -> str:
-    """`<p ...>{excerpt}</p>`, as production renders it once React has hydrated.
-
-    The excerpt is injected with `dangerouslySetInnerHTML`, and several contain
-    block elements (`<p>`, `<ul>`). React builds `p > p/ul` in the DOM; an HTML
-    parser would close the outer `<p>` at the first block child and leave empty
-    `<p>`s around the content, changing every height below it. A `<div>` keeps
-    the children inside the box; it takes the margin the `p` element rule would
-    have given (`calc(var(--space-4) / 2)`), which is the only `p` rule that
-    changes the geometry. Excerpts that are plain inline text stay a `<p>`.
-    """
-    if _BLOCK_TAG_RE.search(excerpt):
-        # A `<div>` excerpt wrapper (`tag == "div"`) has no `p` margin to keep.
-        style = ' style="margin-bottom:calc(var(--space-4)/2)"' if tag == "p" and not attrs else ""
-        return f"<div{attrs}{style}>{excerpt}</div>"
-    return f"<{tag}{attrs}>{excerpt}</{tag}>"
-
-
-def _headline_from_excerpt_or_title(node: ContentNode) -> str:
-    return node.excerpt_text.strip() or node.title
+def _fm(node: ContentNode, key: str) -> str:
+    value = node.front_matter.get(key)
+    return "" if value in (None, "") else str(value)
 
 
 def _excerpt_html(node: ContentNode) -> str:
-    """The excerpt as authored, markup intact.
-
-    `solutions.js` and `posts-list.jsx` both render it with
-    `dangerouslySetInnerHTML`, so `<mark>`, `<a>` and even a wrapping `<p>`
-    reach the page verbatim -- including the nested-`<p>` quirk that production
-    has. `excerpt_text` strips all of that and is only right for `<meta>`.
-    """
     raw = node.front_matter.get("excerpt")
     return "" if raw is None else str(raw).strip()
-
-
-# --------------------------------------------------------------------------
-# Shared list items
-# --------------------------------------------------------------------------
-
-
-def _blog_item(
-    node: ContentNode,
-    images: ImageIndex,
-    *,
-    date: str,
-    excerpt_tag: str,
-    href: str | None = None,
-    image_class: str = "featured",
-    shows_excerpt_as_headline: bool = False,
-) -> str:
-    """One `ul.blog` row: `blog.jsx`'s `<BlogPostPreview>`.
-
-    The `<div class="blog-post-preview">` wrapping an `<li>` is invalid HTML
-    and is reproduced anyway -- it is what production emits, `ul.blog li` is
-    what the stylesheet targets, and "fixing" it changes the box tree.
-
-    `date` and `excerpt_tag` differ by call site, which is not a style choice:
-    the homepage's Recent Articles block renders the raw front-matter date in a
-    `<div>`, while `/blog/` renders the formatted date in a `<p>`. Both are
-    reproduced as-is.
-    """
-    target = href or blog_href(node)
-    image = _preview(node, images)
-    image_html = (
-        anthus_dom.image_html(
-            src=image, alt=node.title, class_name=image_class, eager=False
-        )
-        if image
-        else ""
-    )
-    headline = _headline_from_excerpt_or_title(node) if shows_excerpt_as_headline else node.title
-    excerpt = "" if shows_excerpt_as_headline else _excerpt_container(
-        excerpt_tag, "", _excerpt_html(node)
-    )
-    return (
-        '<div class="blog-post-preview"><li class="clear-float">'
-        f'<a href="{_esc(target)}">{image_html}<h3>{escape(headline)}</h3></a>'
-        f'<div class="date">{escape(date)}</div>'
-        + excerpt
-        + "</li></div>"
-    )
-
-
-def _posts_item(node: ContentNode, images: ImageIndex) -> str:
-    """One `.index-module--postsList--d248b` cell: the home page's Recent Posts.
-
-    Live production puts the thumbnail first inside the link and gives it the
-    `postsListThumbnail` class (it used to be last, classless).
-    """
-    image = _preview(node, images)
-    image_html = (
-        anthus_dom.image_html(
-            src=image,
-            alt=node.title,
-            class_name=C["index:postsListThumbnail"],
-            eager=False,
-        )
-        if image
-        else ""
-    )
-    return (
-        f'<li class="{C["index:postsListItem"]}">'
-        f'<div class="{C["index:postsListItemContent"]}">'
-        f'<a class="{C["index:postsListItemLink"]}" href="{_esc(blog_href(node))}">'
-        f"{image_html}"
-        f'<div><div class="{C["index:listItemTitle"]}">{escape(node.title)}</div>'
-        f'<div class="{C["index:listItemDescription"]}">{_excerpt_html(node)}</div>'
-        f'<div class="{C["index:listItemRight"]}">'
-        f'<div class="{C["index:listItemDate"]}">{escape(node.display_date)}</div>'
-        "<div><i>more...</i></div></div></div></a></div></li>"
-    )
-
-
-def _solution_date(node: ContentNode) -> str:
-    """`solutions.js`: date-fns `format(date, "MMMM dd, yyyy")`, raw if invalid.
-
-    Live production ignores `display_date` here (it is used only by the
-    Engagements list on /ai-solutions/).
-    """
-    parsed = node.date
-    return parsed.strftime("%B %d, %Y") if parsed.year > 1 else node.date_raw
-
-
-def solutions_list(
-    nodes: list[ContentNode],
-    images: ImageIndex,
-    *,
-    with_image: bool,
-    extra_class: str | None = None,
-) -> str:
-    """`src/components/solutions.js`, rendered.
-
-    Two production quirks are reproduced deliberately, because they are in the
-    class attributes the stylesheet and any structural diff see: React
-    interpolates a missing `className` prop as the literal string
-    `undefined`, and leaves a trailing space on an unfeatured item's class
-    list. Normalising them would make this build's DOM differ from the
-    reference for no visual gain.
-    """
-    items = []
-    for node in nodes:
-        featured = "featured" in node.tags
-        image = _preview(node, images) if with_image else None
-        parts = []
-        if image:
-            parts.append(
-                anthus_dom.image_html(
-                    src=image, alt=node.title, class_name="", eager=False
-                )
-            )
-        heading = f"<h3>{escape(node.title)}</h3>"
-        if featured:
-            parts.append(
-                f'<a class="{C["index:listItemLink"]}" '
-                f'href="{_esc(blog_href(node))}">{heading}</a>'
-            )
-        else:
-            parts.append(heading)
-        parts.append(
-            f'<p class="{C["index:listItemDescription"]} date">'
-            f"{escape(_solution_date(node))}</p>"
-        )
-        parts.append(
-            _excerpt_container(
-                "p", f' class="{C["index:listItemDescription"]}"', _excerpt_html(node)
-            )
-        )
-        item_class = f'{C["index:listItem"]} {C["index:featuredItem"]}' if featured else f'{C["index:listItem"]} '
-        items.append(f'<li class="{item_class}">{"".join(parts)}</li>')
-    list_class = f'{C["index:list"]} {extra_class if extra_class else "undefined"}'
-    return f'<ul class="{list_class}">{"".join(items)}</ul>'
 
 
 # --------------------------------------------------------------------------
 # Homepage — src/pages/index.js
 # --------------------------------------------------------------------------
 
-# (title, href, image basename, image alt, description HTML)
+# (title, href, pictogram name, body)
 _CAPABILITIES = (
     (
         "Knowledge Bases",
         "https://github.com/AnthusAI/Biblicus",
-        "smart-process-automation.png",
-        "Knowledge bases with learned ontologies and taxonomies",
-        "Your agents are only as good as what they can look up.  We build "
-        "knowledge bases with <mark>ontologies and taxonomies that learn from "
-        "your data</mark>, refining their own structure instead of going stale "
-        "the week after someone hand-built them.",
+        "knowledge-base",
+        "Your agents are only as good as what they can look up. We build knowledge "
+        "bases with ontologies and taxonomies that learn from your data, instead of "
+        "going stale the week after someone hand-built them.",
     ),
     (
         "Self-Aligning Automation",
         "/blog/call-criteria/",
-        "ai-enabled-projects.png",
-        "Unattended automation with a human in the loop",
-        "Unattended business process automation with a human in the loop.  "
-        "Reviewers correct it and say why; the system <mark>turns the "
-        "explanation into a stated policy</mark> and applies it from then on.",
+        "self-aligning",
+        "Business process automation with a human in the loop. Reviewers correct it "
+        "and say why; the system turns the explanation into a stated policy and "
+        "applies it from then on.",
     ),
     (
         "Agent Systems",
         "/blog/give-an-agent-a-tool/",
-        "ai-agent.png",
-        "Agent systems, tools, and orchestration",
-        "A model is half a system.  The other half is the harness: the tools it "
-        "can reach, the procedures it follows, the limits it runs inside, and "
-        "the ability to work for hours <mark>without losing the plot</mark>.",
+        "agent-harness",
+        "A model is half a system. The other half is the harness: the tools it can "
+        "reach, the procedures it follows, the limits it runs inside, and the "
+        "ability to work for hours without losing the plot.",
     ),
     (
         "Machine Learning",
         "/decision-models/",
-        "ai-software-feature.png",
-        "Custom and fine-tuned machine learning models",
-        "Custom classifiers, fine-tuned models, decision models like Jev, and "
-        "<mark>calibrated confidence</mark> that tells you which decisions to trust and which to "
-        "escalate.  We find the cheapest model that clears your bar, prove that "
-        "it clears it, and run it in production on AWS—training, serving, and "
-        "evaluation included.",
+        "confidence-gate",
+        "Custom classifiers, fine-tuned models, and decision models like Jev, with "
+        "calibrated confidence that tells you which decisions to trust and which to "
+        "escalate. We find the cheapest model that clears your bar and run it on AWS.",
     ),
 )
 
-HOME_TITLE = "Depend on proven experts"
-HOME_SUBHEAD = "We build the system, run it in production, and your experts keep it aligned."
+# (client, href, pictogram, context, problem, what we did, outcome)
+_CASES = (
+    (
+        "Call Criteria",
+        "/blog/call-criteria/",
+        "scorecard",
+        "Call-center QA, scored by an outside service’s fine-tuned classifiers.",
+        "Too expensive and too slow to scale to every new scorecard.",
+        "We built their classifier lab on Primus in their own AWS account and ran it for years.",
+        "Hundreds of scorecards, millions of calls scored.",
+    ),
+    (
+        "Venue Driver",
+        "/blog/venue-driver/",
+        "venue-system",
+        "Ticketing, VIP table reservations and guest lists for Las Vegas nightlife.",
+        "A bespoke, serverless, event-driven system (AWS Lambda, Amplify, SQS), operationally mature.",
+        "Integrated with Tao Group’s in-house loyalty system, Madison Square Garden Entertainment’s ServiceNow ITSM, "
+        "and a bespoke data warehouse and business intelligence system.",
+        "In continuous operation since 2007.",
+        ("What it was", "What it integrated", "Outcome"),
+        "",
+    ),
+)
+
+_PRINCIPLES = (
+    ("Specs first", "Define behavior before implementation."),
+    ("Defense in depth", "Sandboxed tools, CI gates, staged rollouts, and fast rollback."),
+    ("Operational feedback", "Telemetry and incident-driven regressions that tighten the loop over time."),
+    ("Simplify and delete", "Reduce degrees of freedom to eliminate entire classes of failure."),
+)
+
+_STATS = (
+    ("$250M", "Processed in production"),
+    ("180B", "Tokens of production LLM work"),
+    ("~100%", "Uptime"),
+    ("2007", "Building production systems since"),
+)
+
+
+def _px(name: str) -> str:
+    """Inline pictogram. An unknown name fails the build (no placeholder frames in production)."""
+    if name not in arcade_pictograms.NAMES:
+        raise KeyError(f"unknown pictogram {name!r}; known: {', '.join(arcade_pictograms.NAMES)}")
+    return arcade_pictograms.render(name)
+
+
+def _eyebrow(number: str, label: str) -> str:
+    return f'<p class="eyebrow"><span>{number}</span> <span>/</span> <span>{escape(label)}</span></p>'
+
+
+def _btn(label: str, href: str, *, ghost: bool = False) -> str:
+    cls = "btn btn--ghost" if ghost else "btn"
+    return f'<a class="{cls}" href="{_esc(href)}"><span>{escape(label)} &rarr;</span></a>'
+
+
+def _section(number: str, label: str, heading: str, *, lead: str = "", body: str, head_extra: str = "",
+             band: bool = False, stack: bool = False, section_id: str = "") -> str:
+    lead_html = f'<p class="lead">{escape(lead)}</p>' if lead else ""
+    ident = f' id="{section_id}"' if section_id else ""
+    return (
+        f'<section class="section{" section--band" if band else ""}"{ident}>'
+        f'<div class="container section__grid{" section__grid--stack" if stack else ""}">'
+        f'<header class="section__head">{_eyebrow(number, label)}<h2>{escape(heading)}</h2>'
+        f"{lead_html}{head_extra}</header>"
+        f'<div class="section__body">{body}</div></div></section>'
+    )
 
 
 def _hero() -> str:
-    """`src/components/hero.js` + the homepage's two hero images.
-
-    `.hero-overlay` is absolutely positioned over the image by `layout.scss`.
-    Two images are emitted because the stylesheet shows the tall one below
-    941px and the wide one above it. The button is an internal link to
-    `/engage/` on live production (it used to be the contact form).
-    """
+    """Split hero: copy on the left, the animated hero pictogram on the right."""
     return (
-        '<div class="hero">'
-        + anthus_dom.hero_image_html(
-            src="/assets/site/serverless-ai-software-solutions.png",
-            alt="Anthus",
-            class_name="hero-image hero-image-default",
-        )
-        + anthus_dom.hero_image_html(
-            src="/assets/site/serverless-ai-software-solutions-wide.png",
-            alt="Anthus",
-            class_name="hero-image hero-image-wide",
-        )
-        + '<div class="hero-overlay">'
-        f"<h1>{escape(HOME_TITLE)}</h1><p>{escape(HOME_SUBHEAD)}</p>"
-        f'<p class="{C["index:heroProof"]}"><mark>A quarter billion dollars</mark> '
-        "processed in production, at nearly 100% uptime.</p>"
-        '<a class="button" href="/engage/">Tell us the problem</a>'
-        "</div></div>"
+        '<section class="hero"><div class="container hero__grid"><div class="hero__copy">'
+        '<p class="eyebrow">AI ENGINEERING · SINCE 2007</p>'
+        '<h1>AI that keeps working after the demo.<span class="cursor" aria-hidden="true"></span></h1>'
+        '<p class="lead">We build custom models, agent systems and knowledge bases, run '
+        "them in production, and keep them aligned with the people who know the work.</p>"
+        '<div class="btn-row">'
+        + _btn("Tell us the problem", "/engage/")
+        + _btn("See the work", "/ai-solutions/", ghost=True)
+        + '</div></div><div class="hero__art">'
+        + _px("hero-loop")
+        + "</div></div></section>"
     )
+
+
+def _stats() -> str:
+    cells = "".join(
+        f'<li><span class="stats__n">{escape(n)}</span><span class="stats__l">{escape(l)}</span></li>'
+        for n, l in _STATS
+    )
+    return f'<div class="stats-wrap"><div class="container"><ul class="stats">{cells}</ul></div></div>'
+
+
+def _capability_card(title: str, url: str, pictogram: str, body: str) -> str:
+    return (
+        '<li class="card notch card--link">'
+        f'<div class="card__px">{_px(pictogram)}</div>'
+        f'<h3><a href="{_esc(url)}">{escape(title)}</a></h3><p>{escape(body)}</p></li>'
+    )
+
+
+def _case_card(client, href, pictogram, context, problem, did, outcome,
+               labels=("Problem", "What we did", "Outcome"), footnote="") -> str:
+    foot = f'<p class="case__foot">{escape(footnote)}</p>' if footnote else ""
+    return (
+        '<li class="card notch case card--link">'
+        f'<div class="card__px">{_px(pictogram)}</div>'
+        f'<h3><a href="{_esc(href)}">{escape(client)}</a></h3>'
+        f'<p class="case__ctx">{escape(context)}</p>'
+        f"<dl><div><dt>{labels[0]}</dt><dd>{escape(problem)}</dd></div>"
+        f"<div><dt>{labels[1]}</dt><dd>{escape(did)}</dd></div>"
+        f'<div><dt>{labels[2]}</dt><dd class="case__out">{escape(outcome)}</dd></div></dl>{foot}</li>'
+    )
+
+
+def _platform_tile(node: ContentNode) -> str:
+    return (
+        '<li class="card notch tile card--link">'
+        f'<h3><a href="{_esc(platform_href(node))}">{escape(node.title)}</a></h3>'
+        f"<p>{escape(_fm(node, 'excerpt'))}</p></li>"
+    )
+
+
+_SOLUTION_DESCRIPTIONS = {
+    "Cyclotron": "It starts on day one with a decision model’s general training, refits a small model on each "
+                 "correction, and lets an LLM propose better questions that code tests before they go live. "
+                 "The loop is open source under the MIT license.",
+    "Chatticus": "A collaborative workplace with named teammates, one shared computer, skills, routines, and human "
+                 "approval boundaries.",
+    "Papyrus": "Stories move through Kanbus-governed stages from pitch to draft to published, with a human editor "
+               "approving each move. Anth.us runs its own newsroom on it, and the board is public.",
+    "Primus": "The Anthus MLOps platform and agent incubator: it evaluates, deploys, and continuously improves AI "
+              "agents with human feedback in the loop.",
+}
+
+
+def _product_card(name: str, url: str, line: str, pictogram: str, page: str | None, *, describe: bool = False) -> str:
+    also = f'<a href="{_esc(page)}">On anth.us</a>' if page else ""
+    desc = f"<p>{escape(_SOLUTION_DESCRIPTIONS[name])}</p>" if describe and name in _SOLUTION_DESCRIPTIONS else ""
+    return (
+        f'<li class="card notch product card--static{" product--desc" if desc else ""}">'
+        f'<div class="card__px">{_px(pictogram)}</div><h3>{escape(name)}</h3><p>{escape(line)}</p>{desc}'
+        f'<div class="card__links"><a href="{_esc(url)}" rel="noopener">Visit {escape(name)}</a>{also}</div></li>'
+    )
+
+
+def _products_grid(*, describe: bool = False) -> str:
+    return '<ul class="grid grid--products">' + "".join(
+        _product_card(*p, describe=describe) for p in anthus_dom.PRODUCTS
+    ) + "</ul>"
+
+
+def _supporting_row() -> str:
+    noopener = ' rel="noopener"'
+    links = " ".join(
+        f'<a href="{_esc(href)}"{noopener if ext else ""}>{escape(name)}</a>'
+        for name, href, _line, ext in anthus_dom.SUPPORTING
+    )
+    return f'<p class="supporting"><strong>Supporting technology</strong> {links}</p>'
 
 
 def homepage(
@@ -363,156 +336,259 @@ def homepage(
     posts: list[ContentNode],
     images: ImageIndex,
     blog: list[ContentNode] | None = None,
+    platform: list[ContentNode] | None = None,
 ) -> str:
-    """`src/pages/index.js`, as deployed (Anth.us 96ac29c).
-
-    Section order: What We Do, Case studies, How we work, The Anthus Platform,
-    Recent Articles, Recent Posts. The B0rd spinoff section is gone.
-    """
-    out = [_hero()]
+    """The arcade homepage (HOME-COPY.md)."""
+    out = [_hero(), _stats()]
 
     out.append(
-        f'<p class="{C["index:intro"]}">'
-        "<mark>180 billion tokens</mark> of production LLM workload. AI in "
-        "production, not just in demos.</p>"
-    )
-
-    out.append("<h2>What We Do</h2>")
-    cards = []
-    for title, url, image, alt, description in _CAPABILITIES:
-        cards.append(
-            f'<li class="{C["index:listItem"]}">'
-            f'<a href="{_esc(url)}" class="{C["index:listItemLink"]}">'
-            + anthus_dom.image_html(
-                src=f"/assets/site/{image}", alt=alt, class_name="", eager=False
-            )
-            + f"<h3>{escape(title)}</h3></a>"
-            f'<p class="{C["index:listItemDescription"]}">{description}</p></li>'
+        _section(
+            "01", "What we do", "Four kinds of system. One way of running them.",
+            lead="Clients usually arrive asking about one of these. The work rarely stays in one box.",
+            body='<ul class="grid grid--caps">'
+            + "".join(_capability_card(*c) for c in _CAPABILITIES)
+            + "</ul>",
         )
-    out.append(f'<ul class="{C["index:list"]}">{"".join(cards)}</ul>')
-
-    out.append(
-        f'<p class="{C["index:intro"]} {C["index:textCenter"]}">'
-        "Clients usually arrive asking about one of these. "
-        "<mark>The work rarely stays in one box.</mark></p>"
     )
 
-    def case(slug: str, title: str, facts: str) -> str:
-        return (
-            f'<li class="{C["index:listItem"]}">'
-            f'<a class="{C["index:listItemLink"]}" href="/blog/{slug}/">'
-            f"<h3>{title}</h3></a>"
-            f'<ul class="{C["index:caseFacts"]}">{facts}</ul></li>'
+    out.append(
+        _section(
+            "02", "Proof", "Systems that ran for years, not weeks.",
+            body='<ul class="grid grid--2">'
+            + "".join(_case_card(*c) for c in _CASES)
+            + '</ul><p class="more"><a href="/ai-solutions/">All engagements</a></p>',
+            band=True,
+            stack=True,
         )
+    )
 
-    out.append("<h2>Case studies</h2>")
+    principles = "".join(
+        f"<li><span>{i:02d}</span><strong>{escape(name)}</strong><p>{escape(text)}</p></li>"
+        for i, (name, text) in enumerate(_PRINCIPLES, 1)
+    )
     out.append(
-        f'<ul class="{C["index:list"]}">'
-        + case(
-            "call-criteria",
-            "Call Criteria",
-            "<li>Call-center QA, scored by an outside service&#x27;s fine-tuned classifiers.</li>"
-            "<li>Too expensive and too slow to scale to every new scorecard.</li>"
-            "<li>We built their classifier lab on Primus in their own AWS account and ran it for years.</li>"
-            "<li><mark>Hundreds of scorecards, millions of calls scored</mark>.</li>",
+        _section(
+            "03", "How we work", "AI-built, and checked harder because of it.",
+            body='<div class="prose-block">'
+            "<p>In February 2026 our nightly routine was pasting &quot;Continue.&quot; into "
+            "four Codex sessions before bed, because nothing else kept the agents going or "
+            "told us what they&#x27;d done. "
+            '<a href="/about/">That night is on the record.</a> Everything we ship now runs '
+            "under specs, tests, staged rollout, and a person who can say no.</p>"
+            "<p>We use AI to write code the same way we use it to classify calls: inside a "
+            "governor of constraints, feedback loops and human judgment.</p></div>"
+            f'<ol class="principles">{principles}</ol>'
+            '<p class="more"><a href="/blog/cybernetic-development/">How we govern AI-built systems</a></p>',
         )
-        + case(
-            "venue-driver",
-            "Venue Driver",
-            "<li>Ticketing and reservations backbone for Las Vegas nightlife.</li>"
-            "<li>An AWS data center failed catastrophically.</li>"
-            "<li>We relocated the entire system within hours \u2014 ticket scanning never stopped.</li>"
-            "<li><mark>In continuous operation since 2007</mark>.</li>",
+    )
+
+    out.append(
+        _section(
+            "04", "Solutions", "Solutions we built from the work.",
+            lead="Our in-house solutions, from a stack that grew out of real delivery work.",
+            body=_products_grid() + _supporting_row()
+            + '<p class="more"><a href="/platform/">The whole platform</a></p>',
+            band=True,
         )
-        + "</ul>"
-    )
-    out.append(
-        '<div class="clear-float">See our <a href="/ai-solutions/">solution '
-        "patterns</a>.</div>"
     )
 
-    out.append(
-        f'<section class="{C["index:approachSection"]}">'
-        f'<h2 class="{C["index:approachHeading"]}">How we work</h2>'
-        f'<div class="{C["index:approachContent"]}"><div>'
-        "<p>You might be wondering whether AI-built means nobody checked. For us it "
-        "means the opposite, and we learned it the hard way: in February 2026 the "
-        "nightly routine was pasting &quot;Continue.&quot; into four Codex sessions "
-        "before bed, because nothing else kept the agents going or told us what "
-        "they&#x27;d done. "
-        '<a href="/about/">That night is on the record.</a> Everything we ship now '
-        "runs under specs, tests, staged rollout, and a person who can say no. We "
-        "call that cybernetic development: we use AI to write code the same way we "
-        "use it to classify calls, inside a governor of constraints, feedback "
-        "loops, and human judgment that keeps systems reliable in production.</p>"
-        "<p>Modern failures increasingly look less like isolated \u201cbugs\u201d "
-        "and more like operational, multi-system breakdowns. Great unit tests "
-        "help\u2014but they don\u2019t cover every emergent scenario. So we build "
-        "layered defenses and close the loop with real-world feedback.</p>"
-        "<ul><li>Specs first: define behavior before implementation.</li>"
-        "<li>Defense in depth: sandboxed tools, CI gates, staged rollouts, and "
-        "fast rollback.</li>"
-        "<li>Operational feedback: telemetry and incident-driven regressions "
-        "that tighten the loop over time.</li>"
-        "<li>Simplify and delete: reduce degrees of freedom to eliminate entire "
-        "classes of failure.</li></ul>"
-        f'<div class="{C["index:approachActions"]}">'
-        f'<a class="{C["index:approachSecondaryCta"]}" '
-        'href="/blog/cybernetic-development/">How we govern AI-built systems</a>'
-        "</div></div></div></section>"
+    posts_items = "".join(
+        f'<li><time>{escape(n.display_date)}</time><a href="{_esc(blog_href(n))}">{escape(n.title)}</a></li>'
+        for n in posts[:4]
     )
-
     out.append(
-        f'<section class="{C["index:plexusFeature"]}">'
-        f'<span class="{C["index:eyebrow"]}">PART OF</span>'
-        f'<h2 class="{C["index:platformHeader"]}">The Anthus Platform</h2>'
-        "<p>Solve complex business problems with AI and ML using a proven, "
-        "reusable technology stack that grew out of real delivery work \u2014 "
-        "runtime, agent execution, knowledge, observability, and media, with the "
-        "enterprise controls that matter in production.</p>"
-        f'<div class="{C["index:approachActions"]}">'
-        '<a class="button" href="/platform/">Explore the platform</a>'
-        "</div></section>"
-    )
-
-    out.append("<h2>Recent Articles</h2>")
-    out.append(
-        '<ul class="blog">'
-        + "".join(
-            _blog_item(
-                node,
-                images,
-                date=node.date_raw,
-                excerpt_tag="div",
-                href=str(node.front_matter.get("external_url") or blog_href(node)),
-            )
-            for node in articles[:4]
+        _section(
+            "05", "Writing", "What we’re measuring.",
+            body='<ul class="grid grid--list">'
+            + "".join(_article_card(n, images) for n in articles[:6])
+            + '</ul><p class="more"><a href="/blog/">All articles</a></p>'
+            + (
+                '<div class="shorter"><h3>Shorter posts</h3><ul>'
+                + posts_items
+                + '</ul><p class="more"><a href="/posts/">All posts</a></p></div>'
+                if posts_items
+                else ""
+            ),
         )
-        + "</ul>"
-    )
-    out.append(
-        f'<div class="clear-float {C["index:seeMoreFooter"]}">More in '
-        '<a href="/blog/">Articles</a>.</div>'
     )
 
-    out.append("<h2>Recent Posts</h2>")
     out.append(
-        f'<ul class="{C["index:postsList"]}">'
-        + "".join(_posts_item(node, images) for node in posts[:4])
-        + "</ul>"
-    )
-    out.append(
-        f'<div class="clear-float {C["index:seeMoreFooter"]}">More in '
-        '<a href="/posts/">Posts</a>.</div>'
+        '<section class="section section--band cta-band"><div class="container cta-band__in">'
+        '<div><p class="eyebrow">PRESS START</p><h2>Bring us the problem.</h2>'
+        '<p class="lead">Even if you can’t yet say what you need. Working that out is part of '
+        "the first month, and it’s often the most useful part.</p></div>"
+        '<div class="btn-row">' + _btn("Tell us the problem", "/engage/") + "</div></div></section>"
     )
     return "".join(out)
 
 
+
 # --------------------------------------------------------------------------
-# Collections: collection.jsx -- /blog/, /posts/, /research/, /reading/
+# Shared page components (inner pages)
 # --------------------------------------------------------------------------
 
-from anthus_urls import FEATURED_COUNT, GRID_SIZE, collection_page_count  # noqa: E402
+
+def _page(*parts: str) -> str:
+    return BARE + "".join(parts)
+
+
+def _page_hero(
+    eyebrow: str,
+    title: str,
+    lead_html: str,
+    *,
+    art: str = "",
+    actions: str = "",
+    compact: bool = False,
+    cursor: bool = True,
+) -> str:
+    """Page hero: eyebrow, Jersey 25 h1, lead, optional art (pictogram or photo) from 64rem."""
+    solo = "" if art else " hero__grid--solo"
+    cur = '<span class="cursor" aria-hidden="true"></span>' if cursor else ""
+    art_html = f'<div class="hero__art">{art}</div>' if art else ""
+    return (
+        f'<section class="hero hero--page{" hero--compact" if compact else ""}">'
+        f'<div class="container hero__grid{solo}"><div class="hero__copy">'
+        f'<p class="eyebrow">{escape(eyebrow)}</p><h1>{escape(title)}{cur}</h1>'
+        + (f'<p class="lead">{lead_html}</p>' if lead_html else "")
+        + (f'<div class="btn-row">{actions}</div>' if actions else "")
+        + f"</div>{art_html}</div></section>"
+    )
+
+
+def _cta(title: str = "Bring us the problem.", lead: str = "", *, label: str = "Tell us the problem",
+         href: str = "/engage/") -> str:
+    lead = lead or (
+        "Even if you can’t yet say what you need. Working that out is part of "
+        "the first month, and it’s often the most useful part."
+    )
+    return (
+        '<section class="section section--band cta-band"><div class="container cta-band__in">'
+        f'<div><p class="eyebrow">PRESS START</p><h2>{escape(title)}</h2>'
+        f'<p class="lead">{lead}</p></div>'
+        f'<div class="btn-row">{_btn(label, href)}</div></div></section>'
+    )
+
+
+def _chips(items: list[tuple[str, str]]) -> str:
+    return '<ul class="chips">' + "".join(
+        f'<li><a class="chip" href="{_esc(h)}">{escape(t)}</a></li>' if h else f'<li><span class="chip">{escape(t)}</span></li>'
+        for t, h in items
+    ) + "</ul>"
+
+
+def _links(items: list[tuple[str, str]]) -> str:
+    return '<div class="card__links">' + "".join(
+        f'<a href="{_esc(h)}">{escape(t)}</a>' for t, h in items
+    ) + "</div>"
+
+
+def _card(title: str, body_html: str, *, href: str = "", extra: str = "", cls: str = "") -> str:
+    """A plain notched card; with `href` the whole card is the click target."""
+    head = f'<h3><a href="{_esc(href)}">{escape(title)}</a></h3>' if href else f"<h3>{escape(title)}</h3>"
+    return (
+        f'<li class="card notch {cls}{" card--link" if href else " card--static"}">'
+        f"{head}{body_html}{extra}</li>"
+    )
+
+
+def _qa_card(question: str, answer_html: str, links: list[tuple[str, str]] | None = None) -> str:
+    return _card(
+        question,
+        f"<p>{answer_html}</p>",
+        extra=_links(links) if links else "",
+        cls="card--qa",
+    )
+
+
+def _steps(items: list[tuple[str, str]]) -> str:
+    return '<ol class="steps">' + "".join(
+        f"<li><div><strong>{escape(t)}</strong><p>{body}</p></div></li>" for t, body in items
+    ) + "</ol>"
+
+
+def _prose(*paragraphs: str) -> str:
+    return '<div class="prose">' + "".join(f"<p>{p}</p>" for p in paragraphs) + "</div>"
+
+
+_HIDDEN_TAGS = frozenset({"featured", "solutions", "engagement", "integrations"})
+
+
+def _card_visual(node: ContentNode, images: ImageIndex | None, eager: bool = False) -> str:
+    """The 16:10 visual slot of a listing card.
+
+    A `pictogram:` front-matter name wins (inline, animated, follows light/dark);
+    else the item's preview image (shown whole, `contain`, unless its aspect is within
+    ~10% of 16:10); else a first-letter tile so cards still align.
+    """
+    name = anthus_dom.node_pictogram(node)
+    if name:
+        return f'<div class="acard__vis acard__vis--px">{arcade_pictograms.render(name)}</div>'
+    src = _preview(node, images) if images is not None else None
+    if src:
+        size = anthus_dom._dimensions(src)
+        dims = f' width="{size[0]}" height="{size[1]}"' if size else ""
+        fit = " acard__vis--cover" if size and abs(size[0] / size[1] / 1.6 - 1) <= 0.10 else ""
+        load = "eager" if eager else "lazy"
+        return (
+            f'<div class="acard__vis{fit}"><img src="{_esc(src)}" alt="" loading="{load}" decoding="async"{dims}></div>'
+        )
+    letter = next((c for c in node.title if c.isalnum()), "A").upper()
+    return f'<div class="acard__vis acard__vis--letter" aria-hidden="true"><span>{escape(letter)}</span></div>'
+
+
+def _text_card(
+    node: ContentNode,
+    images: ImageIndex | None = None,
+    *,
+    headline: bool = False,
+    display_date: bool = False,
+    link: bool = True,
+    code: bool = True,
+    eager: bool = False,
+) -> str:
+    """The listing card: visual, mono date + tags, Jersey 25 title, clamped excerpt.
+
+    `headline`: posts, whose excerpt is the headline (no separate excerpt).
+    """
+    tags = [t for t in node.tags if t not in _HIDDEN_TAGS][:2]
+    date = node.display_date if display_date else node.date_raw
+    meta = f"<time>{escape(date)}</time>" + "".join(f"<span>#{escape(t)}</span>" for t in tags)
+    title = (node.excerpt_text.strip() or node.title) if headline else node.title
+    target = str(node.front_matter.get("external_url") or blog_href(node))
+    heading = f'<h3><a href="{_esc(target)}">{escape(title)}</a></h3>' if link else f"<h3>{escape(title)}</h3>"
+    excerpt = "" if headline else f'<p class="acard__ex">{escape(node.excerpt_text)}</p>'
+    repository = _fm(node, "repository") if code else ""
+    extra = ""
+    if repository:
+        label = repository.removeprefix("https://github.com/")
+        extra = (
+            '<div class="card__links"><a href="'
+            f'{_esc(repository)}" target="_blank" rel="noopener noreferrer">Code: {escape(label)}</a></div>'
+        )
+    foot = '<span class="card__link" aria-hidden="true">Read</span>' if link else ""
+    cls = "card--link" if link else "card--static"
+    return (
+        f'<li class="card notch acard {cls}">{_card_visual(node, images, eager)}<div class="acard__body">'
+        f'<p class="acard__meta">{meta}</p>{heading}{excerpt}{extra}{foot}</div></li>'
+    )
+
+
+def _article_card(node: ContentNode, images: ImageIndex | None = None) -> str:
+    return _text_card(node, images, code=False)
+
+
+def _card_grid(nodes: list[ContentNode], images: ImageIndex | None = None, **kw) -> str:
+    if not nodes:
+        return ""
+    return '<ul class="grid grid--list">' + "".join(
+        _text_card(n, images, eager=i < 3, **kw) for i, n in enumerate(nodes)
+    ) + "</ul>"
+
+
+# --------------------------------------------------------------------------
+# Collections: /blog/, /posts/, /research/, /reading/ and their pages
+# --------------------------------------------------------------------------
 
 COLLECTION_DESCRIPTIONS = {
     "Articles": (
@@ -540,19 +616,6 @@ def collection_page_path(base: str, page: int) -> str:
     return f"/{base}/" if page == 1 else f"/{base}/page/{page}/"
 
 
-def _grid_html(
-    nodes: list[ContentNode], images: ImageIndex, shows_excerpt_as_headline: bool = False
-) -> str:
-    return (
-        f'<ul class="{C["platform:grid"]}">'
-        + "".join(
-            _research_card(n, images, shows_excerpt_as_headline=shows_excerpt_as_headline)
-            for n in nodes
-        )
-        + "</ul>"
-    )
-
-
 def collection_slices(nodes: list[ContentNode], page: int):
     """(featured, grid) node lists for one page of a collection."""
     if page == 1:
@@ -561,54 +624,23 @@ def collection_slices(nodes: list[ContentNode], page: int):
     return [], nodes[start : start + GRID_SIZE]
 
 
-def collection_lists(
-    nodes: list[ContentNode],
-    images: ImageIndex,
-    page: int = 1,
-    shows_excerpt_as_headline: bool = False,
-) -> tuple[str, str]:
-    """The (featured `ul.blog`, grid `ul`) HTML for one collection page."""
-    featured_nodes, grid_nodes = collection_slices(nodes, page)
-    featured = (
-        '<ul class="blog">'
-        + "".join(
-            _blog_item(
-                n,
-                images,
-                date=n.display_date,
-                excerpt_tag="p",
-                image_class="featured",
-                shows_excerpt_as_headline=shows_excerpt_as_headline,
-            )
-            for n in featured_nodes
-        )
-        + "</ul>"
-        if featured_nodes
-        else ""
-    )
-    return featured, _grid_html(grid_nodes, images, shows_excerpt_as_headline)
-
-
 def collection_nav(title: str, base: str, page: int, total: int) -> str:
     """The pagination `<nav>`, rendered only when there is more than one page."""
     if total <= 1:
         return ""
     previous = (
-        f'<a href="{_esc(collection_page_path(base, page - 1))}">\u2190 Previous</a>'
+        f'<a href="{_esc(collection_page_path(base, page - 1))}">&larr; Previous</a>'
         if page > 1
         else "<span></span>"
     )
     following = (
-        f'<a href="{_esc(collection_page_path(base, page + 1))}">Next \u2192</a>'
+        f'<a href="{_esc(collection_page_path(base, page + 1))}">Next &rarr;</a>'
         if page < total
         else "<span></span>"
     )
     return (
-        '<nav class="clear-float" style="display:flex;justify-content:space-between;'
-        'align-items:center;margin-top:1.5rem" '
-        f'aria-label="{escape(title)} pagination">'
-        f"<div>{previous}</div><div>Page {page} of {total}</div>"
-        f"<div>{following}</div></nav>"
+        f'<nav class="pager" aria-label="{escape(title)} pagination">'
+        f"{previous}<span>Page {page} of {total}</span>{following}</nav>"
     )
 
 
@@ -617,29 +649,34 @@ def collection_page(
     base: str,
     nodes: list[ContentNode],
     page: int,
-    images: ImageIndex,
+    images: ImageIndex | None = None,
     shows_excerpt_as_headline: bool = False,
+    *,
+    eyebrow: str | None = None,
 ) -> str:
-    """`collection.jsx` for `/blog/` and `/posts/` (every page) and page >= 2 of any base."""
+    """A listing page: hero, an intrinsic grid of text cards, pager."""
     total = collection_page_count(len(nodes))
-    featured, grid = collection_lists(nodes, images, page, shows_excerpt_as_headline)
+    featured, grid = collection_slices(nodes, page)
+    shown = featured + grid
     heading = title if page == 1 else f"{title}, page {page}"
-    return (
-        f"<article><h1>{escape(heading)}</h1>"
-        + featured
-        + ("<h2>Earlier</h2>" if featured else "")
-        + grid
+    return _page(
+        _page_hero(
+            eyebrow or title.upper(), heading, escape(COLLECTION_DESCRIPTIONS.get(title, "")),
+            compact=True,
+        ),
+        '<section class="section section--tight"><div class="container">'
+        + _card_grid(shown, images, headline=shows_excerpt_as_headline, code=False)
         + collection_nav(title, base, page, total)
-        + "</article>"
+        + "</div></section>",
     )
 
 
-def articles_collection(articles: list[ContentNode], images: ImageIndex) -> dict[int, str]:
+def articles_collection(articles: list[ContentNode], images: ImageIndex | None = None) -> dict[int, str]:
     total = collection_page_count(len(articles))
     return {p: collection_page("Articles", "blog", articles, p, images) for p in range(1, total + 1)}
 
 
-def posts_collection(posts: list[ContentNode], images: ImageIndex) -> dict[int, str]:
+def posts_collection(posts: list[ContentNode], images: ImageIndex | None = None) -> dict[int, str]:
     total = collection_page_count(len(posts))
     return {
         p: collection_page("Posts", "posts", posts, p, images, shows_excerpt_as_headline=True)
@@ -647,18 +684,56 @@ def posts_collection(posts: list[ContentNode], images: ImageIndex) -> dict[int, 
     }
 
 
-def tag_pages(tags: dict[str, list[ContentNode]]) -> dict[str, tuple[str, str]]:
-    """`src/templates/blog-tag.jsx`. Returns `{slug: (label, html)}`.
+def collection_nodes(blog: list[ContentNode], tag: str) -> list[ContentNode]:
+    """Published, non-platform posts with `tag`; date desc, ties by filename asc."""
+    nodes = [n for n in blog if n.published and tag in n.tags and not n.is_platform]
+    nodes.sort(key=lambda n: n.source.name)
+    nodes.sort(key=lambda n: n.date, reverse=True)
+    return nodes
+
+
+def _single_page_collection(title: str, eyebrow: str, nodes: list[ContentNode], lead_html: str, base: str, images) -> str:
+    assert collection_page_count(len(nodes)) == 1, f"{base} outgrew one page"
+    return _page(
+        _page_hero(eyebrow, title, lead_html, compact=True),
+        '<section class="section section--tight"><div class="container">'
+        + _card_grid(nodes, images)
+        + "</div></section>",
+    )
+
+
+def reading_page(blog: list[ContentNode], images: ImageIndex | None = None) -> str:
+    return _single_page_collection(
+        "Reading list", "WHAT WE READ", collection_nodes(blog, "reading"),
+        escape(COLLECTION_DESCRIPTIONS["Reading List"]), "reading", images,
+    )
+
+
+def research_page(blog: list[ContentNode], images: ImageIndex | None = None) -> str:
+    return _single_page_collection(
+        "Research", "EXPERIMENTS", collection_nodes(blog, "research"),
+        "Jev, Laya and the rest of the field-coverage roster answer millions of bounded "
+        "questions a day, so we run the experiments that check what they’re actually doing: "
+        "where their verdicts move on a name or a pronoun, how well their confidence tracks "
+        "reality, and what survives when you fine-tune, distill or gate them. Every piece here "
+        "comes with the method and the numbers, not just the headline. If you’re here to align "
+        'Jev or another decision model to your own data, start with the '
+        '<a href="/decision-models/">guide to aligning decision models</a>.',
+        "research", images,
+    )
+
+
+def tag_pages(tags: dict[str, list[ContentNode]], images: ImageIndex | None = None) -> dict[str, tuple[str, str]]:
+    """Returns `{slug: (label, html)}`; `index` is the tag cloud.
 
     Production mounts these at `/blog/<tag>`, which shares a namespace with
     article slugs; this build uses `/tags/<tag>` so a tag can never shadow an
     article. The corpus also tags both `AI` and `ai`, which are the same tag to
-    a reader, so case variants are merged rather than one silently overwriting
-    the other's page.
+    a reader, so case variants are merged rather than one overwriting the other.
     """
     merged: dict[str, tuple[str, list[ContentNode]]] = {}
     for tag, nodes in tags.items():
-        slug = tag.strip().lower().replace(" ", "-")
+        slug = tag_slug(tag)
         label, existing = merged.get(slug, (tag.strip(), []))
         combined = {node.slug: node for node in existing}
         combined.update({node.slug: node for node in nodes})
@@ -668,38 +743,39 @@ def tag_pages(tags: dict[str, list[ContentNode]]) -> dict[str, tuple[str, str]]:
 
     pages: dict[str, tuple[str, str]] = {}
     for slug, (label, nodes) in sorted(merged.items()):
-        items = "".join(
-            f'<li><a href="{_esc(blog_href(node))}">{escape(node.title)}</a></li>'
-            for node in sorted(nodes, key=lambda n: (n.date, n.slug), reverse=True)
-        )
+        ordered = sorted(nodes, key=lambda n: (n.date, n.slug), reverse=True)
         pages[slug] = (
             f"Articles tagged with: {label}",
-            f"<div><h1>Articles tagged with: {escape(label)}</h1>"
-            f"<ul>{items}</ul></div>",
+            _page(
+                _page_hero(
+                    "TAG", f"Tagged: {label}",
+                    f'{len(ordered)} {"article" if len(ordered) == 1 else "articles"}. '
+                    '<a href="/tags/">All tags</a>.',
+                    compact=True, cursor=False,
+                ),
+                '<section class="section section--tight"><div class="container">'
+                + _card_grid(ordered, images, code=False)
+                + "</div></section>",
+            ),
         )
 
-    index_items = "".join(
-        f'<li><a href="/tags/{_esc(slug)}/">{escape(label)}</a> ({len(nodes)})</li>'
+    cloud = "".join(
+        f'<li><a class="chip" href="/tags/{_esc(slug)}/">{escape(label)}<small>{len(nodes)}</small></a></li>'
         for slug, (label, nodes) in sorted(merged.items())
     )
     pages["index"] = (
         "Tags",
-        f"<div><h1>Tags</h1><ul>{index_items}</ul></div>",
+        _page(
+            _page_hero("TOPICS", "Tags", "Every topic we write about, with the number of pieces under each.",
+                       compact=True),
+            f'<section class="section section--tight"><div class="container"><ul class="chips">{cloud}</ul>'
+            "</div></section>",
+        ),
     )
     return pages
-
-
 # --------------------------------------------------------------------------
 # Platform constants, carried over unchanged from the Markdown-era module.
 # --------------------------------------------------------------------------
-
-_CATEGORY_ORDER = (
-    "Platform Runtime",
-    "Agent Execution",
-    "Data and Knowledge",
-    "Observability",
-    "Media Automation",
-)
 
 _STACK_RECIPES = (
     (
@@ -716,7 +792,7 @@ _STACK_RECIPES = (
     ),
     (
         "Platform-native internal tooling",
-        "Korporus supplies the shared shell while product-specific modules from "
+        "Korporus supplies the shared shell while solution-specific modules from "
         "Primus, Kanbus, Biblicus, and future tools appear as interoperable "
         "applications instead of one-off surfaces.",
     ),
@@ -812,42 +888,6 @@ PLATFORM_RELATIONSHIPS: dict[str, dict] = {
     },
 }
 
-# --------------------------------------------------------------------------
-# Platform — src/pages/platform.js, src/components/platform-cards.js
-# --------------------------------------------------------------------------
-
-P = {key.split(":")[1]: value for key, value in C.items() if key.startswith("platform:")}
-
-
-def _fm(node: ContentNode, key: str) -> str:
-    value = node.front_matter.get(key)
-    return "" if value in (None, "") else str(value)
-
-
-def _platform_card(node: ContentNode) -> str:
-    """`PlatformCards`' `<li class=card>`. Text is escaped, as React does."""
-    href = _esc(platform_href(node))
-    pills = "".join(
-        f'<span class="{C["platform:pill"]}">{escape(_fm(node, key))}</span>'
-        for key in ("platform_category", "platform_stage")
-        if _fm(node, key)
-    )
-    external = _fm(node, "external_url")
-    visit = f'<a href="{_esc(external)}">Visit site</a>' if external else ""
-    return (
-        f'<li class="{C["platform:card"]}">'
-        f'<a class="{C["platform:cardTitleLink"]}" href="{href}">'
-        f"<h3>{escape(node.title)}</h3></a>"
-        f'<div class="{C["platform:metaRow"]}">{pills}</div>'
-        f"<p>{escape(_fm(node, 'excerpt'))}</p>"
-        f'<div class="{C["platform:cardActions"]}"><a href="{href}">Read more</a>'
-        f"{visit}</div></li>"
-    )
-
-
-def _platform_cards(nodes: list[ContentNode]) -> str:
-    return f'<ul class="{C["platform:grid"]}">' + "".join(_platform_card(n) for n in nodes) + "</ul>"
-
 
 _MAP_COLUMNS = (
     (
@@ -871,107 +911,550 @@ _MAP_COLUMNS = (
 )
 
 
+# --------------------------------------------------------------------------
+# About
+# --------------------------------------------------------------------------
+
+_HISTORY = (
+    ("2007", "The platform starts running",
+     "Ryan Porter becomes CTO of Venue Driver, a hospitality technology startup, and builds and runs all of its "
+     "technology. The system has been in continuous operation since."),
+    ("2009", "A world tour",
+     'Ryan builds an event ticket sales system for a <a href="https://en.wikipedia.org/wiki/Kaleidoscope_World_Tour">'
+     "Tiësto world tour</a>. It sparks a business that generated up to $64 million annually."),
+    ("2013", "Acquired, and still running",
+     "Angel Management Group acquires Venue Driver. The system and the team carry on, and the role expands."),
+    ("2014", "Hakkasan Group",
+     "The business grows from a tiny startup into a department of a large multinational. We integrate third-party "
+     "platforms, including Salesforce, Marketo, Salesforce Marketing Cloud, Mailchimp and Paytronix, and build an "
+     "enterprise data warehouse."),
+    ("2021", "Tao Group Hospitality",
+     'Under <a href="https://taogroup.com">Tao Group Hospitality</a> and its parent, Madison Square Garden '
+     "Entertainment, the platform passes rigorous audits and moves from a monolith to a serverless distributed "
+     "architecture, then is handed to the next team with no business interruption."),
+    ("2024", "Anthus",
+     "The team that has worked together for more than a decade turns full time to the intersection of software "
+     "and artificial intelligence. The Anthus name is the only new thing."),
+    ("2026", "The night we stopped being the loop",
+     'In February, the nightly routine of pasting “Continue.” into agent sessions before bed breaks the '
+     'chat way of working. <a href="#loop">The story is below.</a>'),
+)
+
+_HELD_UP = (
+    ("What it was",
+     "A bespoke ticketing, VIP table reservation and guest list system: serverless (AWS Lambda and Amplify), "
+     "event-driven (SQS queues), and operationally mature."),
+    ("What it integrated",
+     "Tao Group’s in-house loyalty system, Madison Square Garden Entertainment’s ITSM (ServiceNow), and a bespoke "
+     "data warehouse and business intelligence system."),
+    ("Never breached",
+     'The hackers never got us, despite being a <a href="https://twitter.com/RyanAlynPorter/status/890982980721790976">'
+     "prime target</a>."),
+    ("Everything else",
+     "Massive DDoS attacks, primary database server failures, silent failures in third-party systems, and "
+     "everything else you could imagine. We always kept the revenue flowing."),
+)
+
+_OPS_FOOTNOTE = (
+    "A catastrophic failure once took out an entire AWS data center. We moved the whole system to a new one "
+    "within hours, and it was back up before the doors opened, so ticket scanning at the venues went ahead "
+    "without a hitch."
+)
+
+_VALUES = (
+    ("Prioritize solutions over tools",
+     "Products and services only deliver business value if you’re in the business of products and services. "
+     "We’re in the business of solutions."),
+    ("Focus on business logic",
+     'The only code you should write is the business logic that solves real problems. '
+     '<a href="/blog/langchain-by-example/">Don’t waste time reinventing wheels.</a>'),
+    ("Continuously improve",
+     "Rapid, iterative change through CI/CD and DevOps, then let the systems improve themselves. Self-optimizing "
+     "classifiers and self-steering agent systems get better from production feedback without waiting for an "
+     "engineer to notice."),
+    ("Infrastructure as code",
+     "DevOps for infrastructure, MLOps and LLMOps for the models. Every part of a production system, including "
+     "training runs and evaluations, should be created by code so it’s reproducible, not clicked together by hand."),
+    ("Commodify AI models",
+     "Treat models as replaceable, not magic black boxes. In a world with no moats, "
+     '<a href="/blog/a-world-with-no-moats/">don’t invest too much in any given castle.</a>'),
+    ("Optimize resource usage",
+     "Balance efficiency with cost-effectiveness. When intelligence is cheap, the goal shifts from conserving "
+     "compute to conserving context and cognitive load."),
+)
+
+_FACTS = (
+    ("Company name", "Anthus AI Solutions"),
+    ("Type", "AI engineering and operations company"),
+    ("Founder", '<a href="/ryan/">Ryan Porter</a>'),
+    ("Website", '<a href="/">anth.us</a>'),
+    ("Core offering", "Self-aligning AI systems: custom models, agent harnesses, and evaluation loops with a human in the loop"),
+    ("Services", "LLM fine-tuning, agentic AI, MLOps and LLMOps, serverless architecture, AI-assisted operations"),
+    ("Track record", "Team together for over a decade; revenue-critical platforms in continuous operation since 2007; "
+                     "a call-center QA classifier lab run on Primus for years, across hundreds of scorecards and millions of interactions"),
+    ("Platform", '<a href="/platform/primus/">Primus</a>, an MLOps platform'),
+    ("Spinoff", "Anthus Microelectronics (B0rd LED-matrix desk display)"),
+    ("Contact", '<a href="/ryan/">anth.us/ryan</a>'),
+)
+
+_FAQ = (
+    ("What does Anthus build?",
+     "Production AI systems that improve from feedback: fine-tuned classifiers, agent systems, and the evaluation "
+     "and MLOps infrastructure around them. We also operate what we build."),
+    ("How is Anthus different from a typical AI consultancy?",
+     "We are operators first. The team has run a revenue-critical platform since 2007, through data center failures "
+     "and DDoS attacks, before applying the same discipline to AI. We ship systems with human-in-the-loop feedback, not demos."),
+    ("What is human-in-the-loop AI?",
+     "Experts review and correct the AI’s judgments, and those corrections become training signal. In the "
+     'Call Criteria classifier lab, QA specialists guide the models this way, and the scorecards have improved '
+     "through reinforcement learning from human feedback (RLHF) over years of production, across hundreds of "
+     "scorecards and millions of interactions."),
+    ("Do you only work with one model provider?",
+     "No. We treat models as replaceable components and design systems so a model can be swapped without "
+     "rebuilding the business logic."),
+)
+
+
+def about_page() -> str:
+    timeline = '<ol class="tl">' + "".join(
+        f'<li><p class="tl__when">{when}</p><div class="tl__what"><h3>{escape(title)}</h3><p>{body}</p></div></li>'
+        for when, title, body in _HISTORY
+    ) + "</ol>"
+    founder = (
+        '<p class="founder"><span><strong>Ryan Porter</strong> founded the business and leads Anthus. '
+        '<a href="/ryan/">Read his story &rarr;</a></span></p>'
+    )
+    held = '<ul class="grid grid--thirds">' + "".join(_card(t, f"<p>{b}</p>") for t, b in _HELD_UP) + "</ul>"
+    values = '<ul class="principles principles--auto">' + "".join(
+        f"<li><span>{i:02d}</span><strong>{escape(t)}</strong><p>{b}</p></li>" for i, (t, b) in enumerate(_VALUES, 1)
+    ) + "</ul>"
+    loop_cards = '<ul class="grid grid--thirds">' + "".join(
+        _card(name, f"<p>{body}</p>", href=href)
+        for name, body, href in (
+            ("Tactus",
+             "Names the three ways a person can be in the loop, supervised, unattended and asynchronous, and makes the "
+             "third one programmable: an agent runs on its own and interrupts a human only at a decision point.",
+             "/platform/tactus/"),
+            ("Kanbus",
+             "The memory that lets work move between Claude Code, Codex, or whatever comes next. We’ve held since 2023 "
+             "that models are commodities.",
+             "/platform/kanbus/"),
+            ("Primus",
+             "The scorecard where reviewers correct a decision model’s verdicts and their explanations become policy.",
+             "/platform/primus/"),
+        )
+    ) + "</ul>"
+    tweet = (
+        '<blockquote class="post"><p>Stupid new nightly routine that I never wanted: Pasting “Continue.” into Codex '
+        "20 times in a row before I go to bed, in four different sessions. I will look back at this like black and "
+        "white television. Rotary phone dials.</p><footer>Ryan Porter (@RyanAlynPorter), "
+        '<a href="https://x.com/RyanAlynPorter/status/2019302489011696010">February 5, 2026</a></footer></blockquote>'
+    )
+    build_today = '<ul class="grid grid--2">' + _card(
+        "Cybernetic development",
+        "<p>The AI era doesn’t remove the need for operational excellence, it raises the stakes. We use a cybernetic "
+        "approach: clear intent, layered safeguards, and production feedback loops that continuously harden the system. "
+        "Delegating the work turned out to be easy; observing it is the whole job.</p>",
+        extra=_links([("Read Cybernetic Development", "/blog/cybernetic-development/")]),
+    ) + _card(
+        "Spinoff: Anthus Microelectronics",
+        "<p>Running AI agents all day moved the bottleneck from writing code to monitoring and steering the agents. "
+        "Sitting at a terminal all day is not the answer, so we built desk displays: handbuilt microelectronics running "
+        "a custom, AI-assisted OS. The first product is <strong>B0rd</strong>, a standalone LED-matrix display for "
+        "glanceable information (launch countdowns, agent status, notifications, an idle clock) that matching units "
+        "keep in sync without pairing or a hub.</p>",
+        extra=_links([("B0rd solution page", "/blog/b0rd/"), ("b0rd.info", "https://b0rd.info"),
+                      ("Etsy shop", "https://www.etsy.com/shop/AnthusMicronics")]),
+    ) + "</ul>"
+    who = '<ul class="grid grid--thirds">' + "".join(
+        _card(t, f"<p>{b}</p>") for t, b in (
+            ("Product and engineering teams", "Putting LLM agents or classifiers into production, not just prototypes."),
+            ("Operations and QA organizations",
+             'That need AI to make judgments at scale while experts stay in control (the <a href="/blog/call-criteria/">'
+             "Call Criteria</a> pattern)."),
+            ("Revenue-critical businesses", "Where downtime, security incidents, and silent failures are unacceptable."),
+        )
+    ) + "</ul>"
+    facts = '<dl class="facts">' + "".join(f"<div><dt>{escape(k)}</dt><dd>{v}</dd></div>" for k, v in _FACTS) + "</dl>"
+    faq = '<ul class="grid grid--qa">' + "".join(_qa_card(q, escape(a)) for q, a in _FAQ) + "</ul>"
+    return _page(
+        _page_hero(
+            "ABOUT ANTHUS", "About us",
+            "We are an AI engineering company that builds and operates self-aligning AI systems (custom models, agent "
+            "harnesses, and evaluation loops with a human in the loop) for teams that need them to keep working in production.",
+            art=_px("timeline"),
+        ),
+        _section(
+            "01", "History", "Since 2007",
+            lead="We came together as a team as the business expanded, and we have worked cohesively for more than a decade.",
+            body=timeline + founder, stack=False,
+        ),
+        _section("02", "Track record", "What held up",
+                 lead="An impeccable record in reliability and security, kept through every technology shift: cloud computing, serverless, and now AI.",
+                 body=held + '<aside class="opsnote"><div class="opsnote__px">' + _px("relocate") + "</div>"
+                 '<div><p class="opsnote__h">When an AWS data center failed</p><p>' + _OPS_FOOTNOTE + "</p></div></aside>",
+                 band=True),
+        _section(
+            "03", "Mission", "What we’re here to do",
+            body=(
+                '<p class="statement">Deliver <span>reliable, secure, and efficient</span> business solutions using '
+                "collaboration between human and artificial intelligence in every aspect of development and operations.</p>"
+                '<div class="prose"><p>We build systems that keep working when nobody is watching.</p></div>'
+            ),
+        ),
+        _section("04", "Values", "How we decide", body=values, band=True, section_id="our-values"),
+        _section(
+            "05", "February 2026", "The night we stopped being the loop",
+            body=_prose(
+                "When we started using AI to write the code and make the decisions, the chat way of working broke under "
+                "the volume. A person had to sit there keeping the agents going or the whole process stopped, and a "
+                "person had to hold in their head what was happening across every parallel session in every project for "
+                "every client, because nothing else did. The low point is on the record, like everything else we do."
+            ) + tweet + _prose("So we stopped being the loop. We ran all of it on our own work first, in public.") + loop_cards,
+            section_id="loop",
+        ),
+        _section("06", "Now", "How we build today", body=build_today, band=True),
+        _section("07", "Clients", "Who we work with", body=who),
+        _section("08", "Facts", "Key facts", body=facts + '<h3 class="subhead">Questions</h3>' + faq, band=True),
+        _cta("What can we develop and operate for you?"),
+    )
+
+
+# --------------------------------------------------------------------------
+# AI Solutions
+# --------------------------------------------------------------------------
+
+_BUILD = (
+    ("Knowledge Bases", "https://github.com/AnthusAI/Biblicus",
+     "Ontologies and taxonomies that learn from your data instead of going stale.", "See Biblicus"),
+    ("Self-Aligning Automation", "/blog/call-criteria/",
+     "Systems that improve from production feedback, with a human in the loop.", "See the Call Criteria case study"),
+    ("Agent Systems", "/blog/give-an-agent-a-tool/",
+     "Durable, governed agent procedures with sandboxed tools and rollback.", "See the approach"),
+    ("Machine Learning and Decision Models", "/blog/domain-specific-turn-detection/",
+     "Custom models, fine-tuned classifiers, and hosted decision models like Jev, aligned to your business.", "See the work"),
+)
+
+_LIFECYCLE = (
+    ("Scope", ("Define the use case",)),
+    ("Deploy", ("Deploy a basic proof-of-concept application scaffold",)),
+    ("Select model(s)", ("Choose an existing model", "Or train a new model")),
+    ("Adapt and align model(s)", ("Prompt engineering", "Fine-tuning", "Human feedback", "Evaluation")),
+    ("Application integration", ("Augment the model(s)", "Optimize deployment for inference and long-term management")),
+)
+
+
+def ai_solutions_page(blog: list[ContentNode], images: ImageIndex | None = None) -> str:
+    """Engagements / Projects / Integrations from the content tags.
+
+    Engagements: `solutions` + `engagement` (not `integrations`). Projects: other
+    `solutions` posts plus published `project` posts. Integrations: `solutions` + `integrations`.
+    """
+    solutions = [n for n in blog if "solutions" in n.tags]
+    engagements = [n for n in solutions if "engagement" in n.tags and "integrations" not in n.tags]
+    integrations = [n for n in solutions if "integrations" in n.tags]
+    projects = {
+        n.slug: n for n in solutions if "engagement" not in n.tags and "integrations" not in n.tags
+    }
+    projects.update({n.slug: n for n in blog if n.published and "project" in n.tags})
+    featured = {n.slug: n for n in blog if n.published and "featured" in n.tags and not n.is_platform
+                and not ({"solutions", "posts"} & set(n.tags))}
+    by_date = lambda nodes: sorted(nodes, key=lambda n: n.date, reverse=True)  # noqa: E731
+    reading = by_date(list({**projects, **featured}.values()))[:6]
+
+    build = '<ul class="grid grid--2">' + "".join(
+        _card(t, f"<p>{b}</p>", href=h, extra=f'<span class="card__link" aria-hidden="true">{escape(cta)}</span>')
+        for t, h, b, cta in _BUILD
+    ) + "</ul>"
+    supporting = '<ul class="grid grid--thirds">' + "".join(
+        _card(
+            name, f"<p>{escape(line)}</p>",
+            extra=_links(
+                ([("Visit " + name, href)] if ext else [])
+                + ([("On anth.us", f"/platform/{name.lower()}/")] if name in anthus_dom.SUPPORTING_PAGES else [])
+            ),
+        )
+        for name, href, line, ext in anthus_dom.SUPPORTING
+    ) + "</ul>"
+    stages = '<ol class="grid grid--thirds">' + "".join(
+        f'<li class="card notch card--static card--stage"><span class="stage__no">{i:02d}</span><h3>{escape(t)}</h3>'
+        '<ul class="list">' + "".join(f"<li>{escape(x)}</li>" for x in items) + "</ul></li>"
+        for i, (t, items) in enumerate(_LIFECYCLE, 1)
+    ) + "</ol>"
+    chips = _chips([(n.title, "") for n in by_date(integrations)])
+    read_list = '<div class="shorter shorter--flat"><ul>' + "".join(
+        f'<li><time>{escape(n.display_date)}</time><a href="{_esc(blog_href(n))}">{escape(n.title)}</a></li>'
+        for n in reading
+    ) + '</ul><p class="more"><a href="/blog/">All articles</a></p></div>'
+    return _page(
+        _page_hero(
+            "AI SOLUTIONS", "Solving problems using AI",
+            "You’re under pressure to deliver AI that works in production, not just in a demo. We build and operate "
+            "self-aligning AI systems, and we run our own solutions on the same stack we use for clients.",
+            art=_px("self-aligning"),
+            actions=_btn("Tell us the problem", "/engage/") + _btn("How an engagement works", "/engage/", ghost=True),
+        ),
+        _section(
+            "01", "Our solutions", "What we built from the work",
+            lead="Four in-house solutions, in use on our own work first.",
+            body=_products_grid(describe=True), stack=True,
+        ),
+        _section("02", "Supporting technology", "What the solutions run on", body=supporting, band=True),
+        _section("03", "What we build for clients", "Four kinds of system", body=build, stack=True),
+        _section(
+            "04", "Engagements", "Client work with a business outcome",
+            lead="The systems we built, ran, and kept improving in production. The proof is years of production RLHF for "
+            "a call-center QA operation: a data flywheel learning from expert feedback across hundreds of scorecards "
+            "and millions of interactions.",
+            body=_card_grid(by_date(engagements), images, display_date=True)
+            + (f'<h3 class="subhead">Integrations we have built</h3>{chips}' if integrations else ""),
+            band=True,
+        ),
+        _section(
+            "05", "How we work", "From use case to long-term operation",
+            lead="We work under specs, tests, staged rollout, and a person who can say no: "
+            "cybernetic development. Every AI application we build follows the same lifecycle.",
+            body=stages + '<p class="more"><a href="/blog/cybernetic-development/">How we govern AI-built systems</a></p>',
+            stack=True,
+        ),
+        _section("06", "Further reading", "Projects and articles", body=read_list, band=True),
+        _cta(),
+    )
+
+
+# --------------------------------------------------------------------------
+# Ryan
+# --------------------------------------------------------------------------
+
+_EXPERIENCE = (
+    ("January 2024 – Present", "Anthus AI Solutions", "Lead AI Solutions Architect", "Miami Beach, FL",
+     ("Our team has been working together for over a decade, and we have been working on AI solutions for years now. "
+      "The Anthus name is the only new thing, as we fully focus on the intersection of software solutions and "
+      "artificial intelligence.",), ()),
+    ("August 2021 – January 2024", "Tao Group Hospitality", "Vice President of Marketing Technology",
+     "New York, NY (remote from Miami Beach, FL)",
+     ("Formerly with Hakkasan Group, Angel Management Group, and Venue Driver in an evolving role with the same venture.",),
+     ("<strong>Pioneering technical strategy:</strong> developed and operated a critical ticketing system evolving since "
+      "2007 into a comprehensive platform for reservation, guest list, and artist booking management.",
+      "<strong>Seamless transition and growth:</strong> managed the system’s transition through corporate acquisitions, "
+      "maintaining high availability while processing as much as $64 million in revenue per month with no major incidents.",
+      "<strong>DevOps and agile leadership:</strong> championed a DevOps culture of rapid iteration and continuous "
+      "improvement, aligned closely with business needs.",
+      "<strong>Longevity and adaptation:</strong> adapted the platform from early monolithic structures to a modern "
+      "serverless distributed architecture, passing AWS Well-Architected audits by multinational corporations.")),
+    ("February 2014 – August 2021", "Hakkasan Group", "Vice President of Technology",
+     "Las Vegas, NV (remote from Miami Beach, FL)",
+     ("Formerly with Angel Management Group, and Venue Driver in an evolving role with the same venture.",),
+     ("<strong>Scalable system leadership:</strong> continued advancement of a high-revenue ticketing system on scalable, "
+      "fault-tolerant AWS infrastructure, embodying the Well-Architected Framework.",
+      "<strong>Data integration initiative:</strong> initiated and delivered an enterprise data warehouse integrating "
+      "diverse data systems to support analytics, Salesforce CRM, Marketo and Salesforce Marketing Cloud.")),
+    ("October 2013 – February 2014", "Angel Management Group", "Executive Director of Technology",
+     "Las Vegas, NV (remote from Miami Beach, FL)",
+     ("Formerly with Venue Driver in an evolving role with the same venture. Continuation and expansion of the "
+      "existing role after Angel Management Group acquired Venue Driver.",), ()),
+    ("2007 – October 2013", "Venue Driver", "CTO", "Miami Beach, FL",
+     ("<strong>Startup technology foundation:</strong> built and managed all technology infrastructure for a "
+      "hospitality-focused technology startup, evolving the company into a major event ticketing provider.",
+      "<strong>Leadership and technical training:</strong> directed software development, web operations, technical "
+      "hiring, and training programs, laying the foundation for the eventual acquisition and growth."), ()),
+    ("2002 – 2005", "CoolJunkie, LLC", "TechJunkie", "Miami Beach, FL",
+     ("A joint venture with Nick McCabe to develop a nightlife production and media company in Miami Beach. The "
+      "CoolJunkie.com website and its interactive forums were a pillar of the Miami Beach nightlife scene for years, "
+      "before social media. The company also produced events like the BBC Radio One Miami party during the Winter "
+      "Music Conference, and events from artists like Pete Tong and Cedric Gervais.",), ()),
+    ("1997 – Present", "Endymion Corporation", "President", "Miami Beach, FL",
+     ("A small software product company started after graduating, built around a web mail application popular in the "
+      "early days of the web, in the days of WebTV and AOL. Developed, licensed and supported a PERL-based web mail "
+      "application used by thousands of users, and a Java-based enterprise web mail product.",), ()),
+)
+
+_EDUCATION = (
+    "Worked as an undergraduate research assistant for Dr. Gerhard X. Ritter and Dr. Mark S. Schmalz on their work in "
+    "computer vision using the Image Algebra framework, with funding from the US Department of Defense. One project’s "
+    "goal was the automated detection of land mines using multi-spectral imagery, an early predecessor of today’s visual "
+    "segmentation models, built on 2D convolution algorithms without modern visual AI. The main job was C++ development.",
+    "A related computer vision project aimed at detecting water mines by removing distortion in images from the surface "
+    "of the ocean.",
+    "Also worked on research by Dr. Panos Livadas on automated code analysis and refactoring tools that foreshadowed "
+    "LLM-based coding tools like GitHub Copilot, and as an undergraduate teaching assistant for a class based on the "
+    "classic Lisp textbook, The Structure and Interpretation of Computer Programs.",
+)
+
+
+def ryan_page(solutions: list[ContentNode], images: ImageIndex | None = None) -> str:
+    """Resume plus portfolio. The featured filter ignores `integrations`, unlike ai-solutions."""
+    featured = [n for n in solutions if "featured" in n.tags]
+    plain = [n for n in solutions if "featured" not in n.tags and "integrations" not in n.tags]
+    integrations = [n for n in solutions if "featured" not in n.tags and "integrations" in n.tags]
+
+    entries = []
+    for when, org, role, place, paras, bullets in _EXPERIENCE:
+        body = "".join(f"<p>{p}</p>" for p in paras)
+        if bullets:
+            body += "<ul>" + "".join(f"<li>{b}</li>" for b in bullets) + "</ul>"
+        entries.append(
+            f'<li><p class="tl__when">{when}</p><div class="tl__what"><h3>{escape(org)}</h3>'
+            f'<p class="tl__meta">{escape(role)} · {escape(place)}</p>{body}</div></li>'
+        )
+    experience = '<ol class="tl tl--wide">' + "".join(entries) + "</ol>"
+    education = (
+        '<ol class="tl tl--wide"><li><p class="tl__when">1992 – 1997</p><div class="tl__what">'
+        '<h3>University of Florida</h3><p class="tl__meta">BS, Computer Science</p>'
+        + "".join(f"<p>{escape(p)}</p>" for p in _EDUCATION)
+        + "</div></li></ol>"
+    )
+    photo = (
+        '<figure class="hero__photo"><span class="photo-frame"><img class="photo" src="/assets/site/ryan-porter.png" '
+        'alt="Ryan Porter, in an illustrated portrait" width="400" height="400"></span></figure>'
+    )
+    return _page(
+        _page_hero(
+            "FOUNDER, ANTHUS", "Ryan Porter",
+            "Technology leader and architectural innovator with a proven history of developing and operating "
+            "mission-critical, high-availability systems that deliver business value. Focused on delivering exciting "
+            "AI applications through serverless cloud architectures.",
+            art=photo, cursor=False,
+        ),
+        _section("01", "Experience", "Where I’ve worked", body=experience),
+        _section("02", "Education", "Where I studied", body=education, band=True),
+        _section("03", "Portfolio", "Systems and projects",
+                 body=_card_grid(featured, images, display_date=True) + _card_grid(plain, images, display_date=True, link=False, code=False)),
+        _section("04", "Integrations", "What we connect to", body=_card_grid(integrations, images, display_date=True, link=False, code=False), band=True),
+        _cta(),
+    )
+
+
+# --------------------------------------------------------------------------
+# 404
+# --------------------------------------------------------------------------
+
+
+def not_found_page() -> str:
+    return _page(
+        _page_hero(
+            "ERROR 404", "404: Not found",
+            "You just hit a route that doesn’t exist. Try the home page, the articles, or tell us what you were looking for.",
+            art=_px("lost-sprite"),
+            actions=_btn("Go home", "/") + _btn("Read the articles", "/blog/", ghost=True),
+        ),
+    )
+
+
+# --------------------------------------------------------------------------
+# Platform: /platform/ and the product-page chrome
+# --------------------------------------------------------------------------
+
+
+def _pills(node: ContentNode) -> str:
+    items = [_fm(node, k) for k in ("platform_category", "platform_stage") if _fm(node, k)]
+    return '<ul class="pills">' + "".join(f'<li class="pill">{escape(i)}</li>' for i in items) + "</ul>" if items else ""
+
+
+def _platform_card(node: ContentNode) -> str:
+    external = _fm(node, "external_url")
+    extra = _links([("Visit site", external)]) if external else '<span class="card__link" aria-hidden="true">Read more</span>'
+    return (
+        '<li class="card notch card--link">'
+        f'<h3><a href="{_esc(platform_href(node))}">{escape(node.title)}</a></h3>'
+        f"{_pills(node)}<p>{escape(_fm(node, 'excerpt'))}</p>{extra}</li>"
+    )
+
+
+def _platform_line(node: ContentNode) -> str:
+    """Compact entry for the least prominent tier on /platform/: name and one line."""
+    return (
+        f'<li><a href="{_esc(platform_href(node))}">{escape(node.title)}</a> '
+        f"{escape(_fm(node, 'excerpt'))}</li>"
+    )
+
+
+def _platform_cards(nodes: list[ContentNode]) -> str:
+    return '<ul class="grid">' + "".join(_platform_card(n) for n in nodes) + "</ul>"
+
+
+_FLAGSHIP_SLUGS = frozenset({"biblicus"})
+
+
 def platform_index(platform: list[ContentNode]) -> str:
-    """`platform.js`. `platform` arrives already sorted by `platform_order`."""
-    grouped: dict[str, list[ContentNode]] = {}
-    for node in platform:
-        grouped.setdefault(_fm(node, "platform_category") or "Platform", []).append(node)
-    featured = [n for n in platform if n.slug in ("tactus", "videoml")]
+    """`platform` arrives already sorted by `platform_order`."""
+    rest = [n for n in platform if n.slug not in _FLAGSHIP_SLUGS]
 
     columns = "".join(
-        f'<div class="{C["platform:mapColumn"]}"><h3>{escape(title)}</h3><ul>'
-        + "".join(f"<li><code>{name}</code> {text}</li>" for name, text in items)
-        + "</ul></div>"
+        _card(
+            title,
+            '<ul class="list">' + "".join(f"<li><strong>{name}</strong> {text}</li>" for name, text in items) + "</ul>",
+        )
         for title, items in _MAP_COLUMNS
+    ) + _card(
+        "Operations and media",
+        '<ul class="list"><li><strong>Caducus</strong> surfaces operator-facing health and incident signals.</li>'
+        "<li><strong>Babulus</strong> and <strong>VideoML</strong> apply the same code-first approach to content and video.</li>"
+        "<li>The result is one stack for systems, workflows, and communication.</li></ul>",
     )
-    columns += (
-        f'<div class="{C["platform:mapColumn"]}"><h3>Operations and media</h3><ul>'
-        "<li><code>Caducus</code> surfaces operator-facing health and incident signals.</li>"
-        "<li><code>Babulus</code> and <code>VideoML</code> apply the same code-first "
-        "approach to content and video.</li>"
-        "<li>The result is one stack for systems, workflows, and communication.</li>"
-        "</ul></div>"
-    )
-    recipes = "".join(
-        f'<div class="{C["platform:recipeCard"]}"><h3>{escape(title)}</h3>'
-        f"<p>{escape(summary)}</p></div>"
-        for title, summary in _STACK_RECIPES
-    )
-    sections = "".join(
-        f'<section class="{C["platform:section"]}">'
-        f'<h2 class="{C["platform:sectionHeading"]}">{escape(category)}</h2>'
-        f"{_platform_cards(grouped[category])}</section>"
-        for category in _CATEGORY_ORDER
-        if grouped.get(category)
-    )
-    return (
-        "<article>"
-        f'<section class="{C["platform:hero"]}"><h1>The Anthus Platform</h1>'
-        f'<p class="{C["platform:lead"]}"><strong>A technology stack that grew out of '
-        "real delivery work.</strong> It is not a speculative architecture diagram. "
-        "This is the internal product line that emerged from building RLHF systems, "
-        "durable agent workflows, retrieval-backed automation, hosted operator "
-        "applications, and programmable media pipelines for real engagements. The same "
-        "enterprise controls that matter in production software also matter here: "
-        "auditability, rollback paths, operator visibility, and clear evaluation "
-        "loops.</p>"
-        f'<div class="{C["platform:actions"]}">'
-        '<a class="button" href="/ai-solutions/">See the solutions we deliver</a>'
-        f'<a class="{C["platform:secondaryLink"]}" href="/blog/cybernetic-development/">'
-        "Read the cybernetic development thesis</a></div></section>"
-        f'<section class="{C["platform:section"]}">'
-        f'<h2 class="{C["platform:sectionHeading"]}">How the platform fits together</h2>'
-        "<p>We think about the platform in layers because complete AI systems need more "
-        "than a model call. Korporus is the host shell. Chatticus is the shared room "
-        "for people and bots. Antharchy is the agentic desktop those bots can run. Tactus "
-        "defines the durable procedure. Kanbus keeps workflow memory and state. Primus "
-        "closes the evaluation loop. Biblicus and Virtuus make evidence and structured "
-        "data portable. Caducus gives operators visibility. Babulus and VideoML apply the "
-        "same discipline to narrative and media output.</p>"
-        "<p>These are reusable building blocks, not isolated side projects. We combine "
-        "them differently depending on the job: QA and evaluation, internal operator "
-        "tooling, extraction and retrieval workflows, or outward-facing content "
-        "systems.</p>"
-        f'<div class="{C["platform:mapGrid"]}">{columns}</div>'
-        f'<div class="{C["platform:recipeGrid"]}">{recipes}</div></section>'
-        f'<section class="{C["platform:section"]}">'
-        f'<h2 class="{C["platform:sectionHeading"]}">Featured platform technologies</h2>'
-        "<p>Tactus and VideoML deserve separate attention because they express the "
-        "broader Anthus point of view: treat complex operational systems as code, keep "
-        "them inspectable, and make agent collaboration governable.</p>"
-        f"{_platform_cards(featured)}</section>"
-        f"{sections}</article>"
+    recipes = "".join(_card(title, f"<p>{escape(summary)}</p>") for title, summary in _STACK_RECIPES)
+    supporting = '<ul class="grid grid--thirds">' + "".join(
+        _card(
+            name, f"<p>{escape(line)}</p>",
+            extra=_links(
+                ([("Visit " + name, href)] if ext else []) + ([("On anth.us", f"/platform/{name.lower()}/")] if name in anthus_dom.SUPPORTING_PAGES else [])
+            ),
+        )
+        for name, href, line, ext in anthus_dom.SUPPORTING
+    ) + "</ul>"
+
+    return _page(
+        _page_hero(
+            "SOLUTIONS AND PLATFORM", "The tools we built doing the work.",
+            "<strong>A technology stack that grew out of real delivery work.</strong> "
+            "It is not a speculative architecture diagram. This is the stack that emerged from building "
+            "RLHF systems, durable agent workflows, retrieval-backed automation, hosted operator applications, "
+            "and programmable media pipelines for real engagements. The same controls that matter in production "
+            "software matter here: auditability, rollback paths, operator visibility, and clear evaluation loops.",
+            art=_px("platform-stack"),
+            actions=_btn("See the solutions we deliver", "/ai-solutions/")
+            + _btn("Read the cybernetic development thesis", "/blog/cybernetic-development/", ghost=True),
+        ),
+        _section("01", "Solutions", "Our in-house solutions", body=_products_grid()),
+        _section(
+            "02", "Supporting technology", "What the solutions run on",
+            lead="Smaller tools we use and ship alongside them.",
+            body=supporting, band=True,
+        ),
+        _section(
+            "03", "The rest of the platform", "Also in the platform",
+            body='<ul class="also-list">' + "".join(_platform_line(n) for n in rest) + "</ul>",
+        ),
+        _section(
+            "04", "Layers", "How the platform fits together",
+            lead="Complete AI systems need more than a model call, so we think about the platform in layers.",
+            body='<ul class="grid grid--mini">' + columns + "</ul>"
+            + _prose(
+                "These are reusable building blocks, not isolated side projects. We combine them differently "
+                "depending on the job: QA and evaluation, internal operator tooling, extraction and retrieval "
+                "workflows, or outward-facing content systems."
+            )
+            + '<h3 class="subhead">Common combinations</h3><ul class="grid grid--2">' + recipes + "</ul>",
+            band=True,
+        ),
+        _cta(),
     )
 
 
 def platform_product_head(node: ContentNode) -> str:
-    """`platform-product.jsx`'s heading block, as HTML.
-
-    There is no usable production reference for this route: the 2026-09-24
-    build renders `/platform/<product>/` with no chrome at all. This is what
-    the template's JSX produces, in the same class vocabulary as `platform.js`.
-    """
-    pills = "".join(
-        f'<span class="{C["platform:pill"]}">{escape(_fm(node, key))}</span>'
-        for key in ("platform_category", "platform_stage")
-        if _fm(node, key)
-    )
+    """Heading block above the Markus-converted product body."""
     external = _fm(node, "external_url")
     visit = (
-        f'<a href="{_esc(external)}" class="button">Visit external site</a>' if external else ""
+        f'<a class="btn" href="{_esc(external)}"><span>Visit external site &rarr;</span></a>' if external else ""
     )
     return (
-        f'<a class="{C["platform:productBackLink"]}" href="/platform/">'
-        "Back to Anthus Platform</a>"
-        '<div class="heading">'
-        f'<span class="{C["platform:eyebrow"]}">PART OF</span>'
-        f'<h2 class="{C["platform:platformHeader"]}">The Anthus Platform</h2>'
-        f"<h1>{escape(node.title)}</h1>"
-        f'<div class="{C["platform:metaRow"]}">{pills}</div>'
-        f'<p class="{C["platform:lead"]}">{escape(_fm(node, "excerpt"))}</p>'
-        f'<div class="{C["platform:actions"]}">{visit}'
-        f'<a class="{C["platform:secondaryLink"]}" href="/ai-solutions/">'
-        "See how it fits our solutions work</a></div></div>"
+        '<div class="heading ppage-head">'
+        '<a class="backlink" href="/platform/">The Anthus Platform</a>'
+        '<p class="eyebrow">PART OF THE ANTHUS PLATFORM</p>'
+        f"<h1>{escape(node.title)}</h1>{_pills(node)}"
+        f'<p class="lead">{escape(_fm(node, "excerpt"))}</p>'
+        f'<div class="btn-row">{visit}'
+        f'<a class="btn btn--ghost" href="/ai-solutions/"><span>See how it fits our solutions work &rarr;</span></a></div></div>'
     )
 
 
@@ -979,158 +1462,228 @@ def platform_product_tail(node: ContentNode) -> str:
     relationship = PLATFORM_RELATIONSHIPS.get(node.slug)
     if not relationship:
         return ""
-    links = "".join(
-        f'<li><a href="/platform/{slug}/">{escape(label)}</a></li>'
-        for label, slug in relationship["links"]
-    )
+    links = _chips([(label, f"/platform/{slug}/") for label, slug in relationship["links"]])
     return (
-        f'<section class="{C["platform:section"]}">'
-        f'<h2 class="{C["platform:sectionHeading"]}">Where this fits in the Anthus Platform</h2>'
-        f"<p>{escape(relationship['fits'])}</p>"
-        f'<ul class="{C["platform:featureList"]}">{links}</ul>'
-        f'<div class="{C["platform:recipeCard"]}"><h3>Common combination</h3>'
+        '<section class="ptail"><p class="eyebrow">WHERE IT FITS</p>'
+        "<h2>Where this fits in the Anthus Platform</h2>"
+        f"<p>{escape(relationship['fits'])}</p>{links}"
+        '<div class="card notch card--static"><h3>Common combination</h3>'
         f"<p>{escape(relationship['recipe'])}</p></div></section>"
     )
 
 
 # --------------------------------------------------------------------------
-# Solutions pages: about / ai-solutions / ryan / 404 (static copy lives in
-# anthus_page_html; only the dynamic lists are generated here)
+# Engage
 # --------------------------------------------------------------------------
-
-
-def about_page() -> str:
-    return anthus_page_html.about_html()
-
-
-def ai_solutions_page(blog: list[ContentNode], images: ImageIndex) -> str:
-    """`ai-solutions.js` as deployed: Engagements / Projects / Integrations.
-
-    Engagements: posts tagged `solutions` AND `engagement` (not `integrations`),
-    as `ul.blog` rows with the free-text `display_date` and a `<div>` excerpt.
-    Projects: other `solutions` posts (not engagement/integrations) merged with
-    published `project` posts, as the same research cards the collections use.
-    """
-    solutions = [n for n in blog if "solutions" in n.tags]
-    engagements = [
-        n for n in solutions if "engagement" in n.tags and "integrations" not in n.tags
-    ]
-    projects = {
-        n.slug: n
-        for n in solutions
-        if "engagement" not in n.tags and "integrations" not in n.tags
-    }
-    projects.update({n.slug: n for n in blog if n.published and "project" in n.tags})
-    integrations = [n for n in solutions if "integrations" in n.tags]
-    by_date = lambda nodes: sorted(nodes, key=lambda n: n.date, reverse=True)  # noqa: E731
-    return anthus_page_html.ai_solutions_html(
-        engagements=(
-            '<ul class="blog">'
-            + "".join(
-                _blog_item(n, images, date=n.display_date, excerpt_tag="div", image_class="featured")
-                for n in by_date(engagements)
-            )
-            + "</ul>"
-        ),
-        projects=_grid_html(by_date(list(projects.values())), images),
-        integrations=solutions_list(integrations, images, with_image=False),
-    )
-
-
-def ryan_page(solutions: list[ContentNode], images: ImageIndex) -> str:
-    """`ryan.js`: its featured filter ignores `integrations`, unlike ai-solutions."""
-    featured = [n for n in solutions if "featured" in n.tags]
-    plain = [n for n in solutions if "featured" not in n.tags and "integrations" not in n.tags]
-    integrations = [n for n in solutions if "featured" not in n.tags and "integrations" in n.tags]
-    return anthus_page_html.ryan_html(
-        portfolio=(
-            solutions_list(featured, images, with_image=True, extra_class="smallImageList")
-            + solutions_list(plain, images, with_image=False)
-        ),
-        integrations=solutions_list(integrations, images, with_image=False),
-    )
-
-
-def not_found_page() -> str:
-    return anthus_page_html.not_found_html()
-
-
-# --------------------------------------------------------------------------
-# Collection pages: /reading/ and /research/ (static copy + the two lists)
-# --------------------------------------------------------------------------
-
-
-def collection_nodes(blog: list[ContentNode], tag: str) -> list[ContentNode]:
-    """Published, non-platform posts with `tag`; date desc, ties by filename asc."""
-    nodes = [
-        n for n in blog if n.published and tag in n.tags and not n.is_platform
-    ]
-    nodes.sort(key=lambda n: n.source.name)
-    nodes.sort(key=lambda n: n.date, reverse=True)
-    return nodes
-
-
-_RC = "research-cards-module"
-
-
-def _research_card(
-    node: ContentNode, images: ImageIndex, shows_excerpt_as_headline: bool = False
-) -> str:
-    href = _esc(blog_href(node))
-    preview = _preview(node, images)
-    image = ""
-    if preview:
-        image = (
-            f'<a class="{_RC}--imageLink--25731" href="{href}">'
-            + anthus_dom.image_html(
-                src=preview,
-                alt=node.title,
-                class_name=f"{_RC}--headlineImage--8f69e",
-                eager=False,
-            )
-            + "</a>"
-        )
-    repository = _fm(node, "repository")
-    code = ""
-    if repository:
-        label = repository.removeprefix("https://github.com/")
-        code = (
-            f'<a href="{_esc(repository)}" target="_blank" rel="noopener noreferrer">'
-            f"Code: {escape(label)}</a>"
-        )
-    return (
-        f'<li class="{C["platform:card"]}">{image}'
-        f'<a class="{C["platform:cardTitleLink"]}" href="{href}"><h3>'
-        f"{escape(_headline_from_excerpt_or_title(node) if shows_excerpt_as_headline else node.title)}"
-        "</h3></a>"
-        f'<div class="{C["platform:metaRow"]}"><span class="{C["platform:pill"]}">'
-        f"{escape(node.formatted_date)}</span></div>"
-        + ("" if shows_excerpt_as_headline else _excerpt_container("p", "", _excerpt_html(node)))
-        + f'<div class="{C["platform:cardActions"]}"><a href="{href}">Read more</a>{code}</div></li>'
-    )
-
-
-def reading_page(blog: list[ContentNode], images: ImageIndex) -> str:
-    nodes = collection_nodes(blog, "reading")
-    assert collection_page_count(len(nodes)) == 1, "reading outgrew one page"
-    featured, earlier = collection_lists(nodes, images)
-    return anthus_page_html.reading_html(featured=featured, earlier=earlier)
-
-
-def research_page(blog: list[ContentNode], images: ImageIndex) -> str:
-    nodes = collection_nodes(blog, "research")
-    assert collection_page_count(len(nodes)) == 1, "research outgrew one page"
-    featured, earlier = collection_lists(nodes, images)
-    return anthus_page_html.research_html(featured=featured, earlier=earlier)
 
 
 def engage_page() -> str:
-    return anthus_page_html.engage_html()
+    examples = '<ul class="grid grid--thirds">' + _card(
+        "Classifier lab on Primus",
+        "<p>We take a high-volume judgment call your team already makes (a score, a flag, a routing decision) and turn "
+        "it into a classifier with confidence gating: the model handles the clear cases and routes the rest to your "
+        "reviewers.</p>"
+        "<p>We’ve run this pattern for a call-center QA operation across years of production, hundreds of models, and "
+        "millions of interactions, with expert feedback compounding into a data flywheel the whole time. You get that "
+        "architecture, sized to your judgment task.</p>"
+        "<p>The loop itself is now open source as Cyclotron: a cyclotron is "
+        "one AI decision that learns from your team’s corrections.</p>",
+        extra=_links([("Primus", "https://primus.anth.us"), ("Cyclotron", "https://cyclotron.anth.us/"), ("We build it into your product and run it", "https://cyclotron.anth.us/services")]),
+    ) + _card(
+        "Factory-run software project",
+        "<p>We build your software the way we build our own: work tracked as Kanbus issues in the repository, agents "
+        "doing the implementation, and a human approval trail on every merge.</p>"
+        "<p>Anthus runs its own projects this way, including this site. The commits are public, so you can see the "
+        "process instead of taking it on faith.</p>",
+        extra=_links([("Kanbus", "https://kanb.us")]),
+    ) + _card(
+        "Newsroom for a publication",
+        "<p>We stand up <a href=\"https://p.apyr.us\" rel=\"noopener\">Papyrus</a> as your editorial pipeline: stories move through Kanbus-governed stages from pitch to "
+        "draft to published, with a human editor approving each move.</p>"
+        "<p>Anth.us runs its own newsroom on it, and the board is public, so you can read the record behind the newest "
+        "articles before you buy the pipeline.</p>",
+    ) + "</ul>"
+    first_month = _steps((
+        ("A pilot with fixed scope",
+         "One judgment task, one project, or one publication track, scoped before we start. If you don’t know what you "
+         "need yet, the first month is discovery, and it ends with a scoped proposal instead of a guess."),
+        ("A scorecard or a board you can inspect",
+         "The same record we use internally: accuracy by slice, issues moving through Kanbus, or stories moving through "
+         "the editorial pipeline."),
+        ("A decision point",
+         "At the end of the month you have real evidence to decide whether to extend, expand, or stop."),
+    ))
+    return _page(
+        _page_hero(
+            "ENGAGE ANTHUS", "How an engagement works",
+            "An engagement means Anthus runs the system for you. Your experts stay in the loop, reviewing the cases that "
+            "matter and shaping what the system learns. When it ends, you own what comes out of it: the model, the "
+            "pipeline, the board, the record.",
+            art=_px("engagement-path"),
+            actions=_btn("Start an engagement", CONTACT_URL),
+        ),
+        _section(
+            "01", "Where we start", "Three examples",
+            lead="These are shapes engagements often take. They aren’t a menu. Most real problems don’t fit one box, "
+            "and we take on AI solutions work of any kind.",
+            body=examples, stack=True,
+        ),
+        _section("02", "Month one", "What a first month produces", body=first_month, band=True),
+        _section(
+            "03", "Month six", "What month six looks like",
+            body=_prose(
+                "Picture the same judgment task half a year in. Your reviewers still see cases, but only the ones the "
+                "system can’t clear on its own, and that queue has been shrinking each month as the scorecard fills in. "
+                "A correction one of them made in week two is now a written policy line the system applies every time.",
+                "When someone asks why a verdict changed, you open the record and point at the version, the numbers it "
+                "cleared, and the person who approved it. Nothing runs on a guess, and nothing runs on us: the model, "
+                "the pipeline, the board, and the record are yours.",
+            ),
+        ),
+        _cta(
+            "Bring us the problem.",
+            "Tell us the problem, even if it’s half-formed, and we’ll scope the first month together. Anything you "
+            "send goes through a short contact form.",
+            label="Start an engagement", href=CONTACT_URL,
+        ),
+    )
+
+
+# --------------------------------------------------------------------------
+# Decision models
+# --------------------------------------------------------------------------
+
+_DECISION_QA = (
+    ("Can you fine-tune Jev?",
+     "No. TypeSafe serves the same Jev weights to every account, so there is no fine-tuning endpoint. You get the same "
+     "effect by changing the questions you ask it and fitting a small decision head over its answers, aligned from "
+     "reviewer feedback. On 140 labels, one new plain-English question raised accuracy from 77 to 87 percent with the "
+     "model unchanged.",
+     [("Fine-Tuning Jev: You Can’t. Here’s What Gets You the Same Effect", "/blog/fine-tuning-jev/")]),
+    ("How do I align Jev to my own data?",
+     "Start classifying immediately, review the decisions as it makes them, and label the ones a reviewer disagrees "
+     "with. Those labels refit the decision head and calibrate its confidence, and when disagreements keep coming, "
+     "they tell you which question to add. That loop is far cheaper than building a labelled dataset before you start.",
+     [("Primus Is a Classifier Lab", "/blog/primus-classifier-lab/")]),
+    ("Can you trust Jev’s confidence?",
+     "Higher really does mean more likely right, but out of the box it ran about 15 points overconfident on 8,801 "
+     "labelled examples. Calibration against a few hundred of your own labels closes most of that gap, and only then "
+     "can you set a threshold to auto-accept above and route the rest to a person.",
+     [("Can You Trust Jev’s Confidence?", "/blog/can-you-trust-jev-confidence/")]),
+    ("Does a decision model change its verdict on a name or a pronoun?",
+     "It can. On two thousand real professional bios per job with one pronoun swapped, Jev’s verdict moved on 1 to 4 "
+     "bios in 100 and the open-weights Laya’s on 8 to 18, almost always toward the stereotype. Auditing by slice before "
+     "and after deployment is how you catch it.",
+     [("The One-Word Test", "/blog/one-word-test/")]),
+    ("Can I own the classifier instead of paying per request forever?",
+     "Yes. Once the hosted model is aligned, you can distill it into a small model you serve yourself. A 66-million-"
+     "parameter student trained from an aligned Jev system scored 91.2 percent against the human label, above its "
+     "teacher’s 89.0, at 5 to 15 milliseconds an item, with a per-slice ship gate deciding when it was ready.",
+     [("Distilling an Aligned Jev System into a Classifier You Own", "/blog/distilling-jev-into-a-classifier/")]),
+    ("Can I run this loop myself?",
+     'Yes. The loop is open source as <a href="https://cyclotron.anth.us/">Cyclotron</a>, under the MIT license. A '
+     "cyclotron is one AI decision that learns from your reviewers’ corrections: it starts on day one with the "
+     "decision model’s general training, refits a small model on each correction, and lets an LLM propose better "
+     "questions that code tests before they go live. Run it yourself, have Anthus run it, or have Anthus "
+     '<a href="https://cyclotron.anth.us/services">build it into your product</a>.',
+     []),
+    ("Should I use Jev or an open-weights decision model like Laya?",
+     "The same reviewer loop aligns either one. On the same 140 labels and the same questions, Jev led Laya by 4.7 "
+     "points alone and 6.8 with the feedback layer, and fully fine-tuning Laya on those labels beat both. Which engine "
+     "you pick depends on whether you need to own the weights.",
+     [("Jev vs Laya", "/blog/jev-vs-laya/")]),
+)
 
 
 def decision_models_page() -> str:
-    return anthus_page_html.decision_models_html()
+    def answer(a: str) -> str:
+        return a if "<a " in a else escape(a)
+
+    qa = '<ul class="grid grid--qa">' + "".join(
+        _qa_card(q, answer(a), links) for q, a, links in _DECISION_QA
+    ) + "</ul>"
+    loop = _steps((
+        ("Start classifying now", "Put the decision model in front of real cases with the questions your reviewers already ask."),
+        ("Review and label the disagreements", "Reviewers agree or disagree with verdicts as they happen, and those calls are all the labelling the loop needs."),
+        ("Calibrate the confidence", "Fit the stated confidence to observed accuracy so a threshold means what it says."),
+        ("Change the questions when refits stall", "Let the system read the disagreements and propose one question; a person approves it."),
+        ("Gate every change by slice", "Promote a version only when it clears held-out labels on every slice reviewers care about."),
+        ("Distill when you’re ready to own it", "Train a small model from the aligned system and ship it behind the same gate."),
+    ))
+    return _page(
+        _page_hero(
+            "DECISION MODELS", "Aligning Jev and other decision models to your data",
+            "A decision model like Jev answers a bounded question with a verdict and a confidence, in a fraction of a "
+            "second, for a fraction of a cent. It arrives frozen: you can’t fine-tune it, and it doesn’t know your "
+            "reviewers’ rules. Everything that makes it fit your business lives in the loop around it. Each step of that "
+            "loop has a published measurement behind it, and we run the loop on client judgment tasks.",
+            art=_px("verdict-meter"),
+        ),
+        _section("01", "Questions", "The questions people arrive with", body=qa, stack=True),
+        _section(
+            "02", "The loop", "The loop, in order", body=loop
+            + _prose(
+                'Every step is a published experiment on the <a href="/research/">research page</a>, the public '
+                'leaderboards are on the <a href="/benchmarks/">benchmarks page</a>, and '
+                '<a href="https://primus.anth.us" rel="noopener">Primus</a> is where we run the loop in production.'
+            ),
+            band=True,
+        ),
+        _cta(
+            "We do this for clients, at scale.",
+            "Anthus has run this kind of loop in production for years: reviewers correct the model and say why, the "
+            "explanation becomes policy, and the system gets more trustworthy month over month across hundreds of "
+            "scorecards and millions of interactions. Bring us the judgment task and we’ll run it with your reviewers in "
+            "the loop, and hand you a report you can inspect after the first month. The engine is open source: "
+            '<a href="https://cyclotron.anth.us/">Cyclotron</a>.',
+            label="See how an engagement works",
+        ),
+    )
+
+
+# --------------------------------------------------------------------------
+# Benchmarks
+# --------------------------------------------------------------------------
 
 
 def benchmarks_page() -> str:
-    return anthus_page_html.benchmarks_html()
+    cards = '<ul class="grid grid--2">' + _card(
+        "Biased-Decisions",
+        '<p class="card__sub">Does an AI model’s answer change when one personal detail about a person changes?</p>'
+        "<p>Would AI identify a different job for the same person if “he” became “she”? Would it remove the same online "
+        "comment after its author said they were gay? Biased-Decisions changes one personal detail in a text, asks the "
+        "same question again, and ranks models by how much more often the answer changes than it does after a neutral "
+        "control edit of the same size.</p>",
+        href="https://biased-decisions.anth.us/",
+        extra=_links([("See the results", "https://biased-decisions.anth.us/"),
+                      ("Code: AnthusAI/Biased-Decisions", "https://github.com/AnthusAI/Biased-Decisions")]),
+    ) + _card(
+        "Hard-Decisions",
+        '<p class="card__sub">How far can a decision model follow a chain of reasoning before it starts guessing?</p>'
+        "<p>On true-or-false questions, every model tested except Jev falls to coin-flip accuracy by five chained "
+        "inferences: the open decision models Kev, GLiNER2.5-Decide and Laya, GPT-6 Luna used as a one-shot classifier, "
+        "and GLiDE. Jev still answers 89.3% correctly at that depth.</p>",
+        href="https://hard-decisions.anth.us/",
+        extra=_links([("See the results", "https://hard-decisions.anth.us/")]),
+    ) + "</ul>"
+    return _page(
+        _page_hero(
+            "BENCHMARKS", "Benchmarks",
+            "We publish two public benchmarks for decision models, the fast AI models that answer a bounded question "
+            "with a verdict. Each one shows its method, every model’s results, and the cases behind them, so you can "
+            "check a model against the decision you’re about to hand it.",
+            art=_px("leaderboard"),
+        ),
+        '<section class="section section--tight"><div class="container">' + cards
+        + '<div class="prose" style="margin-top:2.5rem"><p>The articles that explain these findings are on the '
+        '<a href="/research/">research page</a>, and the guide to aligning a decision model to your own data is '
+        '<a href="/decision-models/">here</a>.</p></div></div></section>',
+        _cta(
+            "We do this for clients, at scale.",
+            "Anthus has run this kind of loop in production for years: reviewers correct the model and say why, the "
+            "explanation becomes policy, and the system gets more trustworthy month over month across hundreds of "
+            "scorecards and millions of interactions. Bring us the judgment task and we’ll run it on Primus with your "
+            "reviewers in the loop, and hand you a scorecard you can inspect after the first month.",
+            label="See how an engagement works",
+        ),
+    )

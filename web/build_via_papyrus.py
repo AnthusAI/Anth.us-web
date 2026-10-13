@@ -74,9 +74,9 @@ from papyrus_content.markus_renderer.transforms import (  # noqa: E402
 )
 
 import anthus_dom as dom  # noqa: E402
-import anthus_page_html  # noqa: E402
 import anthus_pages as pages  # noqa: E402
 import anthus_urls as urls  # noqa: E402
+import site_css  # noqa: E402
 import site_env  # noqa: E402  (PPY-f1f0a8)
 from anthus_content import (  # noqa: E402
     POSTS_PER_PAGE,
@@ -192,12 +192,12 @@ def _render_body(ctx: PageContext, parts: BodyParts) -> str:
 ANTHUS_CHROME = SiteChrome(
     site_name=pages.SITE_TITLE,
     tagline=None,
-    scripts=("assets/priority-plus.js", "assets/site-nav.js"),
+    scripts=("assets/site-nav.js", "assets/px-live.js"),
     lang="en",
     # Production's <body> has no class. An empty value renders `class=""`
     # through Papyrus's shell; `_finish_page` removes the empty attribute.
     body_class="",
-    # `build_markus_site(site_css=web/css/anthus-theme.css)` copies the file to
+    # `build_markus_site(site_css=<staged arcade sheet>)` copies the file to
     # `css/site-theme.css`; the destination name is fixed by Papyrus.
     stylesheets=("css/site-theme.css",),
     head_html=dom.HEAD_HTML,
@@ -266,6 +266,9 @@ def _absolutize(url: str, *, base_dir: str) -> str:
         absolute = "/" + posixpath.normpath(posixpath.join(base_dir, path))
     if urls.is_non_page(absolute):
         return absolute + sep + tail
+    external = _SITE_URLS.external_for(absolute)
+    if external is not None:
+        return external + "/"
     href = _SITE_URLS.resolve(absolute)
     if href is not None:
         return urls.page_url(href) + sep + tail
@@ -399,7 +402,7 @@ def _page_title(plain: str) -> str:
 
 def _generated(href: str, title: str, fragment: str, *, meta_key: str | None = None) -> None:
     GENERATED[href] = (title, fragment)
-    meta = anthus_page_html.PAGE_META.get(meta_key) if meta_key else None
+    meta = pages.PAGE_META.get(meta_key) if meta_key else None
     if meta:
         _register_meta(href, meta["description"], None)
 
@@ -415,10 +418,22 @@ def _collection_page(directory: str, title: str, number: int, fragment: str) -> 
     _register_meta(href, pages.COLLECTION_DESCRIPTIONS[title], None)
 
 
+def _pictogram_og(node: ContentNode) -> str | None:
+    """og:image fallback for an item with `pictogram:` and no preview image.
+
+    The PNGs are rendered by `bin/render-pictogram-pngs.py` and committed; the
+    build only reads them (a missing file falls back to the default cover).
+    """
+    name = dom.node_pictogram(node)
+    if name and (SITE_ASSETS / "pictograms" / f"{name}.png").is_file():
+        return f"/assets/site/pictograms/{name}.png"
+    return None
+
+
 def register_article_metadata(collections: Collections, images: ImageIndex) -> None:
     for node in collections.blog:
         href = f"articles/{node.slug}.html"
-        _register_meta(href, node.excerpt_text, pages._preview(node, images))
+        _register_meta(href, node.excerpt_text, pages._preview(node, images) or _pictogram_og(node))
         if node.published:
             _ARTICLE_LD[href] = {
                 "@context": "https://schema.org",
@@ -435,7 +450,7 @@ def register_article_metadata(collections: Collections, images: ImageIndex) -> N
 
 
 def generate_pages(collections: Collections, images: ImageIndex) -> None:
-    meta = anthus_page_html.PAGE_META
+    meta = pages.PAGE_META
     _generated(
         "index.html",
         "Home",
@@ -444,6 +459,7 @@ def generate_pages(collections: Collections, images: ImageIndex) -> None:
             posts=collections.posts,
             images=images,
             blog=collections.blog,
+            platform=collections.platform,
         ),
     )
     for number, text in pages.articles_collection(collections.articles, images).items():
@@ -507,7 +523,7 @@ def generate_pages(collections: Collections, images: ImageIndex) -> None:
     for number, text in pages.posts_collection(collections.posts, images).items():
         _collection_page("posts", "Posts", number, text)
 
-    for slug, (label, text) in pages.tag_pages(collections.tags).items():
+    for slug, (label, text) in pages.tag_pages(collections.tags, images).items():
         _generated(f"tags/{slug}.html", label if slug != "index" else "Tags", text)
 
 
@@ -604,8 +620,9 @@ def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
                 target = dest / path.relative_to(SITE_ASSETS)
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(path, target)
-    for script in ("site-nav.js", "priority-plus.js"):
-        shutil.copy2(POD_ROOT / "assets" / script, staging_assets / script)
+    for script in ("site-nav.js", "px-live.js"):
+        if (POD_ROOT / "assets" / script).is_file():
+            shutil.copy2(POD_ROOT / "assets" / script, staging_assets / script)
 
     # Fail loudly on a chrome image the generated pages reference but that is
     # not committed -- a silently broken hero is worse than a failed build.
@@ -881,7 +898,7 @@ def main() -> int:
         content_dir=STAGING,
         out_dir=DIST,
         theme=None,
-        site_css=POD_ROOT / "css" / "anthus-theme.css",
+        site_css=site_css.stage(_BUILD_DIR / "site-theme-src.css"),
         chrome=ANTHUS_CHROME,
         sections=("platform",),
         images=IMAGES,

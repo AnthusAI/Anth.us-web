@@ -51,9 +51,8 @@ class EffectiveExactRedirects(unittest.TestCase):
 class CommittedStaticFiles(unittest.TestCase):
     def test_the_files_the_full_build_copies_are_projected_byte_for_byte(self):
         files = anthus_projector.read_committed_static_files()
-        self.assertEqual(files["css/site-theme.css"], (REPOSITORY / "web" / "css" / "anthus-theme.css").read_bytes())
+        self.assertEqual(files["css/site-theme.css"], anthus_projector.site_css.stylesheet_bytes())
         self.assertIn("assets/site-nav.js", files)
-        self.assertIn("assets/priority-plus.js", files)
         self.assertIn("favicon-32x32.png", files)
         self.assertIn("manifest.webmanifest", files)
         self.assertTrue(any(key.startswith("assets/site/") for key in files))
