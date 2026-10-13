@@ -996,10 +996,9 @@ _HISTORY = (
     ("2009", "A world tour",
      'Ryan builds an event ticket sales system for a <a href="https://en.wikipedia.org/wiki/Kaleidoscope_World_Tour">'
      "Tiësto world tour</a>. It sparks a business that generated up to $64 million annually."),
-    ("2013", "Acquired, and still running",
-     "Angel Management Group acquires Venue Driver. The system and the team carry on, and the role expands."),
     ("2014", "Hakkasan Group",
-     "The business grows from a tiny startup into a department of a large multinational. We integrate third-party "
+     "Hakkasan Group acquires Angel Management Group together with Venue Driver, which Angel Management Group had "
+     "created as a spin-off. The business grows from a tiny startup into a department of a large multinational. We integrate third-party "
      "platforms, including Salesforce, Marketo, Salesforce Marketing Cloud, Mailchimp and Paytronix, and build an "
      "enterprise data warehouse."),
     ("2021", "Tao Group Hospitality",
@@ -1326,7 +1325,7 @@ _EXPERIENCE = (
     ("October 2013 – February 2014", "Angel Management Group", "Executive Director of Technology",
      "Las Vegas, NV (remote from Miami Beach, FL)",
      ("Formerly with Venue Driver in an evolving role with the same venture. Continuation and expansion of the "
-      "existing role after Angel Management Group acquired Venue Driver.",), ()),
+      "existing role at Angel Management Group, which created Venue Driver as a spin-off.",), ()),
     ("2007 – October 2013", "Venue Driver", "CTO", "Miami Beach, FL",
      ("<strong>Startup technology foundation:</strong> built and managed all technology infrastructure for a "
       "hospitality-focused technology startup, evolving the company into a major event ticketing provider.",
