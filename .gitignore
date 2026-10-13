@@ -78,3 +78,6 @@ web/content-root/
 
 # Pins the cache-busting tokens for the byte-parity check against a reference build
 web/projector-config.json
+
+# Staged concatenation of arcade.css + arcade-pictograms.css (build output)
+web/site-theme-src.css

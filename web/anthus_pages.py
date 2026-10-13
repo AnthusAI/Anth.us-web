@@ -52,6 +52,7 @@ from html import escape
 
 import anthus_dom
 import anthus_page_html
+import arcade_pictograms
 from anthus_content import ContentNode, ImageIndex
 
 CONTACT_URL = (
@@ -281,79 +282,168 @@ def solutions_list(
 # Homepage — src/pages/index.js
 # --------------------------------------------------------------------------
 
-# (title, href, image basename, image alt, description HTML)
+# (title, href, pictogram name, body)
 _CAPABILITIES = (
     (
         "Knowledge Bases",
         "https://github.com/AnthusAI/Biblicus",
-        "smart-process-automation.png",
-        "Knowledge bases with learned ontologies and taxonomies",
-        "Your agents are only as good as what they can look up.  We build "
-        "knowledge bases with <mark>ontologies and taxonomies that learn from "
-        "your data</mark>, refining their own structure instead of going stale "
-        "the week after someone hand-built them.",
+        "knowledge-base",
+        "Your agents are only as good as what they can look up. We build knowledge "
+        "bases with ontologies and taxonomies that learn from your data, instead of "
+        "going stale the week after someone hand-built them.",
     ),
     (
         "Self-Aligning Automation",
         "/blog/call-criteria/",
-        "ai-enabled-projects.png",
-        "Unattended automation with a human in the loop",
-        "Unattended business process automation with a human in the loop.  "
-        "Reviewers correct it and say why; the system <mark>turns the "
-        "explanation into a stated policy</mark> and applies it from then on.",
+        "self-aligning",
+        "Business process automation with a human in the loop. Reviewers correct it "
+        "and say why; the system turns the explanation into a stated policy and "
+        "applies it from then on.",
     ),
     (
         "Agent Systems",
         "/blog/give-an-agent-a-tool/",
-        "ai-agent.png",
-        "Agent systems, tools, and orchestration",
-        "A model is half a system.  The other half is the harness: the tools it "
-        "can reach, the procedures it follows, the limits it runs inside, and "
-        "the ability to work for hours <mark>without losing the plot</mark>.",
+        "agent-harness",
+        "A model is half a system. The other half is the harness: the tools it can "
+        "reach, the procedures it follows, the limits it runs inside, and the "
+        "ability to work for hours without losing the plot.",
     ),
     (
         "Machine Learning",
         "/decision-models/",
-        "ai-software-feature.png",
-        "Custom and fine-tuned machine learning models",
-        "Custom classifiers, fine-tuned models, decision models like Jev, and "
-        "<mark>calibrated confidence</mark> that tells you which decisions to trust and which to "
-        "escalate.  We find the cheapest model that clears your bar, prove that "
-        "it clears it, and run it in production on AWS—training, serving, and "
-        "evaluation included.",
+        "confidence-gate",
+        "Custom classifiers, fine-tuned models, and decision models like Jev, with "
+        "calibrated confidence that tells you which decisions to trust and which to "
+        "escalate. We find the cheapest model that clears your bar and run it on AWS.",
     ),
 )
 
-HOME_TITLE = "Depend on proven experts"
-HOME_SUBHEAD = "We build the system, run it in production, and your experts keep it aligned."
+# (client, href, pictogram, context, problem, what we did, outcome)
+_CASES = (
+    (
+        "Call Criteria",
+        "/blog/call-criteria/",
+        "scorecard",
+        "Call-center QA, scored by an outside service’s fine-tuned classifiers.",
+        "Too expensive and too slow to scale to every new scorecard.",
+        "We built their classifier lab on Primus in their own AWS account and ran it for years.",
+        "Hundreds of scorecards, millions of calls scored.",
+    ),
+    (
+        "Venue Driver",
+        "/blog/venue-driver/",
+        "relocate",
+        "Ticketing and reservations backbone for Las Vegas nightlife.",
+        "An AWS data center failed catastrophically.",
+        "We relocated the entire system within hours — ticket scanning never stopped.",
+        "In continuous operation since 2007.",
+    ),
+)
+
+_PRINCIPLES = (
+    ("Specs first", "Define behavior before implementation."),
+    ("Defense in depth", "Sandboxed tools, CI gates, staged rollouts, and fast rollback."),
+    ("Operational feedback", "Telemetry and incident-driven regressions that tighten the loop over time."),
+    ("Simplify and delete", "Reduce degrees of freedom to eliminate entire classes of failure."),
+)
+
+_STATS = (
+    ("$250M", "Processed in production"),
+    ("180B", "Tokens of production LLM work"),
+    ("~100%", "Uptime, nearly two decades"),
+    ("2007", "Running systems since"),
+)
+
+
+def _px(name: str) -> str:
+    return arcade_pictograms.render(name)
+
+
+def _eyebrow(number: str, label: str) -> str:
+    return f'<p class="eyebrow"><span>{number}</span> <span>/</span> <span>{escape(label)}</span></p>'
+
+
+def _btn(label: str, href: str, *, ghost: bool = False) -> str:
+    cls = "btn btn--ghost" if ghost else "btn"
+    return f'<a class="{cls}" href="{_esc(href)}"><span>{escape(label)} &rarr;</span></a>'
+
+
+def _section(number: str, label: str, heading: str, *, lead: str = "", body: str, head_extra: str = "",
+             band: bool = False, stack: bool = False, section_id: str = "") -> str:
+    lead_html = f'<p class="lead">{escape(lead)}</p>' if lead else ""
+    ident = f' id="{section_id}"' if section_id else ""
+    return (
+        f'<section class="section{" section--band" if band else ""}"{ident}>'
+        f'<div class="container section__grid{" section__grid--stack" if stack else ""}">'
+        f'<header class="section__head">{_eyebrow(number, label)}<h2>{escape(heading)}</h2>'
+        f"{lead_html}{head_extra}</header>"
+        f'<div class="section__body">{body}</div></div></section>'
+    )
 
 
 def _hero() -> str:
-    """`src/components/hero.js` + the homepage's two hero images.
-
-    `.hero-overlay` is absolutely positioned over the image by `layout.scss`.
-    Two images are emitted because the stylesheet shows the tall one below
-    941px and the wide one above it. The button is an internal link to
-    `/engage/` on live production (it used to be the contact form).
-    """
+    """Split hero: copy on the left, the animated hero pictogram on the right."""
     return (
-        '<div class="hero">'
-        + anthus_dom.hero_image_html(
-            src="/assets/site/serverless-ai-software-solutions.png",
-            alt="Anthus",
-            class_name="hero-image hero-image-default",
-        )
-        + anthus_dom.hero_image_html(
-            src="/assets/site/serverless-ai-software-solutions-wide.png",
-            alt="Anthus",
-            class_name="hero-image hero-image-wide",
-        )
-        + '<div class="hero-overlay">'
-        f"<h1>{escape(HOME_TITLE)}</h1><p>{escape(HOME_SUBHEAD)}</p>"
-        f'<p class="{C["index:heroProof"]}"><mark>A quarter billion dollars</mark> '
-        "processed in production, at nearly 100% uptime.</p>"
-        '<a class="button" href="/engage/">Tell us the problem</a>'
-        "</div></div>"
+        '<section class="hero"><div class="container hero__grid"><div class="hero__copy">'
+        '<p class="eyebrow">AI ENGINEERING · IN PRODUCTION SINCE 2007</p>'
+        '<h1>AI that keeps working after the demo.<span class="cursor" aria-hidden="true"></span></h1>'
+        '<p class="lead">We build custom models, agent systems and knowledge bases, run '
+        "them in production, and keep them aligned with the people who know the work.</p>"
+        '<div class="btn-row">'
+        + _btn("Tell us the problem", "/engage/")
+        + _btn("See the work", "/ai-solutions/", ghost=True)
+        + '</div></div><div class="hero__art">'
+        + _px("hero-loop")
+        + "</div></div></section>"
+    )
+
+
+def _stats() -> str:
+    cells = "".join(
+        f'<li><span class="stats__n">{escape(n)}</span><span class="stats__l">{escape(l)}</span></li>'
+        for n, l in _STATS
+    )
+    return f'<div class="stats-wrap"><div class="container"><ul class="stats">{cells}</ul></div></div>'
+
+
+def _capability_card(title: str, url: str, pictogram: str, body: str) -> str:
+    return (
+        '<li class="card notch card--link">'
+        f'<div class="card__px">{_px(pictogram)}</div>'
+        f'<h3><a href="{_esc(url)}">{escape(title)}</a></h3><p>{escape(body)}</p></li>'
+    )
+
+
+def _case_card(client, href, pictogram, context, problem, did, outcome) -> str:
+    return (
+        '<li class="card notch case card--link">'
+        f'<div class="card__px">{_px(pictogram)}</div>'
+        f'<p class="case__ctx">{escape(context)}</p>'
+        f'<h3><a href="{_esc(href)}">{escape(client)}</a></h3>'
+        f"<dl><div><dt>Problem</dt><dd>{escape(problem)}</dd></div>"
+        f"<div><dt>What we did</dt><dd>{escape(did)}</dd></div>"
+        f'<div><dt>Outcome</dt><dd class="case__out">{escape(outcome)}</dd></div></dl></li>'
+    )
+
+
+def _article_card(node: ContentNode) -> str:
+    tags = [t for t in node.tags if t != "featured"][:2]
+    meta = f"<time>{escape(node.date_raw)}</time>" + "".join(f"<span>#{escape(t)}</span>" for t in tags)
+    return (
+        '<li class="card notch acard card--link">'
+        f'<p class="acard__meta">{meta}</p>'
+        f'<h3><a href="{_esc(str(node.front_matter.get("external_url") or blog_href(node)))}">'
+        f"{escape(node.title)}</a></h3>"
+        f'<p class="acard__ex">{escape(node.excerpt_text)}</p>'
+        '<span class="card__link" aria-hidden="true">Read</span></li>'
+    )
+
+
+def _platform_tile(node: ContentNode) -> str:
+    return (
+        '<li class="card notch tile card--link">'
+        f'<h3><a href="{_esc(platform_href(node))}">{escape(node.title)}</a></h3>'
+        f"<p>{escape(_fm(node, 'excerpt'))}</p></li>"
     )
 
 
@@ -363,147 +453,91 @@ def homepage(
     posts: list[ContentNode],
     images: ImageIndex,
     blog: list[ContentNode] | None = None,
+    platform: list[ContentNode] | None = None,
 ) -> str:
-    """`src/pages/index.js`, as deployed (Anth.us 96ac29c).
-
-    Section order: What We Do, Case studies, How we work, The Anthus Platform,
-    Recent Articles, Recent Posts. The B0rd spinoff section is gone.
-    """
-    out = [_hero()]
+    """The arcade homepage (HOME-COPY.md). No raster images, so `images` is unused."""
+    out = [_hero(), _stats()]
 
     out.append(
-        f'<p class="{C["index:intro"]}">'
-        "<mark>180 billion tokens</mark> of production LLM workload. AI in "
-        "production, not just in demos.</p>"
-    )
-
-    out.append("<h2>What We Do</h2>")
-    cards = []
-    for title, url, image, alt, description in _CAPABILITIES:
-        cards.append(
-            f'<li class="{C["index:listItem"]}">'
-            f'<a href="{_esc(url)}" class="{C["index:listItemLink"]}">'
-            + anthus_dom.image_html(
-                src=f"/assets/site/{image}", alt=alt, class_name="", eager=False
-            )
-            + f"<h3>{escape(title)}</h3></a>"
-            f'<p class="{C["index:listItemDescription"]}">{description}</p></li>'
+        _section(
+            "01", "What we do", "Four kinds of system. One way of running them.",
+            lead="Clients usually arrive asking about one of these. The work rarely stays in one box.",
+            body='<ul class="grid grid--wide">'
+            + "".join(_capability_card(*c) for c in _CAPABILITIES)
+            + "</ul>",
         )
-    out.append(f'<ul class="{C["index:list"]}">{"".join(cards)}</ul>')
-
-    out.append(
-        f'<p class="{C["index:intro"]} {C["index:textCenter"]}">'
-        "Clients usually arrive asking about one of these. "
-        "<mark>The work rarely stays in one box.</mark></p>"
     )
 
-    def case(slug: str, title: str, facts: str) -> str:
-        return (
-            f'<li class="{C["index:listItem"]}">'
-            f'<a class="{C["index:listItemLink"]}" href="/blog/{slug}/">'
-            f"<h3>{title}</h3></a>"
-            f'<ul class="{C["index:caseFacts"]}">{facts}</ul></li>'
+    out.append(
+        _section(
+            "02", "Proof", "Systems that ran for years, not weeks.",
+            body='<ul class="grid grid--2">'
+            + "".join(_case_card(*c) for c in _CASES)
+            + '</ul><p class="more"><a href="/ai-solutions/">All engagements</a></p>',
+            band=True,
+            stack=True,
         )
+    )
 
-    out.append("<h2>Case studies</h2>")
+    principles = "".join(
+        f"<li><span>{i:02d}</span><strong>{escape(name)}</strong><p>{escape(text)}</p></li>"
+        for i, (name, text) in enumerate(_PRINCIPLES, 1)
+    )
     out.append(
-        f'<ul class="{C["index:list"]}">'
-        + case(
-            "call-criteria",
-            "Call Criteria",
-            "<li>Call-center QA, scored by an outside service&#x27;s fine-tuned classifiers.</li>"
-            "<li>Too expensive and too slow to scale to every new scorecard.</li>"
-            "<li>We built their classifier lab on Primus in their own AWS account and ran it for years.</li>"
-            "<li><mark>Hundreds of scorecards, millions of calls scored</mark>.</li>",
+        _section(
+            "03", "How we work", "AI-built, and checked harder because of it.",
+            body='<div class="prose-block">'
+            "<p>In February 2026 our nightly routine was pasting &quot;Continue.&quot; into "
+            "four Codex sessions before bed, because nothing else kept the agents going or "
+            "told us what they&#x27;d done. "
+            '<a href="/about/">That night is on the record.</a> Everything we ship now runs '
+            "under specs, tests, staged rollout, and a person who can say no.</p>"
+            "<p>We use AI to write code the same way we use it to classify calls: inside a "
+            "governor of constraints, feedback loops and human judgment.</p></div>"
+            f'<ol class="principles">{principles}</ol>'
+            '<p class="more"><a href="/blog/cybernetic-development/">How we govern AI-built systems</a></p>',
         )
-        + case(
-            "venue-driver",
-            "Venue Driver",
-            "<li>Ticketing and reservations backbone for Las Vegas nightlife.</li>"
-            "<li>An AWS data center failed catastrophically.</li>"
-            "<li>We relocated the entire system within hours \u2014 ticket scanning never stopped.</li>"
-            "<li><mark>In continuous operation since 2007</mark>.</li>",
+    )
+
+    tiles = "".join(_platform_tile(n) for n in (platform or []))
+    out.append(
+        _section(
+            "04", "Platform", "The tools we built doing the work.",
+            lead="A reusable stack that grew out of real delivery: runtime, agent execution, "
+            "knowledge, observability and media, with the enterprise controls that matter in production.",
+            head_extra='<div class="hero__art platform__art">' + _px("platform-stack") + "</div>"
+            '<div class="btn-row platform__cta">' + _btn("Explore the platform", "/platform/") + "</div>",
+            body=f'<ul class="grid">{tiles}</ul>' if tiles else "",
+            band=True,
         )
-        + "</ul>"
-    )
-    out.append(
-        '<div class="clear-float">See our <a href="/ai-solutions/">solution '
-        "patterns</a>.</div>"
     )
 
-    out.append(
-        f'<section class="{C["index:approachSection"]}">'
-        f'<h2 class="{C["index:approachHeading"]}">How we work</h2>'
-        f'<div class="{C["index:approachContent"]}"><div>'
-        "<p>You might be wondering whether AI-built means nobody checked. For us it "
-        "means the opposite, and we learned it the hard way: in February 2026 the "
-        "nightly routine was pasting &quot;Continue.&quot; into four Codex sessions "
-        "before bed, because nothing else kept the agents going or told us what "
-        "they&#x27;d done. "
-        '<a href="/about/">That night is on the record.</a> Everything we ship now '
-        "runs under specs, tests, staged rollout, and a person who can say no. We "
-        "call that cybernetic development: we use AI to write code the same way we "
-        "use it to classify calls, inside a governor of constraints, feedback "
-        "loops, and human judgment that keeps systems reliable in production.</p>"
-        "<p>Modern failures increasingly look less like isolated \u201cbugs\u201d "
-        "and more like operational, multi-system breakdowns. Great unit tests "
-        "help\u2014but they don\u2019t cover every emergent scenario. So we build "
-        "layered defenses and close the loop with real-world feedback.</p>"
-        "<ul><li>Specs first: define behavior before implementation.</li>"
-        "<li>Defense in depth: sandboxed tools, CI gates, staged rollouts, and "
-        "fast rollback.</li>"
-        "<li>Operational feedback: telemetry and incident-driven regressions "
-        "that tighten the loop over time.</li>"
-        "<li>Simplify and delete: reduce degrees of freedom to eliminate entire "
-        "classes of failure.</li></ul>"
-        f'<div class="{C["index:approachActions"]}">'
-        f'<a class="{C["index:approachSecondaryCta"]}" '
-        'href="/blog/cybernetic-development/">How we govern AI-built systems</a>'
-        "</div></div></div></section>"
+    posts_items = "".join(
+        f'<li><time>{escape(n.display_date)}</time><a href="{_esc(blog_href(n))}">{escape(n.title)}</a></li>'
+        for n in posts[:4]
     )
-
     out.append(
-        f'<section class="{C["index:plexusFeature"]}">'
-        f'<span class="{C["index:eyebrow"]}">PART OF</span>'
-        f'<h2 class="{C["index:platformHeader"]}">The Anthus Platform</h2>'
-        "<p>Solve complex business problems with AI and ML using a proven, "
-        "reusable technology stack that grew out of real delivery work \u2014 "
-        "runtime, agent execution, knowledge, observability, and media, with the "
-        "enterprise controls that matter in production.</p>"
-        f'<div class="{C["index:approachActions"]}">'
-        '<a class="button" href="/platform/">Explore the platform</a>'
-        "</div></section>"
-    )
-
-    out.append("<h2>Recent Articles</h2>")
-    out.append(
-        '<ul class="blog">'
-        + "".join(
-            _blog_item(
-                node,
-                images,
-                date=node.date_raw,
-                excerpt_tag="div",
-                href=str(node.front_matter.get("external_url") or blog_href(node)),
-            )
-            for node in articles[:4]
+        _section(
+            "05", "Writing", "What we’re measuring.",
+            body='<ul class="grid">'
+            + "".join(_article_card(n) for n in articles[:6])
+            + '</ul><p class="more"><a href="/blog/">All articles</a></p>'
+            + (
+                '<div class="shorter"><h3>Shorter posts</h3><ul>'
+                + posts_items
+                + '</ul><p class="more"><a href="/posts/">All posts</a></p></div>'
+                if posts_items
+                else ""
+            ),
         )
-        + "</ul>"
-    )
-    out.append(
-        f'<div class="clear-float {C["index:seeMoreFooter"]}">More in '
-        '<a href="/blog/">Articles</a>.</div>'
     )
 
-    out.append("<h2>Recent Posts</h2>")
     out.append(
-        f'<ul class="{C["index:postsList"]}">'
-        + "".join(_posts_item(node, images) for node in posts[:4])
-        + "</ul>"
-    )
-    out.append(
-        f'<div class="clear-float {C["index:seeMoreFooter"]}">More in '
-        '<a href="/posts/">Posts</a>.</div>'
+        '<section class="section section--band cta-band"><div class="container cta-band__in">'
+        '<div><p class="eyebrow">PRESS START</p><h2>Bring us the problem.</h2>'
+        '<p class="lead">Even if you can’t yet say what you need. Working that out is part of '
+        "the first month, and it’s often the most useful part.</p></div>"
+        '<div class="btn-row">' + _btn("Tell us the problem", "/engage/") + "</div></div></section>"
     )
     return "".join(out)
 
