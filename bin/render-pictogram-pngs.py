@@ -43,7 +43,7 @@ html,body{{margin:0;width:1200px;height:630px;overflow:hidden;background:var(--b
 .mark{{position:absolute;left:48px;bottom:34px}}
 .mark .site-logo{{pointer-events:none}}
 </style></head><body><div class="stage">{figure}</div>
-<div class="mark"><span class="site-logo">{mark}<span class="site-logo__word">NTHUS</span></span></div></body></html>"""
+<div class="mark"><span class="site-logo">{mark}</span></div></body></html>"""
 
 JS = """
 const puppeteer = require(process.argv[2]);
@@ -80,7 +80,7 @@ def main(argv: list[str]) -> int:
         for name in names:
             html = Path(tmp) / f"{name}.html"
             html.write_text(
-                PAGE.format(css=css, figure=arcade_pictograms.render(name), mark=anthus_dom._LOGO_MARK),
+                PAGE.format(css=css, figure=arcade_pictograms.render(name), mark=anthus_dom._LOGO_SVG),
                 encoding="utf-8",
             )
             jobs.append([str(html), str(OUT / f"{name}.png")])
