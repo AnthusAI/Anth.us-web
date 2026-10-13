@@ -304,8 +304,7 @@ def _header_html(active_path: str) -> str:
         )
         + "</div>"
         + '<button class="site-menu-toggle" type="button" aria-label="Menu" aria-expanded="false" '
-        'aria-controls="site-nav"><span class="site-menu-toggle__bars" aria-hidden="true"></span>'
-        '<span class="site-menu-toggle__label">Menu</span></button>'
+        'aria-controls="site-nav"><span class="site-menu-toggle__bars" aria-hidden="true"></span></button>'
         '<nav class="site-nav" id="site-nav" aria-label="Primary"><ul>'
         + "".join(items)
         + "</ul></nav></div></header>"
