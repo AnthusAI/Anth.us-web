@@ -418,8 +418,8 @@ def _case_card(client, href, pictogram, context, problem, did, outcome) -> str:
     return (
         '<li class="card notch case card--link">'
         f'<div class="card__px">{_px(pictogram)}</div>'
-        f'<p class="case__ctx">{escape(context)}</p>'
         f'<h3><a href="{_esc(href)}">{escape(client)}</a></h3>'
+        f'<p class="case__ctx">{escape(context)}</p>'
         f"<dl><div><dt>Problem</dt><dd>{escape(problem)}</dd></div>"
         f"<div><dt>What we did</dt><dd>{escape(did)}</dd></div>"
         f'<div><dt>Outcome</dt><dd class="case__out">{escape(outcome)}</dd></div></dl></li>'
@@ -462,7 +462,7 @@ def homepage(
         _section(
             "01", "What we do", "Four kinds of system. One way of running them.",
             lead="Clients usually arrive asking about one of these. The work rarely stays in one box.",
-            body='<ul class="grid grid--wide">'
+            body='<ul class="grid grid--caps">'
             + "".join(_capability_card(*c) for c in _CAPABILITIES)
             + "</ul>",
         )

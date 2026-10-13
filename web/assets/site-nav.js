@@ -1,4 +1,4 @@
-/* Anth.us header menu: below 60rem the nav collapses behind a MENU button.
+/* Anth.us header menu: below 78rem the nav collapses behind a MENU button.
  * Without JavaScript the nav is a plain, wrapping list (the `js` class that
  * enables the collapsed layout is added by an inline script in <head>). */
 (function () {
@@ -25,6 +25,6 @@
     if (event.target.closest && event.target.closest(".site-nav a")) set(false);
   });
   window.addEventListener("resize", function () {
-    if (window.innerWidth >= 960) set(false);
+    if (window.innerWidth >= 1248) set(false);
   });
 })();
