@@ -27,6 +27,7 @@ import os
 import re
 import shutil
 import sys
+from datetime import datetime
 from pathlib import Path, PurePosixPath
 from types import SimpleNamespace
 
@@ -72,6 +73,7 @@ OWNED_TOP_LEVEL_DIRECTORIES = frozenset(
 LEGACY_OG_IMAGES_PATH = MODULE_DIRECTORY / "legacy-og-images.json"
 LEGACY_REDIRECT_RULES_PATH = MODULE_DIRECTORY / "legacy-redirect-rules.json"
 SNAPSHOTS_KEPT = 4
+PROJECTION_SETTINGS_PATH = MODULE_DIRECTORY / "projection.json"
 SITE_THEME_KEY = "css/site-theme.css"
 CHROME_SCRIPT_NAMES = ("site-nav.js", "px-live.js")
 SITE_IMAGES_DIRECTORY = MODULE_DIRECTORY / "assets" / "site"
@@ -289,6 +291,7 @@ class Snapshot:
 
     def __init__(self, projector: "AnthusProjector", site) -> None:
         self.items = site.items
+        self.public_data_settings = projector.public_data_settings
         self.nodes_by_item = {
             summary.item_id: node_for(summary) for summary in site.items if summary.section in PROJECTED_SECTIONS
         }
@@ -334,6 +337,31 @@ class Snapshot:
     def sitemap_bytes(self) -> bytes:
         return site_env.sitemap_0_xml(self.sitemap_urls()).encode("utf-8")
 
+    def public_data_pages(self) -> dict[str, bytes]:
+        """The search index and the latest list; empty unless projection.json opts in with ``publicData``."""
+        settings = self.public_data_settings
+        if settings is None:
+            return {}
+        from papyrus_content.projection.public_data import PublicEntry, clipped, public_data_files
+
+        entries = []
+        for summary in self.items:
+            node = self.nodes_by_item.get(summary.item_id)
+            if node is None or not (node.published or node.is_platform):
+                continue
+            href = f"{summary.section}/{markus_build.slugify(node.slug)}.html"
+            parsed = node.date
+            entries.append(
+                PublicEntry(
+                    title=clipped(node.title, 200),
+                    url=request_paths_for_key(urls.page_output(href))[0],
+                    summary=clipped(node.excerpt_text, settings.summary_characters),
+                    tags=tuple(dict.fromkeys(tag.strip() for tag in node.tags if tag.strip())),
+                    date=parsed.strftime("%Y-%m-%d") if parsed != datetime.min else "",
+                )
+            )
+        return public_data_files(entries, settings)
+
     def inputs(self) -> dict[str, str]:
         if self._inputs is None:
             self.activate()
@@ -342,6 +370,8 @@ class Snapshot:
                 rewritten = site_build._rewrite_internal_links(fragment, active_href=href)
                 inputs[self.output_by_href[href]] = digest_of(title, rewritten)
             inputs[SITEMAP_KEY] = digest_of(self.sitemap_bytes().decode("utf-8"))
+            for key, body in self.public_data_pages().items():
+                inputs[key] = digest_of(body.decode("utf-8"))
             self._inputs = inputs
         return self._inputs
 
@@ -378,11 +408,14 @@ class Snapshot:
 
 
 class AnthusProjector:
-    def __init__(self, state: dict, config: dict, stored_images: StoredImageRecords | None = None) -> None:
+    def __init__(
+        self, state: dict, config: dict, stored_images: StoredImageRecords | None = None, public_data_settings=None
+    ) -> None:
         self._state = state
         self._config = config
         self._stored_images = stored_images
         self._snapshots: list[Snapshot] = []
+        self.public_data_settings = public_data_settings
 
     def build_image_index(self) -> ImageIndex:
         if self._stored_images is not None:
@@ -517,13 +550,16 @@ class AnthusProjector:
         pages = self._render_generated(snapshot, wanted)
         if wanted is None or SITEMAP_KEY in wanted:
             pages[SITEMAP_KEY] = snapshot.sitemap_bytes()
+        for key, body in snapshot.public_data_pages().items():
+            if wanted is None or key in wanted:
+                pages[key] = body
         return pages
 
     def shared_inputs(self, site):
         return self._snapshot(site).shared()
 
     def owns_page_key(self, key):
-        if key in ("index.html", "404.html", SITEMAP_KEY):
+        if key in ("index.html", "404.html", SITEMAP_KEY) or (self.public_data_settings is not None and key.startswith("_data/")):
             return True
         return key.endswith(".html") and key.split("/", 1)[0] in OWNED_TOP_LEVEL_DIRECTORIES
 
@@ -533,6 +569,10 @@ class AnthusProjector:
             "sitemap-index.xml": site_env.sitemap_index_xml().encode("utf-8"),
         }
         files.update(read_committed_static_files())
+        if self.public_data_settings is not None:
+            from papyrus_content.projection.public_data import public_static_files
+
+            files.update(public_static_files(self.public_data_settings))
         return files
 
     def redirects(self, site):
@@ -550,4 +590,14 @@ def create_projector() -> AnthusProjector:
     config_path = MODULE_DIRECTORY / "projector-config.json"
     config = json.loads(config_path.read_text(encoding="utf-8")) if config_path.is_file() else default_projector_config()
     bucket = (os.environ.get("PAPYRUS_SITE_BUCKET") or "").strip()
-    return AnthusProjector(state, config, StoredImageRecords(bucket) if bucket else None)
+    return AnthusProjector(state, config, StoredImageRecords(bucket) if bucket else None, public_data_settings_of_site())
+
+
+def public_data_settings_of_site():
+    """The ``publicData`` block of projection.json, or None: the search index and latest list are opt-in."""
+    raw = json.loads(PROJECTION_SETTINGS_PATH.read_text(encoding="utf-8")) if PROJECTION_SETTINGS_PATH.is_file() else {}
+    if "publicData" not in raw:
+        return None
+    from papyrus_content.projection.public_data import public_data_settings_from_mapping
+
+    return public_data_settings_from_mapping(raw["publicData"])
