@@ -63,6 +63,8 @@ import re
 from dataclasses import dataclass, field
 from urllib.parse import quote, unquote
 
+from solution_sites import EXTERNAL_SITES
+
 #: ``directory`` emits ``/articles/<slug>/``; ``html`` emits
 #: ``/articles/<slug>.html``. This is the only place the shape is decided.
 URL_STYLE = (os.environ.get("ANTHUS_URL_STYLE") or "directory").strip().lower()
@@ -225,6 +227,8 @@ class SiteUrls:
     platform_by_path: dict[str, str] = field(default_factory=dict)
     #: authored tag, lowercased -> merged tag page slug.
     tag_by_name: dict[str, str] = field(default_factory=dict)
+    #: lowercased name or creator path -> site, for things that live on their own site.
+    external_by_name: dict[str, str] = field(default_factory=dict)
     #: number of ``/posts/`` pages, so ``/posts/7/`` is not invented.
     posts_pages: int = 1
 
@@ -237,6 +241,8 @@ class SiteUrls:
             urls._add_article(node)
         for node in collections.platform:
             urls._add_platform(node)
+        for node in getattr(collections, "external_platform", []):
+            urls._add_external(node)
         for tag in collections.tags:
             urls.tag_by_name.setdefault(tag.strip().lower(), tag_slug(tag))
             urls.tag_names.setdefault(tag.strip(), tag_slug(tag))
@@ -281,6 +287,29 @@ class SiteUrls:
             retired_name = stub_page.parent.name
             self.article_by_name.setdefault(retired_name.lower(), target_slug)
             self.blog_names.setdefault(retired_name, target_slug)
+
+    def _add_external(self, node) -> None:
+        site = EXTERNAL_SITES[node.slug.lower()]
+        for name in (node.slug, node.authored_slug, slugify(node.authored_slug)):
+            if name:
+                self.external_by_name[name.lower()] = site
+        path = _creator_path(node)
+        if path is not None:
+            self.external_by_name[path] = site
+            self.external_by_name[path.lower()] = site
+
+    def external_for(self, path: str) -> str | None:
+        """The site a site-absolute path points at when that thing has its own site."""
+        segments = [s for s in unquote(path or "").strip("/").split("/") if s]
+        if segments and segments[-1].endswith(".html"):
+            segments[-1] = segments[-1][: -len(".html")]
+            if segments[-1] == "index":
+                segments = segments[:-1]
+        if len(segments) == 2 and segments[0].lower() in ("platform", "solutions"):
+            return self.external_by_name.get(segments[1].lower())
+        if len(segments) == 1:
+            return self.external_by_name.get(segments[0].lower())
+        return None
 
     def _add_platform(self, node) -> None:
         for name in (node.slug, node.authored_slug, slugify(node.authored_slug)):
@@ -610,6 +639,18 @@ def legacy_rules(
     for rule in BENCHMARK_SUBDOMAIN_REDIRECT_RULES:
         out.add("benchmark subdomain", rule["source"], rule["target"])
 
+    # Solutions with their own site have no page here: the old URL goes to the site.
+    sources = {r["source"] for r in out.rules}
+    for slug, site in sorted(EXTERNAL_SITES.items()):
+        candidates = [f"/platform/{slug}/"] + [
+            _source(*path.split("/")) for path, mapped in sorted(urls.external_by_name.items())
+            if "/" in path and mapped == site
+        ]
+        for source in candidates:
+            if source not in sources:
+                sources.add(source)
+                out.add("external solution site", source, site, index_twin=True)
+
     # Plexus was renamed Primus: every URL the old name ever had on this site
     # (Gatsby /blog/ and /solutions/ shapes, current /articles/ and /platform/
     # shapes) goes to the new article. The old plexus.anth.us host is NOT
@@ -655,6 +696,8 @@ def _assert_index_twins(rules: list[dict], dist) -> None:
             continue
         if rule["target"] in sources or rule["target"] == rule["source"]:
             raise RuntimeError(f"index.html rule {rule['source']} chains into {rule['target']}")
+        if rule["target"].startswith("https://"):
+            continue
         if dist is None or "<" in rule["source"]:
             continue
         if (dist / unquote(rule["source"]).lstrip("/")).exists():

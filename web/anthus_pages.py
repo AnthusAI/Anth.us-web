@@ -1377,7 +1377,7 @@ def _platform_cards(nodes: list[ContentNode]) -> str:
     return '<ul class="grid">' + "".join(_platform_card(n) for n in nodes) + "</ul>"
 
 
-_FLAGSHIP_SLUGS = frozenset({"chatticus", "primus", "kanbus", "tactus", "biblicus"})
+_FLAGSHIP_SLUGS = frozenset({"biblicus"})
 
 
 def platform_index(platform: list[ContentNode]) -> str:
