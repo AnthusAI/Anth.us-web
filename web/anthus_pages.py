@@ -792,7 +792,7 @@ _STACK_RECIPES = (
     ),
     (
         "Platform-native internal tooling",
-        "Korporus supplies the shared shell while product-specific modules from "
+        "Korporus supplies the shared shell while solution-specific modules from "
         "Primus, Kanbus, Biblicus, and future tools appear as interoperable "
         "applications instead of one-off surfaces.",
     ),
