@@ -464,8 +464,10 @@ main { display: block; }
 /* Article cards */
 .acard { padding: 0; gap: 0; }
 .acard__body { display: flex; flex-direction: column; gap: 0.9rem; padding: clamp(1.25rem, 2vw, 1.75rem); flex: 1; }
-.acard__vis { aspect-ratio: 16 / 10; width: 100%; overflow: hidden; background: var(--panel-2); border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: center; }
+.acard__vis { aspect-ratio: 16 / 10; width: calc(100% - 2px); margin: 1px 1px 0; overflow: hidden; background: var(--panel-2); border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: center; }
 .acard__vis { background: var(--panel); }
+.drafts-review .card { --fill: var(--bg); }
+.drafts-review .acard__vis { background: var(--panel-2); }
 .acard__vis img { width: 100%; height: 100%; max-width: none; object-fit: contain; display: block; }
 .acard__vis--cover img { object-fit: cover; }
 .acard__vis--px { background: var(--panel); padding: clamp(0.75rem, 1.6vw, 1.25rem); }
@@ -857,3 +859,9 @@ article .heading a.btn--ghost { color: var(--ink); }
 @media (max-width: 40rem) { .opsnote { flex-direction: column; align-items: flex-start; } }
 
 .shorter--flat { margin-top: 0; max-width: 56rem; }
+
+/* Draft review (shown by assets/drafts.js on ?drafts) */
+.drafts-review[hidden] { display: none; }
+.drafts-review { padding-block: var(--section-space); background: var(--panel); border-top: 1px dashed var(--pink); }
+.drafts-review > .container > p:not(.eyebrow) { color: var(--ink-2); margin: 0.75rem 0 clamp(1.5rem, 2.5vw, 2.5rem); }
+.pill--draft { font-family: var(--font-label); font-size: 1rem; letter-spacing: 0.08em; background: var(--pink); color: var(--on-pink); border-color: var(--pink); }

@@ -99,6 +99,11 @@ class ContentNode:
         return self.state == "published"
 
     @property
+    def draft(self) -> bool:
+        """`state: draft`: served, but noindexed and left out of every normal listing."""
+        return self.state == "draft"
+
+    @property
     def is_platform(self) -> bool:
         return (
             self.front_matter.get("content_type") == "platform-product"
@@ -429,6 +434,8 @@ class Collections:
     tags: dict[str, list[ContentNode]]
     #: platform nodes that live on their own site: no page here, only redirects and link rewrites.
     external_platform: list[ContentNode] = field(default_factory=list)
+    #: `state: draft` items (not platform): served and noindexed, listed only in the hidden review sections.
+    drafts: list[ContentNode] = field(default_factory=list)
 
     @classmethod
     def from_nodes(cls, nodes: list[ContentNode]) -> "Collections":
@@ -448,9 +455,12 @@ class Collections:
         # posts-list.jsx: published and tagged posts.
         posts = [n for n in blog if n.published and "posts" in n.tags]
         # ai-solutions.js: tagged solutions (state not filtered, matching Gatsby).
-        solutions = [n for n in blog if "solutions" in n.tags]
+        solutions = [n for n in blog if "solutions" in n.tags and not n.draft]
+        drafts = [n for n in blog if n.draft]
         tags: dict[str, list[ContentNode]] = {}
         for node in blog:
+            if node.draft:
+                continue
             for tag in node.tags:
                 tags.setdefault(tag, []).append(node)
         platform.sort(
@@ -468,6 +478,7 @@ class Collections:
             solutions=solutions,
             tags=tags,
             external_platform=external_platform,
+            drafts=drafts,
         )
 
 

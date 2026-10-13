@@ -192,7 +192,7 @@ def _render_body(ctx: PageContext, parts: BodyParts) -> str:
 ANTHUS_CHROME = SiteChrome(
     site_name=pages.SITE_TITLE,
     tagline=None,
-    scripts=("assets/site-nav.js", "assets/px-live.js"),
+    scripts=("assets/site-nav.js", "assets/px-live.js", "assets/drafts.js"),
     lang="en",
     # Production's <body> has no class. An empty value renders `class=""`
     # through Papyrus's shell; `_finish_page` removes the empty attribute.
@@ -317,6 +317,8 @@ _DEFAULT_COVER = "/assets/site/share-card.png"
 _PAGE_META: dict[str, tuple[str, str]] = {}  # active_href -> (description, image)
 #: active_href -> JSON-LD `Article` object, for published articles only (as live).
 _ARTICLE_LD: dict[str, dict] = {}
+#: Papyrus hrefs (`articles/<slug>.html`) of `state: draft` articles: noindex, no sitemap entry.
+_DRAFT_HREFS: set[str] = set()
 
 
 def _canonical_url(active_href: str) -> str:
@@ -370,7 +372,7 @@ def _inject_social_meta(html: str, *, active_href: str) -> str:
         f'<meta name="twitter:title" content="{q(page_title)}">\n'
         f'<meta name="twitter:description" content="{q(description)}">\n'
         f'<meta name="twitter:image" content="{q(_absolute(image))}">\n'
-        + site_env.head_extras(ENV)  # noindex (guarded only) + sitemap link
+        + site_env.head_extras(ENV, draft=active_href in _DRAFT_HREFS)  # noindex (guarded only) + sitemap link
         + ld_json
     )
     if 'property="og:title"' in html:
@@ -430,10 +432,16 @@ def _pictogram_og(node: ContentNode) -> str | None:
     return None
 
 
+def _DRAFT_OUTPUTS() -> set[str]:
+    return {urls.page_output(href) for href in _DRAFT_HREFS}
+
+
 def register_article_metadata(collections: Collections, images: ImageIndex) -> None:
     for node in collections.blog:
         href = f"articles/{node.slug}.html"
         _register_meta(href, node.excerpt_text, pages._preview(node, images) or _pictogram_og(node))
+        if node.draft:
+            _DRAFT_HREFS.add(href)
         if node.published:
             _ARTICLE_LD[href] = {
                 "@context": "https://schema.org",
@@ -449,6 +457,13 @@ def register_article_metadata(collections: Collections, images: ImageIndex) -> N
             }
 
 
+def _drafts_of(collections: Collections, kind: str) -> list[ContentNode]:
+    """The drafts that belong to one collection index (same membership rule as its published items)."""
+    if kind == "posts":
+        return [n for n in collections.drafts if "posts" in n.tags]
+    return [n for n in collections.drafts if not ({"solutions", "posts"} & set(n.tags))]
+
+
 def generate_pages(collections: Collections, images: ImageIndex) -> None:
     meta = pages.PAGE_META
     _generated(
@@ -462,7 +477,7 @@ def generate_pages(collections: Collections, images: ImageIndex) -> None:
             platform=collections.platform,
         ),
     )
-    for number, text in pages.articles_collection(collections.articles, images).items():
+    for number, text in pages.articles_collection(collections.articles, images, _drafts_of(collections, "articles")).items():
         _collection_page("articles", "Articles", number, text)
     _generated("platform/index.html", "Anthus Platform", pages.platform_index(collections.platform))
     _register_meta(
@@ -520,7 +535,7 @@ def generate_pages(collections: Collections, images: ImageIndex) -> None:
         meta_key="/research/",
     )
 
-    for number, text in pages.posts_collection(collections.posts, images).items():
+    for number, text in pages.posts_collection(collections.posts, images, _drafts_of(collections, "posts")).items():
         _collection_page("posts", "Posts", number, text)
 
     for slug, (label, text) in pages.tag_pages(collections.tags, images).items():
@@ -620,7 +635,7 @@ def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
                 target = dest / path.relative_to(SITE_ASSETS)
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(path, target)
-    for script in ("site-nav.js", "px-live.js"):
+    for script in ("site-nav.js", "px-live.js", "drafts.js"):
         if (POD_ROOT / "assets" / script).is_file():
             shutil.copy2(POD_ROOT / "assets" / script, staging_assets / script)
 
@@ -931,6 +946,7 @@ def main() -> int:
             _canonical_url(page.relative_to(result.out_dir).as_posix())
             for page in result.pages
             if page.relative_to(result.out_dir).as_posix() != "404.html"
+            and page.relative_to(result.out_dir).as_posix() not in _DRAFT_OUTPUTS()
         ),
     )
     guarded_pages = site_env.assert_dist(ENV, result.out_dir)
