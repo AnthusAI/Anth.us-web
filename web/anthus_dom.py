@@ -104,11 +104,16 @@ def _logo_a_path() -> str:
     return "".join(out)
 
 
+# One cell of tile padding around the A on every side; NTHUS moves right by one
+# cell so the tile-to-N gap stays the font's own letter gap.
+_LOGO_CW, _LOGO_RH = _LOGO_A_WIDTH / 8, _LOGO_CAP / 10
 _LOGO_SVG = (
-    f'<svg class="site-logo__svg" viewBox="0 0 {_LOGO_WIDTH} {_LOGO_CAP}" aria-hidden="true" focusable="false">'
-    f'<rect class="site-logo__tile" width="{_LOGO_A_WIDTH}" height="{_LOGO_CAP}"/>'
+    f'<svg class="site-logo__svg" viewBox="{-_LOGO_CW:g} {-_LOGO_RH:g} '
+    f'{_LOGO_WIDTH + 2 * _LOGO_CW:g} {_LOGO_CAP + 2 * _LOGO_RH:g}" aria-hidden="true" focusable="false">'
+    f'<rect class="site-logo__tile" x="{-_LOGO_CW:g}" y="{-_LOGO_RH:g}" '
+    f'width="{_LOGO_A_WIDTH + 2 * _LOGO_CW:g}" height="{_LOGO_CAP + 2 * _LOGO_RH:g}"/>'
     f'<path class="site-logo__a" d="{_logo_a_path()}"/>'
-    f'<path class="site-logo__word" d="{_LOGO_NTHUS}"/></svg>'
+    f'<path class="site-logo__word" transform="translate({_LOGO_CW:g} 0)" d="{_LOGO_NTHUS}"/></svg>'
 )
 
 
