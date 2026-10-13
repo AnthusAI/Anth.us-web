@@ -86,6 +86,16 @@ _MARKS: dict[str, tuple[str, str, str]] = {
         f'type="scale" {_BLINK}/><g transform="translate(-14 -14)">'
         '<circle cx="10" cy="14" r="2"/><circle cx="18" cy="14" r="2"/></g></g></g></g>',
     ),
+    "Call Criteria": (
+        "55 59 290 284", "sm--call-criteria",
+        '<g class="sm-cc-navy" fill="none" stroke-linecap="butt">'
+        '<path d="M124.2 120.2A69 63 0 0 0 122.6 245.6A139.5 139.5 0 0 1 124.2 120.2Z" fill="currentColor" stroke="none"/>'
+        '<path d="M115.0 246.5A146.8 146.8 0 0 0 222.5 329.1" stroke-width="13.5"/>'
+        '<path d="M304.1 239.7A78.7 78.7 0 1 1 304.1 129.3" stroke-width="20.5"/></g>'
+        '<g class="sm-cc-blue" fill="none" stroke-linecap="butt">'
+        '<path d="M328.4 263.5A112.7 112.7 0 1 1 328.4 105.5" stroke-width="20.4"/>'
+        '<rect x="217" y="316" width="43" height="21" rx="5" stroke="none"/></g>',
+    ),
     "Papyrus": (
         "0 0 300 411", "sm--papyrus",
         f'<path fill="currentColor" fill-rule="evenodd" d="{_PAPYRUS_PLANT}"/>',
@@ -101,8 +111,18 @@ _MARKS: dict[str, tuple[str, str, str]] = {
 }
 
 
+#: Raster marks (a 126px source is too detailed to trace honestly): name -> (class, site asset, width, height).
+_IMG_MARKS: dict[str, tuple[str, str, int, int]] = {
+    "Venue Driver": ("sm--venue-driver", "/assets/site/venue-driver-logo.png", 119, 105),
+}
+
+
 def mark(name: str, *, label: bool = False) -> str:
-    """The inline SVG for solution ``name`` ("" for a solution without a mark)."""
+    """The inline SVG (or <img>) for ``name`` ("" for a name without a mark)."""
+    if name in _IMG_MARKS:
+        cls, src, w, h = _IMG_MARKS[name]
+        a11y = f'alt="{name} logo"' if label else 'alt="" aria-hidden="true"'
+        return f'<img class="sm {cls}" src="{src}" width="{w}" height="{h}" {a11y}>'
     if name not in _MARKS:
         return ""
     viewbox, cls, inner = _MARKS[name]

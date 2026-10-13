@@ -658,6 +658,7 @@ class ArticleHeading:
     tags: tuple[str, ...] = ()
     dek: str = ""
     pictogram_html: str = ""
+    mark_html: str = ""
 
     def html(self) -> str:
         parts = []
@@ -671,7 +672,10 @@ class ArticleHeading:
             meta += f'<a class="pill" href="/tags/{html.escape(slug, quote=True)}/">#{html.escape(tag)}</a>'
         if meta:
             parts.append(f'<p class="heading__meta">{meta}</p>')
-        parts.append(f"<h1>{html.escape(self.title)}</h1>")
+        if self.mark_html:
+            parts.append(f'<h1 class="heading__title">{html.escape(self.title)}{self.mark_html}</h1>')
+        else:
+            parts.append(f"<h1>{html.escape(self.title)}</h1>")
         if self.dek:
             parts.append(f'<p class="heading__dek">{html.escape(self.dek)}</p>')
         if self.authors_html:
@@ -779,6 +783,10 @@ def _pictogram_html(node) -> str:
     return arcade_pictograms.render(name) if name else ""
 
 
+#: Articles about a client carry its logo beside the title (slug -> solution_marks name).
+ARTICLE_MARKS = {"call-criteria": "Call Criteria", "venue-driver": "Venue Driver"}
+
+
 def article_heading(node) -> ArticleHeading:
     """`blog-post.jsx`'s heading, from a discovered content node."""
     front = node.front_matter
@@ -811,4 +819,5 @@ def article_heading(node) -> ArticleHeading:
         tags=tuple(t for t in node.tags if t != "featured"),
         dek=_dek(node),
         pictogram_html=_pictogram_html(node),
+        mark_html=solution_marks.mark(ARTICLE_MARKS.get(node.slug, "")),
     )
