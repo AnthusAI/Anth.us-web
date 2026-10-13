@@ -37,6 +37,8 @@ LOCAL_FALLBACK_ORIGIN = "http://localhost:8080"
 #: SITE_ENV values that are quietly "guarded" (no warning).
 _KNOWN_GUARDED = frozenset({"", "guarded", "staging", "local", "development", "dev", "test"})
 
+#: Present on every draft article page (the DRAFT watermark); the only place noindex is allowed in production.
+DRAFT_MARKER = 'class="draft-overlay"'
 NOINDEX_META = '<meta name="robots" content="noindex, nofollow">'
 SITEMAP_LINK = '<link rel="sitemap" type="application/xml" href="/sitemap-index.xml">'
 
@@ -149,9 +151,9 @@ def footer_note(env: SiteEnv = ENV) -> str:
     return "" if env.production else STAGING_NOTE_HTML
 
 
-def head_extras(env: SiteEnv = ENV) -> str:
-    """Head tags appended after the social meta: noindex (guarded) + sitemap link."""
-    return ("" if env.production else NOINDEX_META + "\n") + SITEMAP_LINK + "\n"
+def head_extras(env: SiteEnv = ENV, *, draft: bool = False) -> str:
+    """Head tags appended after the social meta: noindex (guarded, or a draft page) + sitemap link."""
+    return (NOINDEX_META + "\n" if (draft or not env.production) else "") + SITEMAP_LINK + "\n"
 
 
 # ---------------------------------------------------------------- site files
@@ -206,9 +208,12 @@ def _check_page(env: SiteEnv, rel: str, text: str) -> list[str]:
     robots = _META_ROBOTS_RE.findall(text)
     has_noindex = any("noindex" in tag.lower() for tag in robots)
     has_note = STAGING_NOTE_MARKER in text
+    is_draft = DRAFT_MARKER in text
     if env.production:
-        if has_noindex:
+        if has_noindex and not is_draft:
             problems.append("noindex robots meta present in a production build")
+        if is_draft and not has_noindex:
+            problems.append("draft page without noindex in a production build")
         if has_note:
             problems.append("staging note present in a production build")
     else:
