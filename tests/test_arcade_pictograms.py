@@ -24,8 +24,8 @@ def _svg_part(html: str) -> str:
 
 class PictogramTests(unittest.TestCase):
     def test_names(self):
-        self.assertEqual(len(ap.NAMES), 15)
-        self.assertEqual(len(set(ap.NAMES)), 15)
+        self.assertEqual(len(ap.NAMES), 16)
+        self.assertEqual(len(set(ap.NAMES)), 16)
 
     def test_every_name_renders_well_formed(self):
         for name in ap.NAMES:
@@ -143,6 +143,14 @@ class PictogramTests(unittest.TestCase):
         self.assertIn('data-v="wide"', html)
         self.assertIn('data-v="tall"', html)
         self.assertEqual(html.count('aria-hidden="true"'), 2 + html.count("px__g"))
+
+    def test_venue_system_copy(self):
+        html = ap.render("venue-system")
+        for w in ("TICKETS", "TABLES", "GUEST LIST", "QUEUE", "SERVERLESS", "LOYALTY",
+                  "SERVICENOW", "DATA / BI"):
+            self.assertIn(w, html)
+        texts = re.findall(r">([^<>]+)</text>", html) + re.findall(r'aria-label="([^"]+)"', html)
+        self.assertFalse(any(re.search(r"\d", x) for x in texts))
 
     def test_unknown_name(self):
         with self.assertRaises(KeyError):

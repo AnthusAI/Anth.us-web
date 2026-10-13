@@ -47,6 +47,7 @@ NAMES: tuple[str, ...] = (
     "lost-sprite",
     "chat-room",
     "page-audio",
+    "venue-system",
 )
 
 CSS_BEGIN = "/* BEGIN GENERATED KEYFRAMES */"
@@ -76,6 +77,7 @@ K1 = ["#######"] + ["#.....#"] * 5 + ["#######"]
 K2 = ["#######", ".......", "#######", ".......", "#######", ".......", "#######"]
 D4 = ["#..#", "#..#", "####", "...#", "...#"]
 D0 = ["####", "#..#", "#..#", "#..#", "####"]
+LAMBDA = ["#....", ".#...", ".#...", "..#..", ".#.#.", "#...#"]
 FLAGHEAD = ["#####", "####.", "###..", "##..."]
 
 
@@ -251,6 +253,7 @@ _LG = {
     "layer": (["#######"] * 3, "b"),
     "play": (ARROW_R, "p"), "lines": (["#####", ".....", "####.", ".....", "###.."], "k"),
     "wave": (["..#....", "..#...#", "..#.#.#", "#.#.#.#", "#.#.#.#"], "b"),
+    "lambda": (LAMBDA, "b"),
     "flag": (["#####", "####.", "###..", "##...", "#...."], "p"),
 }
 
@@ -856,12 +859,68 @@ def page_audio() -> Fig:
     return f
 
 
+def venue_system() -> Fig:
+    f = Fig(
+        "venue-system", "vs", 128, 82,
+        "Animated diagram of Venue Driver as a serverless, event-driven system. Three intake "
+        "blocks on the left, tickets, tables and guest list, send small event blocks along "
+        "tracks into a single queue. The events pass through a row of three serverless "
+        "functions, each marked with a lambda sign, and fan out to three integrations on the "
+        "right: loyalty, ServiceNow, and a data and BI system. Each integration lights up "
+        "with a check mark as an event reaches it.",
+        "Ticketing, VIP tables and guest lists on serverless, event-driven infrastructure, "
+        "wired into loyalty, ServiceNow and a data warehouse.",
+        [("item", "Event"), ("lambda", "Function"), ("check", "Delivered")],
+        L=12, t0=-10.0, fs=4.5)
+    YR = (10, 34, 58)       # block tops, 17 tall, centre row y+8.5
+    ITEM = (16, 40, 64)     # event top for each lane
+    # tracks
+    f.add(G("d", R(30, 17, 8, 3), R(30, 65, 8, 3), R(36, 17, 3, 51), R(36, 41, 22, 3),
+            R(91, 41, 5, 3), R(94, 17, 3, 51), R(96, 17, 4, 3), R(96, 41, 4, 3), R(96, 65, 4, 3)))
+    f.add(G("k", *[R(40 + 4 * k, 45, 2, 1) for k in range(5)]))   # stepped conveyor teeth
+    f.add(f.T(47, 38, "QUEUE", anchor="middle"))
+    # events travel behind the function and integration blocks
+    flows = [(0, 0), (1, 2), (2, 1), (0, 2), (1, 0), (2, 1)]
+    arrivals = {0: [], 1: [], 2: []}
+    for n, (src, dst) in enumerate(flows):
+        t = 2 + 12 * n
+        ys, yd = ITEM[src], ITEM[dst]
+        pts = [(0, 22, ys), (t, 22, ys), (t + 6, 35, ys), (t + 9, 35, 40), (t + 15, 58, 40),
+               (t + 22, 93, 40), (t + 24, 93, 40), (t + 28, 93, yd), (t + 31, 99, yd)]
+        pose = (42 + 10 * n, 40) if n < 2 else (99, yd)
+        f.add(f.A(R(0, 0, 5, 5, "b"), pose, mv=pts))
+        arrivals[dst].append(t + 31)
+    for i, y in enumerate(YR):
+        f.add(R(2, y, 28, 17, "g"), box(2, y, 28, 17, "k"),
+              f.T(16, y + 11, ("TICKETS", "TABLES", "GUEST LIST")[i], anchor="middle"))
+    # functions
+    for k in range(3):
+        x = 60 + 11 * k
+        f.add(R(x, 38, 9, 9, "g"), box(x, 38, 9, 9, "b"), bmp(LAMBDA, x + 2, 40, "b"))
+    f.add(f.T(76, 56, "SERVERLESS", anchor="middle"))
+    # integrations light up with a check as an event arrives
+    for j, y in enumerate(YR):
+        ivs = sorted((a, a + 12) for a in arrivals[j])
+        merged = []
+        for a, b in ivs:
+            if merged and a <= merged[-1][1]:
+                merged[-1][1] = max(b, merged[-1][1])
+            else:
+                merged.append([a, b])
+        tg = [(v, w) for a, b in merged for v, w in ((a, 1), (min(b, 99), 0))]
+        f.add(R(98, y, 28, 17, "g"), box(98, y, 28, 17, "d"))
+        lit = box(98, y, 28, 17, "k") + bmp(CHECK, 120, y + 2, "b")
+        f.add(f.A(lit, vis=(0, tg), show=True))
+        f.add(f.T(112, y + 13, ("LOYALTY", "SERVICENOW", "DATA / BI")[j], anchor="middle"))
+    return f
+
+
 _BUILDERS = {
     "hero-loop": hero_loop, "knowledge-base": knowledge_base, "self-aligning": self_aligning,
     "agent-harness": agent_harness, "confidence-gate": confidence_gate, "scorecard": scorecard,
     "relocate": relocate, "platform-stack": platform_stack, "engagement-path": engagement_path,
     "verdict-meter": verdict_meter, "leaderboard": leaderboard, "timeline": timeline,
-    "lost-sprite": lost_sprite, "chat-room": chat_room, "page-audio": page_audio,
+    "lost-sprite": lost_sprite, "chat-room": chat_room, "page-audio": page_audio, "venue-system": venue_system,
 }
 
 
