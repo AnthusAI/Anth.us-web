@@ -511,10 +511,16 @@ def _prose(*paragraphs: str) -> str:
     return '<div class="prose">' + "".join(f"<p>{p}</p>" for p in paragraphs) + "</div>"
 
 
+def _short_date(node: ContentNode) -> str:
+    """YYYY-MM-DD for the card meta line, however the front matter spells the date."""
+    raw = node.date_raw
+    return node.date.strftime("%Y-%m-%d") if "T" in raw and node.date.year > 1 else raw
+
+
 _HIDDEN_TAGS = frozenset({"featured", "solutions", "engagement", "integrations"})
 
 
-def _card_visual(node: ContentNode, images: ImageIndex | None, eager: bool = False) -> str:
+def _card_visual(node: ContentNode, images: ImageIndex | None, eager: bool = False, draft: bool = False) -> str:
     """The 16:10 visual slot of a listing card.
 
     A `pictogram:` front-matter name wins (inline, animated, follows light/dark);
@@ -530,8 +536,9 @@ def _card_visual(node: ContentNode, images: ImageIndex | None, eager: bool = Fal
         dims = f' width="{size[0]}" height="{size[1]}"' if size else ""
         fit = " acard__vis--cover" if size and abs(size[0] / size[1] / 1.6 - 1) <= 0.10 else ""
         load = "eager" if eager else "lazy"
+        decode = "" if draft else ' decoding="async"'  # draft cards are revealed late: decode synchronously
         return (
-            f'<div class="acard__vis{fit}"><img src="{_esc(src)}" alt="" loading="{load}" decoding="async"{dims}></div>'
+            f'<div class="acard__vis{fit}"><img src="{_esc(src)}" alt="" loading="{load}"{decode}{dims}></div>'
         )
     letter = next((c for c in node.title if c.isalnum()), "A").upper()
     return f'<div class="acard__vis acard__vis--letter" aria-hidden="true"><span>{escape(letter)}</span></div>'
@@ -553,7 +560,7 @@ def _text_card(
     `headline`: posts, whose excerpt is the headline (no separate excerpt).
     """
     tags = [t for t in node.tags if t not in _HIDDEN_TAGS][:2]
-    date = node.display_date if display_date else node.date_raw
+    date = node.display_date if display_date else _short_date(node)
     meta = f"<time>{escape(date)}</time>" + "".join(f"<span>#{escape(t)}</span>" for t in tags)
     if draft:
         meta = '<span class="pill pill--draft">DRAFT</span>' + meta
@@ -573,7 +580,7 @@ def _text_card(
     foot = '<span class="card__link" aria-hidden="true">Read</span>' if link else ""
     cls = "card--link" if link else "card--static"
     return (
-        f'<li class="card notch acard {cls}">{_card_visual(node, images, eager)}<div class="acard__body">'
+        f'<li class="card notch acard {cls}">{_card_visual(node, images, eager, draft)}<div class="acard__body">'
         f'<p class="acard__meta">{meta}</p>{heading}{excerpt}{extra}{foot}</div></li>'
     )
 

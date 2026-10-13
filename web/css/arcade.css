@@ -462,8 +462,10 @@ main { display: block; }
 /* Article cards */
 .acard { padding: 0; gap: 0; }
 .acard__body { display: flex; flex-direction: column; gap: 0.9rem; padding: clamp(1.25rem, 2vw, 1.75rem); flex: 1; }
-.acard__vis { aspect-ratio: 16 / 10; width: 100%; overflow: hidden; background: var(--panel-2); border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: center; }
+.acard__vis { aspect-ratio: 16 / 10; width: calc(100% - 2px); margin: 1px 1px 0; overflow: hidden; background: var(--panel-2); border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: center; }
 .acard__vis { background: var(--panel); }
+.drafts-review .card { --fill: var(--bg); }
+.drafts-review .acard__vis { background: var(--panel-2); }
 .acard__vis img { width: 100%; height: 100%; max-width: none; object-fit: contain; display: block; }
 .acard__vis--cover img { object-fit: cover; }
 .acard__vis--px { background: var(--panel); padding: clamp(0.75rem, 1.6vw, 1.25rem); }

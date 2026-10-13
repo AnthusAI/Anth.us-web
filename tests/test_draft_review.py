@@ -48,6 +48,18 @@ class DraftReview(unittest.TestCase):
         self.assertNotIn("Hidden", shown)
         self.assertIn("Hidden", drafts)
 
+    def test_card_dates_are_plain_dates_even_for_iso_timestamps(self):
+        n = node("stamped", "published")
+        n.front_matter["date"] = "2026-09-03T12:00:00-04:00"
+        self.assertIn("<time>2026-09-03</time>", anthus_pages._text_card(n))
+
+    def test_draft_cards_use_the_normal_card_markup(self):
+        d = anthus_pages._text_card(self.draft, None, draft=True)
+        n = anthus_pages._text_card(self.pub, None)
+        for cls in ("card notch acard", "acard__vis", "acard__body"):
+            self.assertIn(cls, d)
+            self.assertIn(cls, n)
+
     def test_no_drafts_section_without_drafts(self):
         self.assertNotIn("drafts-review", anthus_pages.articles_collection(self.c.articles, None, [])[1])
 
