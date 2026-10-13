@@ -55,7 +55,7 @@ SITE_TITLE = "Anthus"
 # static paths, so the chrome and the content go through one mapper. The third
 # element is a one-line description (kept for the registry in anthus_pages).
 MENU_LINKS = (
-    ("Solutions", "/ai-solutions/", "What we build and run for clients, with the case studies."),
+    ("AI Solutions", "/ai-solutions/", "What we build and run for clients, with the case studies."),
     ("Decision Models", "/decision-models/", "Aligning Jev and other decision models to your data."),
     ("Platform", "/platform/", "The components behind the work: Primus, Kanbus, and the rest."),
     ("Research", "/research/", "Experiments on how decision models behave, with the numbers."),
@@ -176,22 +176,29 @@ FOOTER_HTML = _footer_html()
 def _header_html(active_path: str) -> str:
     """Sticky site header: logo, primary nav, and the START A PROJECT button.
 
-    The nav is a plain list, so it works with JavaScript disabled; below 60rem
+    The nav is a plain list, so it works with JavaScript disabled; below 78rem
     `assets/site-nav.js` turns it into a disclosure behind a MENU button.
     """
     items = []
-    for label, href, _description in MENU_LINKS:
+    for index, (label, href, _description) in enumerate(MENU_LINKS):
         current = ' aria-current="page"' if _same_route(href, active_path) else ""
-        items.append(f'<li><a href="{html.escape(href, quote=True)}"{current}>{html.escape(label)}</a></li>')
+        # The first item is the "Anthus AI Solutions" lockup in the bar; its
+        # nav copy only shows in the collapsed menu on very narrow screens.
+        extra = ' class="site-nav__lockup-copy"' if index == 0 else ""
+        items.append(f'<li{extra}><a href="{html.escape(href, quote=True)}"{current}>{html.escape(label)}</a></li>')
     cta_label, cta_href = CTA_LINK
     items.append(
         f'<li><a class="btn btn--sm" href="{cta_href}"><span>{html.escape(cta_label.upper())} '
         "&rarr;</span></a></li>"
     )
+    first_label, first_href, _ = MENU_LINKS[0]
+    lockup_current = ' aria-current="page"' if _same_route(first_href, active_path) else ""
     return (
         '<header class="site-header" data-open="false"><div class="container site-header__inner">'
+        '<div class="site-brand">'
         + _logo(current=_same_route("/", active_path))
-        + '<button class="site-menu-toggle" type="button" aria-expanded="false" '
+        + f'<a class="site-lockup" href="{first_href}"{lockup_current}>{html.escape(first_label.upper())}</a></div>'
+        + '<button class="site-menu-toggle" type="button" aria-label="Menu" aria-expanded="false" '
         'aria-controls="site-nav"><span class="site-menu-toggle__bars" aria-hidden="true"></span>'
         '<span class="site-menu-toggle__label">Menu</span></button>'
         '<nav class="site-nav" id="site-nav" aria-label="Primary"><ul>'
