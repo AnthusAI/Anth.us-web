@@ -259,7 +259,8 @@ main { display: block; }
 .site-brand__svg { display: block; height: 0.7317em; width: auto; overflow: visible; shape-rendering: crispEdges; }
 .site-brand__home .site-logo__word { fill: var(--ink); }
 .site-brand__lockup { fill: var(--pink); }
-.site-brand__hit { fill: transparent; }
+.site-brand__hit { fill: transparent; } /* the whole word (and gap) is clickable, not just the letters */
+.site-footer__brand .site-logo__svg { pointer-events: none; } /* clicks fall through to the link box */
 .site-brand__rule { fill: currentColor; opacity: 0; }
 .site-brand__lockup:hover { fill: var(--pink-hot); }
 .site-brand__lockup:hover .site-brand__rule { opacity: 1; fill: var(--pink-hot); }
@@ -876,6 +877,24 @@ article .heading a.btn--ghost { color: var(--ink); }
 .sm--cyclotron { width: 3.5rem; height: auto; }
 .sm--papyrus { width: 1.5rem; height: auto; }
 .sm--chatticus, .sm--primus { width: 2rem; }
+/* The same marks to the right of the name on the solution cards (light or dark page, so page ink). */
+.product__name { display: flex; align-items: center; gap: 0.9rem; }
+.product__name .sm { color: var(--ink); height: 3.2rem; }
+.product__name .sm--cyclotron { width: 5.6rem; height: auto; }
+.product__name .sm--papyrus { width: 2.4rem; height: auto; }
+.product__name .sm--chatticus, .product__name .sm--primus { width: 3.2rem; }
+/* Client logos: beside the client name on the case cards and the article title, same height as the solution marks (about twice the name's cap height). */
+.case__name { display: flex; align-items: center; gap: 0.9rem; }
+.case__name .sm, .heading__title .sm { color: var(--ink); height: 3.2rem; width: auto; flex: none; }
+.heading__title { display: flex; align-items: center; flex-wrap: wrap; column-gap: 1rem; }
+.heading__title .sm { height: 0.8em; }
+/* Call Criteria: its light blue, and a navy that turns light ink on the dark page. Venue Driver is a transparent PNG. */
+.sm--call-criteria { --cc-navy: #152f58; }
+@media (prefers-color-scheme: dark) { .sm--call-criteria { --cc-navy: var(--ink); } }
+.sm-cc-navy { color: var(--cc-navy); stroke: var(--cc-navy); }
+.sm-cc-blue path { stroke: #1db7ec; }
+.sm-cc-blue rect { fill: #1db7ec; }
+.sm--venue-driver { object-fit: contain; border: 0; border-radius: 0; background: none; box-shadow: none; padding: 0; width: auto; }
 
 /* Cyclotron: arrows ride the racetrack. At rest the logo pose; the animated loop pose matches it exactly. */
 .sm-cyc-live { display: none; }

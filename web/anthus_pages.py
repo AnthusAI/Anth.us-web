@@ -36,6 +36,7 @@ from html import escape
 from urllib.parse import quote
 
 import anthus_dom
+import solution_marks
 import arcade_pictograms
 from anthus_content import ContentNode, ImageIndex
 from anthus_urls import FEATURED_COUNT, GRID_SIZE, collection_page_count, tag_slug
@@ -295,7 +296,7 @@ def _case_card(client, href, pictogram, context, problem, did, outcome,
     return (
         '<li class="card notch case card--link">'
         f'<div class="card__px">{_px(pictogram)}</div>'
-        f'<h3><a href="{_esc(href)}">{escape(client)}</a></h3>'
+        f'<h3 class="case__name"><a href="{_esc(href)}">{escape(client)}</a>{solution_marks.mark(client)}</h3>'
         f'<p class="case__ctx">{escape(context)}</p>'
         f"<dl><div><dt>{labels[0]}</dt><dd>{escape(problem)}</dd></div>"
         f"<div><dt>{labels[1]}</dt><dd>{escape(did)}</dd></div>"
@@ -342,7 +343,8 @@ def _product_card(name: str, url: str, line: str, pictogram: str, page: str | No
         also += f'<a href="/engage/?solution={quote(name)}">Work with us on {escape(name)}</a>'
     return (
         f'<li class="card notch product card--static{" product--desc" if desc else ""}">'
-        f'<div class="card__px">{_px(pictogram)}</div><h3>{escape(name)}</h3><p>{escape(line)}</p>{desc}'
+        f'<div class="card__px">{_px(pictogram)}</div><h3 class="product__name">{escape(name)}{solution_marks.mark(name)}</h3>'
+        f'<p>{escape(line)}</p>{desc}'
         f'<div class="card__links"><a href="{_esc(url)}" rel="noopener">Visit {escape(name)}</a>{also}</div></li>'
     )
 
