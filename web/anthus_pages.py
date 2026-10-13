@@ -546,6 +546,7 @@ def _text_card(
     link: bool = True,
     code: bool = True,
     eager: bool = False,
+    draft: bool = False,
 ) -> str:
     """The listing card: visual, mono date + tags, Jersey 25 title, clamped excerpt.
 
@@ -554,9 +555,12 @@ def _text_card(
     tags = [t for t in node.tags if t not in _HIDDEN_TAGS][:2]
     date = node.display_date if display_date else node.date_raw
     meta = f"<time>{escape(date)}</time>" + "".join(f"<span>#{escape(t)}</span>" for t in tags)
+    if draft:
+        meta = '<span class="pill pill--draft">DRAFT</span>' + meta
+    nofollow = ' rel="nofollow"' if draft else ""
     title = (node.excerpt_text.strip() or node.title) if headline else node.title
     target = str(node.front_matter.get("external_url") or blog_href(node))
-    heading = f'<h3><a href="{_esc(target)}">{escape(title)}</a></h3>' if link else f"<h3>{escape(title)}</h3>"
+    heading = f'<h3><a href="{_esc(target)}"{nofollow}>{escape(title)}</a></h3>' if link else f"<h3>{escape(title)}</h3>"
     excerpt = "" if headline else f'<p class="acard__ex">{escape(node.excerpt_text)}</p>'
     repository = _fm(node, "repository") if code else ""
     extra = ""
@@ -576,6 +580,19 @@ def _text_card(
 
 def _article_card(node: ContentNode, images: ImageIndex | None = None) -> str:
     return _text_card(node, images, code=False)
+
+
+def _drafts_section(drafts: list[ContentNode] | None, images: ImageIndex | None) -> str:
+    """Hidden review section: shown only by `drafts.js` when the URL has `?drafts`. No UI links to it."""
+    if not drafts:
+        return ""
+    cards = "".join(_text_card(n, images, code=False, draft=True) for n in drafts)
+    return (
+        '<section class="drafts-review" hidden><div class="container">'
+        '<p class="eyebrow">NOT PUBLISHED</p><h2>Drafts</h2>'
+        "<p>Served but hidden from search engines and from the normal lists.</p>"
+        f'<ul class="grid grid--list">{cards}</ul></div></section>'
+    )
 
 
 def _card_grid(nodes: list[ContentNode], images: ImageIndex | None = None, **kw) -> str:
@@ -653,6 +670,7 @@ def collection_page(
     shows_excerpt_as_headline: bool = False,
     *,
     eyebrow: str | None = None,
+    drafts: list[ContentNode] | None = None,
 ) -> str:
     """A listing page: hero, an intrinsic grid of text cards, pager."""
     total = collection_page_count(len(nodes))
@@ -667,19 +685,24 @@ def collection_page(
         '<section class="section section--tight"><div class="container">'
         + _card_grid(shown, images, headline=shows_excerpt_as_headline, code=False)
         + collection_nav(title, base, page, total)
-        + "</div></section>",
+        + "</div></section>"
+        + (_drafts_section(drafts, images) if page == 1 else ""),
     )
 
 
-def articles_collection(articles: list[ContentNode], images: ImageIndex | None = None) -> dict[int, str]:
+def articles_collection(
+    articles: list[ContentNode], images: ImageIndex | None = None, drafts: list[ContentNode] | None = None
+) -> dict[int, str]:
     total = collection_page_count(len(articles))
-    return {p: collection_page("Articles", "blog", articles, p, images) for p in range(1, total + 1)}
+    return {p: collection_page("Articles", "blog", articles, p, images, drafts=drafts) for p in range(1, total + 1)}
 
 
-def posts_collection(posts: list[ContentNode], images: ImageIndex | None = None) -> dict[int, str]:
+def posts_collection(
+    posts: list[ContentNode], images: ImageIndex | None = None, drafts: list[ContentNode] | None = None
+) -> dict[int, str]:
     total = collection_page_count(len(posts))
     return {
-        p: collection_page("Posts", "posts", posts, p, images, shows_excerpt_as_headline=True)
+        p: collection_page("Posts", "posts", posts, p, images, shows_excerpt_as_headline=True, drafts=drafts)
         for p in range(1, total + 1)
     }
 
@@ -692,13 +715,17 @@ def collection_nodes(blog: list[ContentNode], tag: str) -> list[ContentNode]:
     return nodes
 
 
-def _single_page_collection(title: str, eyebrow: str, nodes: list[ContentNode], lead_html: str, base: str, images) -> str:
+def _single_page_collection(
+    title: str, eyebrow: str, nodes: list[ContentNode], lead_html: str, base: str, images,
+    drafts: list[ContentNode] | None = None,
+) -> str:
     assert collection_page_count(len(nodes)) == 1, f"{base} outgrew one page"
     return _page(
         _page_hero(eyebrow, title, lead_html, compact=True),
         '<section class="section section--tight"><div class="container">'
         + _card_grid(nodes, images)
-        + "</div></section>",
+        + "</div></section>"
+        + _drafts_section(drafts, images),
     )
 
 
@@ -706,6 +733,7 @@ def reading_page(blog: list[ContentNode], images: ImageIndex | None = None) -> s
     return _single_page_collection(
         "Reading list", "WHAT WE READ", collection_nodes(blog, "reading"),
         escape(COLLECTION_DESCRIPTIONS["Reading List"]), "reading", images,
+        [n for n in blog if n.draft and "reading" in n.tags and not n.is_platform],
     )
 
 
@@ -720,6 +748,7 @@ def research_page(blog: list[ContentNode], images: ImageIndex | None = None) -> 
         'Jev or another decision model to your own data, start with the '
         '<a href="/decision-models/">guide to aligning decision models</a>.',
         "research", images,
+        [n for n in blog if n.draft and "research" in n.tags and not n.is_platform],
     )
 
 
@@ -1150,7 +1179,7 @@ def ai_solutions_page(blog: list[ContentNode], images: ImageIndex | None = None)
     Engagements: `solutions` + `engagement` (not `integrations`). Projects: other
     `solutions` posts plus published `project` posts. Integrations: `solutions` + `integrations`.
     """
-    solutions = [n for n in blog if "solutions" in n.tags]
+    solutions = [n for n in blog if "solutions" in n.tags and not n.draft]
     engagements = [n for n in solutions if "engagement" in n.tags and "integrations" not in n.tags]
     integrations = [n for n in solutions if "integrations" in n.tags]
     projects = {
