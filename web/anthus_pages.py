@@ -209,13 +209,9 @@ _STATS = (
 
 
 def _px(name: str) -> str:
-    """Inline pictogram; a name that has not landed yet renders a placeholder frame."""
+    """Inline pictogram. An unknown name fails the build (no placeholder frames in production)."""
     if name not in arcade_pictograms.NAMES:
-        return (
-            f'<figure class="px px--pending" data-px="{_esc(name)}" role="img" aria-label="{_esc(name)} (coming)">'
-            '<svg class="px__svg" viewBox="0 0 128 80" aria-hidden="true"><rect x="1" y="1" width="126" height="78" '
-            'fill="none" class="pd" stroke="currentColor" stroke-dasharray="4 4"/></svg></figure>'
-        )
+        raise KeyError(f"unknown pictogram {name!r}; known: {', '.join(arcade_pictograms.NAMES)}")
     return arcade_pictograms.render(name)
 
 
