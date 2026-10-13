@@ -327,10 +327,10 @@ _FONTS = (
 HEAD_HTML = (
     '<meta name="color-scheme" content="light dark">\n'
     "<script>document.documentElement.classList.add('js')</script>\n"
-    '<link rel="icon" href="/favicon-32x32.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50" type="image/png"/>\n'
+    '<link rel="icon" href="/favicon-32x32.png?v=6767bf536f0dd7f40470f555fcf412a7" type="image/png"/>\n'
     '<link rel="manifest" href="/manifest.webmanifest" crossorigin="anonymous"/>\n'
-    '<link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
-    '<link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512x512.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
+    '<link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png?v=6767bf536f0dd7f40470f555fcf412a7"/>\n'
+    '<link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512x512.png?v=6767bf536f0dd7f40470f555fcf412a7"/>\n'
     '<link rel="preconnect" href="https://fonts.googleapis.com">\n'
     '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
     f'<link href="{_FONTS}" rel="stylesheet">\n'

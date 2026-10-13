@@ -1237,7 +1237,7 @@ _EXPERIENCE = (
      ("<strong>Pioneering technical strategy:</strong> developed and operated a critical ticketing system evolving since "
       "2007 into a comprehensive platform for reservation, guest list, and artist booking management.",
       "<strong>Seamless transition and growth:</strong> managed the system’s transition through corporate acquisitions, "
-      "maintaining high availability while processing as much as $64 million in revenue per month with no major incidents.",
+      "maintaining high availability while processing as much as $64 million in revenue per year with no major incidents.",
       "<strong>DevOps and agile leadership:</strong> championed a DevOps culture of rapid iteration and continuous "
       "improvement, aligned closely with business needs.",
       "<strong>Longevity and adaptation:</strong> adapted the platform from early monolithic structures to a modern "
@@ -1493,8 +1493,7 @@ def engage_page() -> str:
         "Factory-run software project",
         "<p>We build your software the way we build our own: work tracked as Kanbus issues in the repository, agents "
         "doing the implementation, and a human approval trail on every merge.</p>"
-        "<p>Anthus runs its own projects this way, including this site. The commits are public, so you can see the "
-        "process instead of taking it on faith.</p>",
+        "<p>Anthus runs its own projects this way, including this site.</p>",
         extra=_links([("Kanbus", "https://kanb.us")]),
     ) + _card(
         "Newsroom for a publication",
