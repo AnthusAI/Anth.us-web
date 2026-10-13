@@ -718,10 +718,12 @@ def _joined(entries: list[str], css: str) -> str:
     last = len(entries) - 1
     for index, entry in enumerate(entries):
         out.append(f'<span class="{css}">{_markdown_inline(entry)}</span>')
+        # Some authored entries already begin with "and " ("and the Anthus GPT").
+        next_has_and = index < last and entries[index + 1].lstrip().lower().startswith("and ")
         if index < last - 1:
             out.append(", ")
         elif index == last - 1:
-            out.append(", and " if len(entries) > 2 else " and ")
+            out.append(" " if next_has_and else (", and " if len(entries) > 2 else " and "))
     return "".join(out)
 
 
