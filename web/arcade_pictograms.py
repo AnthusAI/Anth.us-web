@@ -45,6 +45,8 @@ NAMES: tuple[str, ...] = (
     "leaderboard",
     "timeline",
     "lost-sprite",
+    "chat-room",
+    "page-audio",
 )
 
 CSS_BEGIN = "/* BEGIN GENERATED KEYFRAMES */"
@@ -247,6 +249,8 @@ _LG = {
     "rule": (["#######", "#.....#", "#.....#", "#.....#"], "p"),
     "limit": (["#######", "#######", "#######", "#######", "#######"], "p"),
     "layer": (["#######"] * 3, "b"),
+    "play": (ARROW_R, "p"), "lines": (["#####", ".....", "####.", ".....", "###.."], "k"),
+    "wave": (["..#....", "..#...#", "..#.#.#", "#.#.#.#", "#.#.#.#"], "b"),
     "flag": (["#####", "####.", "###..", "##...", "#...."], "p"),
 }
 
@@ -500,12 +504,8 @@ def confidence_gate() -> Fig:
     return f
 
 
-_SC_T = (0, 33, 66)  # shared per-scorecard clock: pile card and first scored row start together
-_SC_GRIDS = (
-    ["1111", "1011", "1110", "0111", "1111", "1101"],
-    ["1111", "1110", "0111", "1011", "1111", "1101"],
-    ["1011", "1111", "1101", "1110", "0111", "1111"],
-)
+_SC_ROWS = tuple(8 + 12 * r for r in range(6))  # % at which row r is scored AND document r joins the stack
+_SC_GRID = ["1111", "1011", "1110", "0111", "1111", "1101"]  # 4 crosses, 20 checks
 
 
 def scorecard() -> Fig:
@@ -513,61 +513,49 @@ def scorecard() -> Fig:
         "scorecard", "sc", 128, 80,
         "Animated diagram of calls being scored. A scorecard lists six calls, each with a "
         "waveform, scored against four criteria. A scanner moves down the rows and each "
-        "cell fills with a check or a cross: on every scorecard twenty cells are checks and "
-        "four are crosses. Each time a new scorecard starts being scored, a new scorecard "
-        "joins the pile on the right at the same moment. The labels read: hundreds of "
-        "scorecards, millions of calls.",
-        "Each call gets a scorecard and every criterion a pass or a miss. We have scored "
-        "calls this way across hundreds of scorecards and millions of calls.",
+        "row's cells fill with checks and crosses: twenty checks and four crosses in all. "
+        "Each call is one document: every time a row is scored, one new document joins the "
+        "stack at the top right at that same moment, so six rows scored means six documents "
+        "stacked. The labels read: hundreds of scorecards, millions of calls.",
+        "Each call is one document and gets one scored row. We have scored calls this way "
+        "across hundreds of scorecards and millions of calls.",
         [("check", "Pass"), ("cross", "Miss")],
-        L=12, t0=-8.0)
+        L=12, t0=-10.0)
     heights = [[2, 5, 3, 6, 2], [4, 2, 6, 3, 5], [3, 6, 4, 2, 5], [5, 3, 2, 6, 4],
                [2, 4, 6, 3, 2], [6, 2, 4, 5, 3]]
     f.add(box(2, 2, 86, 76, "k"))
     f.add(f.T(6, 11, "CALL"), f.T(34, 11, "CRITERIA"))
+
     def raw(rows):  # rects only; colour comes from the referencing <use>
         return bmp(rows, 0, 0, "k")[len('<g class="pk">'):-len("</g>")]
     f.defs = f'<g id="px-sc-ck">{raw(CHECK)}</g><g id="px-sc-cx">{raw(CROSS)}</g>'
-    nT = len(_SC_T)
-    f.meta["pile"], f.meta["row0"] = [], []
-    for r in range(6):  # empty scorecard: waveforms and cells stay; marks come per pass
+    f.meta["rows"], f.meta["docs"] = [], []
+    for r in range(6):
         y = 15 + 10 * r
         f.add(G("b", *[R(6 + 4 * i, y + 4 - h // 2, 2, h) for i, h in enumerate(heights[r])]),
               G("d", *[R(34 + 11 * j, y, 9, 8) for j in range(4)]))
-    for k, T in enumerate(_SC_T):
-        Tn = _SC_T[k + 1] if k + 1 < nT else None
-        last = Tn is None
-        for r in range(6):
-            y = 15 + 10 * r
-            row = ""
-            for j in range(4):
-                ok = _SC_GRIDS[k][r][j] == "1"
-                row += (f'<use class="p{"b" if ok else "p"}" href="#px-sc-{"ck" if ok else "cx"}" x="{36 + 11 * j}" '
-                        f'y="{y + (2 if ok else 1)}"/>')
-            if r == 0:
-                # the appearance clock is shared with this scorecard's pile entry
-                spec = (1, []) if T == 0 else (0, [(T, 1)])
-                if Tn:
-                    row = f.A(row, vis=(1, [(Tn, 0)]))
-                f.meta["row0"].append(f.vcls(*spec))
-                f.add(f.A(row, vis=spec, show=last))
-            else:
-                tg = [(T + 4 * r, 1)] + ([(Tn, 0)] if Tn else [])
-                f.add(f.A(row, vis=(0, tg), show=last))
-    f.add(f.A(box(4, 0, 80, 10, "p"), vis=(1, []), show=False, hop=5,
-              mv=[pt for k, T in enumerate(_SC_T)
-                  for pt in ((T, 0, 14), (T + 20, 0, 64),
-                             *(((_SC_T[k + 1] - 0.01, 0, 64),) if k + 1 < nT else ()))]))
-    # pile: two older scorecards plus one per scored scorecard, sharing the clock above
-    def card(x, y):
-        return (G("g", R(x, y, 22, 24)) + box(x, y, 22, 24, "k")
-                + G("d", R(x + 3, y + 4, 12, 2), R(x + 3, y + 9, 12, 2)))
-    for i in range(2):
-        f.add(card(88 + 4 * i, 4 + 3 * i))
-    for k, T in enumerate(_SC_T):
-        spec = (1, []) if T == 0 else (0, [(T, 1)])
-        f.meta["pile"].append(f.vcls(*spec))
-        f.add(f.A(card(96 + 4 * k, 10 + 3 * k), vis=spec))
+    for r, t in enumerate(_SC_ROWS):
+        y = 15 + 10 * r
+        marks = ""
+        for j in range(4):
+            ok = _SC_GRID[r][j] == "1"
+            marks += (f'<use class="p{"b" if ok else "p"}" href="#px-sc-{"ck" if ok else "cx"}" '
+                      f'x="{36 + 11 * j}" y="{y + (2 if ok else 1)}"/>')
+        spec = (0, [(t, 1)])
+        f.meta["rows"].append(f.vcls(*spec))
+        f.add(f.A(marks, vis=spec))
+    pts = []
+    for r, t in enumerate(_SC_ROWS):
+        pts += [(t, 0, 14 + 10 * r), (t + 6, 0, 14 + 10 * r)]
+    f.add(f.A(box(4, 0, 80, 10, "p"), show=False, vis=(1, []), mv=pts, hop=5))
+    # the stack of documents: document r appears on the very same clock as row r
+    for r, t in enumerate(_SC_ROWS):
+        x, y = 92 + 2 * r, 4 + 3 * r
+        doc = (G("g", R(x, y, 22, 24)) + box(x, y, 22, 24, "k")
+               + G("d", R(x + 3, y + 4, 12, 2), R(x + 3, y + 9, 12, 2)))
+        spec = (0, [(t, 1)])
+        f.meta["docs"].append(f.vcls(*spec))
+        f.add(f.A(doc, vis=spec))
     f.add(f.T(92, 54, "HUNDREDS OF", c="p"), f.T(92, 60, "SCORECARDS"),
           f.T(92, 70, "MILLIONS OF", c="b"), f.T(92, 76, "CALLS"))
     return f
@@ -580,10 +568,9 @@ def relocate() -> Fig:
         "blocks, fails and is marked with a cross, and the heartbeat line at the bottom goes "
         "flat. The four blocks move one by one to Site B, which takes over and is marked "
         "with a check. The heartbeat resumes, and a check appears at the marker labelled "
-        "doors, so we were back up before the doors opened. Afterwards the blocks are "
-        "mirrored to a third rack, Site C, so there are two working sites.",
+        "doors, so we were back up before the doors opened.",
         "A data center failed. We moved the system within hours and were back up before the "
-        "doors opened. Then we added redundancy.",
+        "doors opened.",
         [("cross", "Site down"), ("check", "Serving")],
         L=12, t0=-9.6)
     # the clip rect grows left to right (stepped), revealing the heartbeat trace as time passes
@@ -592,27 +579,20 @@ def relocate() -> Fig:
     kf = re.search(r'class="an sx (px-rl-\d+)"', g).group(1)
     f.defs = (f'<clipPath id="px-rl-c"><rect class="an sx {kf}" x="34" y="58" width="94" '
               f'height="22"/></clipPath>')
-    RX = (4, 50, 96)
-    for k, x in enumerate(RX):
-        if k == 0:
-            f.add(f.A(box(x, 10, 28, 42, "k", 2), vis=(1, [(18, 0)]), show=False),
-                  f.A(box(x, 10, 28, 42, "d", 2), vis=(0, [(18, 1)])))
-        else:
-            t = (22, 86)[k - 1]
-            f.add(f.A(box(x, 10, 28, 42, "d", 2), vis=(1, [(t, 0)]), show=False),
-                  f.A(box(x, 10, 28, 42, "k", 2), vis=(0, [(t, 1)])))
-    for x, nm in zip(RX, "ABC"):
-        f.add(f.T(x + 14, 7, f"SITE {nm}", anchor="middle"))
-    f.add(f.A(bmp(CROSS, 27, 2, "p"), vis=(0, [(18, 1)])))
-    f.add(f.A(bmp(CHECK, 73, 3, "b"), vis=(0, [(52, 1)])))
-    f.add(f.A(bmp(CHECK, 119, 3, "b"), vis=(0, [(90, 1)])))
-    f.add(bmp(ARROW_R, 38, 29, "d"), bmp(ARROW_R, 84, 29, "d"))
+    RX = (10, 88)
+    f.add(f.A(box(10, 10, 28, 42, "k", 2), vis=(1, [(18, 0)]), show=False),
+          f.A(box(10, 10, 28, 42, "d", 2), vis=(0, [(18, 1)])))
+    f.add(f.A(box(88, 10, 28, 42, "d", 2), vis=(1, [(22, 0)]), show=False),
+          f.A(box(88, 10, 28, 42, "k", 2), vis=(0, [(22, 1)])))
+    f.add(f.T(24, 7, "SITE A", anchor="middle"), f.T(102, 7, "SITE B", anchor="middle"))
+    f.add(f.A(bmp(CROSS, 35, 2, "p"), vis=(0, [(18, 1)])))
+    f.add(f.A(bmp(CHECK, 113, 3, "b"), vis=(0, [(52, 1)])))
+    f.add(bmp(ARROW_R, 58, 29, "d"))
     for i in range(4):
         y = 14 + 10 * i
         t = 20 + 6 * i
-        f.add(f.A(R(0, 0, 20, 6, "b"), (54, y),
-                  mv=[(0, 8, y), (t, 8, y), (t + 6, 31, y - 4), (t + 12, 54, y)], hop=5))
-        f.add(f.A(R(100, y, 20, 6, "b"), vis=(0, [(88 + i, 1)])))
+        f.add(f.A(R(0, 0, 20, 6, "b"), (92, y),
+                  mv=[(0, 14, y), (t, 14, y), (t + 6, 53, y - 4), (t + 12, 92, y)], hop=5))
     # heartbeat: a fixed trace revealed left to right by a moving cover
     f.add(f.T(2, 72, "UPTIME"))
     ecg = G("p", R(0, 70, 7, 1), R(7, 69, 2, 1), R(9, 70, 3, 1), R(12, 62, 1, 9),
@@ -644,10 +624,10 @@ def platform_stack() -> Fig:
         cells = G(cap, *[R(4 + 8 * k, y, 7, 10) for k in range(2)])
         cells += G("d", *[R(4 + 8 * k, y, 7, 10) for k in range(2, 11)])
         s = cells + f.T(22, y + 7, nm)
-        t = 4 + 15 * i
-        f.add(f.A(s, mv=[(0, 0, -90), (t, 0, -90), (t + 11, 0, 0)], hop=6))
+        t = 10 * i
+        f.add(f.A(s, mv=[(0, 0, -44 - 8 * i), (t, 0, -44 - 8 * i), (t + 7, 0, 0)], hop=6))
     br = G("p", R(95, 18, 1, 58), R(92, 18, 3, 1), R(92, 75, 3, 1))
-    f.add(f.A(br + f.T(100, 44, "ONE") + f.T(100, 51, "PLATFORM"), vis=(0, [(82, 1)])))
+    f.add(f.A(br + f.T(100, 44, "ONE") + f.T(100, 51, "PLATFORM"), vis=(0, [(52, 1)])))
     return f
 
 
@@ -792,12 +772,96 @@ def lost_sprite() -> Fig:
     return f
 
 
+def _msg(f, x, y, w, c="k"):
+    """A message bubble: outlined box with two text lines."""
+    return box(x, y, w, 12, c) + G("d", R(x + 3, y + 3, w - 10, 2), R(x + 3, y + 7, w - 18, 2))
+
+
+def chat_room() -> Fig:
+    f = Fig(
+        "chat-room", "cr", 128, 80,
+        "Animated diagram of a shared chat room where two people and two bots work "
+        "together. A person posts a message and the first bot replies. The bot then posts "
+        "an action marked with a question mark, which needs approval. The second person "
+        "approves it with a check mark and the action runs. The second bot posts another "
+        "request, also marked with a question mark, and the person declines it with a "
+        "cross.",
+        "People and bots share one room. A bot asks before it acts: a person approves or "
+        "declines each request.",
+        [("check", "Approved"), ("cross", "Declined"), ("q", "Needs approval")],
+        L=12, t0=-10.0)
+    f.add(f.T(4, 9, "ROOM"), box(2, 12, 124, 66, "k"))
+    f.add(bmp(PERSON, 6, 16, "k"), bmp(PERSON, 6, 44, "k"))
+    f.add(bmp(ROBOT_C, 112, 24, "b", s=1), bmp(ROBOT_C, 112, 56, "b", s=1))
+    f.add(G("d", R(18, 31, 94, 1)))
+    # row 1: a person's message and the bot's reply
+    f.add(f.A(_msg(f, 16, 17, 40), vis=(0, [(4, 1)])))
+    f.add(f.A(_msg(f, 64, 17, 40, "b"), vis=(0, [(12, 1)])))
+    # row 2: the bot asks, the second person approves, the action runs
+    f.add(f.A(box(60, 37, 46, 12, "p") + f.T(74, 46, "ACTION"), vis=(0, [(22, 1)])))
+    f.add(f.A(bmp(QUEST, 63, 39, "p"), vis=(0, [(22, 1), (40, 0)]), show=False))
+    f.add(f.A(bmp(CHECK, 63, 40, "b"), vis=(0, [(40, 1)])))
+    f.add(G("d", R(60, 51, 46, 3)))
+    f.add(f.A(R(60, 51, 46, 3, "b"), sc=([(0, 0, 1, 1), (42, 0, 1, 12), (56, 1, 1, 1)], (1, 1))))
+    f.add(f.A(box(16, 37, 14, 12, "k") + bmp(CHECK, 20, 41, "b"), vis=(0, [(38, 1), (58, 0)]),
+              show=False))
+    # row 3: another request, declined
+    f.add(f.A(box(60, 58, 46, 12, "d") + f.T(74, 67, "ACTION", c="d"), vis=(0, [(78, 1)]),
+              show=False))
+    f.add(f.A(box(60, 58, 46, 12, "p") + f.T(74, 67, "ACTION"), vis=(0, [(62, 1), (78, 0)])))
+    f.add(f.A(bmp(QUEST, 63, 60, "p"), vis=(0, [(62, 1), (78, 0)]), show=False))
+    f.add(f.A(bmp(CROSS, 63, 61, "p"), vis=(0, [(78, 1)])))
+    f.add(f.A(box(16, 58, 14, 12, "k") + bmp(CROSS, 20, 61, "p"), vis=(0, [(76, 1), (96, 0)]),
+              show=False))
+    return f
+
+
+def page_audio() -> Fig:
+    f = Fig(
+        "page-audio", "pa", 128, 80,
+        "Animated diagram of a web page reading itself aloud. A page with seven lines of "
+        "text and a play button sends its text to a chip labelled GPU. A pink reading "
+        "cursor moves down the lines one at a time, each line turning dark as it is read, "
+        "while a waveform of ten pixel bars grows on the right.",
+        "One embed on the page turns its text into speech, using open text-to-speech models "
+        "on a GPU you choose.",
+        [("play", "Play"), ("lines", "Text"), ("wave", "Audio")],
+        L=12, t0=-9.0)
+    f.add(box(4, 6, 62, 68, "k"), G("d", R(6, 8, 58, 4)))
+    widths = [40, 50, 34, 50, 44, 28, 46]
+    for i, w in enumerate(widths):
+        y = 16 + 7 * i
+        f.add(G("d", R(8, y, w, 3)))
+        f.add(f.A(G("k", R(8, y, w, 3)), vis=(0, [(10 + 10 * i, 1)])))
+    f.add(f.A(box(7, 14, 56, 7, "p"), show=False, vis=(1, []),
+              mv=[(0, 0, 0), (8, 0, 0), *[(10 + 10 * i, 0, 7 * i) for i in range(7)], (82, 0, 42),
+                  (100, 0, 42)], hop=7))
+    f.add(box(8, 63, 12, 9, "p"), bmp(ARROW_R, 12, 65, "p"))
+    # page -> GPU -> audio
+    f.add(G("d", R(66, 13, 14, 2), R(101, 22, 2, 8)), bmp(ARROW_R, 78, 11, "k"),
+          bmp(ARROW_D, 99, 30, "k"))
+    f.add(box(84, 6, 36, 16, "k"), f.T(102, 17, "GPU", anchor="middle"))
+    f.add(G("k", *[R(88 + 8 * k, 3, 2, 3) for k in range(4)],
+            *[R(88 + 8 * k, 22, 2, 3) for k in range(4)]))
+    f.add(G("d", R(80, 58, 42, 1)))
+    hs = [8, 16, 12, 22, 14, 20, 10, 18, 12, 6]
+    for k, h in enumerate(hs):
+        t = 12 + 7 * k
+        pts = [(0, 1, 0, 1), (t, 1, 0, 1), (t + 4, 1, 1, 3)]
+        for c in range(4):
+            pts += [(t + 10 + 14 * c, 1, 0.6, 2), (t + 17 + 14 * c, 1, 1, 2)]
+        pts = [p for p in pts if p[0] < 100]
+        f.add(f.A(R(0, -h, 2, h, "b"), (82 + 4 * k, 58), sc=(pts, (1, 1))))
+    f.add(f.T(101, 68, "AUDIO", anchor="middle"))
+    return f
+
+
 _BUILDERS = {
     "hero-loop": hero_loop, "knowledge-base": knowledge_base, "self-aligning": self_aligning,
     "agent-harness": agent_harness, "confidence-gate": confidence_gate, "scorecard": scorecard,
     "relocate": relocate, "platform-stack": platform_stack, "engagement-path": engagement_path,
     "verdict-meter": verdict_meter, "leaderboard": leaderboard, "timeline": timeline,
-    "lost-sprite": lost_sprite,
+    "lost-sprite": lost_sprite, "chat-room": chat_room, "page-audio": page_audio,
 }
 
 
