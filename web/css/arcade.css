@@ -93,7 +93,7 @@
   }
 }
 
-html { font-size: 100%; -webkit-text-size-adjust: 100%; scroll-padding-top: calc(var(--header-h) + 1rem); }
+html { font-size: 100%; -webkit-text-size-adjust: 100%; scroll-padding-top: 1rem; }
 @media (min-width: 96rem)  { html { font-size: 106.25%; } :root { --max: 92rem; } }
 @media (min-width: 120rem) { html { font-size: 112.5%; } }
 @media (min-width: 140rem) { :root { --max: 120rem; } }
@@ -103,9 +103,13 @@ html { font-size: 100%; -webkit-text-size-adjust: 100%; scroll-padding-top: calc
 
 *, *::before, *::after { box-sizing: border-box; border-radius: 0; }
 
+/* Safari 26 tints its toolbar from the body's background (theme-color is no longer used),
+   unless a sticky or fixed element sits at the top, whose colour it extends instead. So the
+   body is the brand fuchsia, the header is not sticky, and the page regions carry their own
+   background. The fuchsia shows only in the browser chrome and the overscroll area. */
 body {
   margin: 0;
-  background: var(--bg);
+  background: #dc5497;
   color: var(--ink);
   font-family: var(--font-body);
   font-size: 1.0625rem;
@@ -268,10 +272,8 @@ main { display: block; }
 }
 
 .site-header {
-  position: sticky; top: 0; z-index: 100;
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  position: relative; z-index: 100;
+  background: var(--bg);
   border-bottom: 1px solid var(--line);
 }
 /* Pixel rule: the brand gradient in 8px steps. */
@@ -494,6 +496,7 @@ main { display: block; }
 
 /* ------------------------------------------------------------------ footer */
 
+main { background: var(--bg); }
 .site-footer { background: var(--footer-bg); color: var(--footer-ink); margin-top: 0; font-size: 0.97rem; }
 .site-footer a { color: var(--footer-ink); text-decoration: none; }
 .site-footer a:hover { color: var(--pink-hot); text-decoration: underline; text-underline-offset: 4px; }

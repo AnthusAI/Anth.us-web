@@ -326,6 +326,9 @@ _FONTS = (
 #: Markup placed after ``</title>`` by ``SiteChrome.head_html``.
 HEAD_HTML = (
     '<meta name="color-scheme" content="light dark">\n'
+    # Browser chrome tint (Safari's toolbar, mobile address bars): the brand fuchsia in both modes.
+    '<meta name="theme-color" content="#dc5497" media="(prefers-color-scheme: light)">\n'
+    '<meta name="theme-color" content="#dc5497" media="(prefers-color-scheme: dark)">\n'
     "<script>document.documentElement.classList.add('js')</script>\n"
     '<link rel="icon" href="/favicon-32x32.png?v=6767bf536f0dd7f40470f555fcf412a7" type="image/png"/>\n'
     '<link rel="manifest" href="/manifest.webmanifest" crossorigin="anonymous"/>\n'
