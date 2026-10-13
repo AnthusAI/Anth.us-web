@@ -296,20 +296,36 @@ def _platform_tile(node: ContentNode) -> str:
     )
 
 
-def _product_card(name: str, url: str, line: str, pictogram: str, page: str | None) -> str:
+_SOLUTION_DESCRIPTIONS = {
+    "Cyclotron": "It starts on day one with a decision model’s general training, refits a small model on each "
+                 "correction, and lets an LLM propose better questions that code tests before they go live. "
+                 "The loop is open source under the MIT license.",
+    "Chatticus": "A collaborative workplace with named teammates, one shared computer, skills, routines, and human "
+                 "approval boundaries.",
+    "Papyrus": "Stories move through Kanbus-governed stages from pitch to draft to published, with a human editor "
+               "approving each move. Anth.us runs its own newsroom on it, and the board is public.",
+    "Primus": "The Anthus MLOps platform and agent incubator: it evaluates, deploys, and continuously improves AI "
+              "agents with human feedback in the loop.",
+}
+
+
+def _product_card(name: str, url: str, line: str, pictogram: str, page: str | None, *, describe: bool = False) -> str:
     also = f'<a href="{_esc(page)}">On anth.us</a>' if page else ""
+    desc = f"<p>{escape(_SOLUTION_DESCRIPTIONS[name])}</p>" if describe and name in _SOLUTION_DESCRIPTIONS else ""
     return (
-        '<li class="card notch product card--static">'
-        f'<div class="card__px">{_px(pictogram)}</div><h3>{escape(name)}</h3><p>{escape(line)}</p>'
+        f'<li class="card notch product card--static{" product--desc" if desc else ""}">'
+        f'<div class="card__px">{_px(pictogram)}</div><h3>{escape(name)}</h3><p>{escape(line)}</p>{desc}'
         f'<div class="card__links"><a href="{_esc(url)}" rel="noopener">Visit {escape(name)}</a>{also}</div></li>'
     )
 
 
-def _products_grid() -> str:
-    return '<ul class="grid grid--products">' + "".join(_product_card(*p) for p in anthus_dom.PRODUCTS) + "</ul>"
+def _products_grid(*, describe: bool = False) -> str:
+    return '<ul class="grid grid--products">' + "".join(
+        _product_card(*p, describe=describe) for p in anthus_dom.PRODUCTS
+    ) + "</ul>"
 
 
-def _supporting_row(*, more: bool = True) -> str:
+def _supporting_row() -> str:
     noopener = ' rel="noopener"'
     links = " ".join(
         f'<a href="{_esc(href)}"{noopener if ext else ""}>{escape(name)}</a>'
@@ -372,8 +388,8 @@ def homepage(
 
     out.append(
         _section(
-            "04", "Products", "What we’ve built from the work.",
-            lead="Four products from a stack that grew out of real delivery work.",
+            "04", "Solutions", "Solutions we built from the work.",
+            lead="Our in-house solutions, from a stack that grew out of real delivery work.",
             body=_products_grid() + _supporting_row()
             + '<p class="more"><a href="/platform/">The whole platform</a></p>',
             band=True,
@@ -1140,64 +1156,72 @@ def ai_solutions_page(blog: list[ContentNode], images: ImageIndex | None = None)
     """
     solutions = [n for n in blog if "solutions" in n.tags]
     engagements = [n for n in solutions if "engagement" in n.tags and "integrations" not in n.tags]
+    integrations = [n for n in solutions if "integrations" in n.tags]
     projects = {
         n.slug: n for n in solutions if "engagement" not in n.tags and "integrations" not in n.tags
     }
     projects.update({n.slug: n for n in blog if n.published and "project" in n.tags})
-    integrations = [n for n in solutions if "integrations" in n.tags]
+    featured = {n.slug: n for n in blog if n.published and "featured" in n.tags and not n.is_platform
+                and not ({"solutions", "posts"} & set(n.tags))}
     by_date = lambda nodes: sorted(nodes, key=lambda n: n.date, reverse=True)  # noqa: E731
+    reading = by_date(list({**projects, **featured}.values()))[:6]
 
     build = '<ul class="grid grid--2">' + "".join(
         _card(t, f"<p>{b}</p>", href=h, extra=f'<span class="card__link" aria-hidden="true">{escape(cta)}</span>')
         for t, h, b, cta in _BUILD
     ) + "</ul>"
-    principles = '<ol class="principles">' + "".join(
-        f"<li><span>{i:02d}</span><strong>{escape(n)}</strong><p>{escape(t)}</p></li>"
-        for i, (n, t) in enumerate(_PRINCIPLES, 1)
-    ) + "</ol>"
+    supporting = '<ul class="grid grid--thirds">' + "".join(
+        _card(
+            name, f"<p>{escape(line)}</p>",
+            extra=_links(
+                ([("Visit " + name, href)] if ext else [])
+                + ([("On anth.us", f"/platform/{name.lower()}/")] if name in anthus_dom.SUPPORTING_PAGES else [])
+            ),
+        )
+        for name, href, line, ext in anthus_dom.SUPPORTING
+    ) + "</ul>"
     stages = '<ol class="grid grid--thirds">' + "".join(
         f'<li class="card notch card--static card--stage"><span class="stage__no">{i:02d}</span><h3>{escape(t)}</h3>'
         '<ul class="list">' + "".join(f"<li>{escape(x)}</li>" for x in items) + "</ul></li>"
         for i, (t, items) in enumerate(_LIFECYCLE, 1)
     ) + "</ol>"
+    chips = _chips([(n.title, "") for n in by_date(integrations)])
+    read_list = '<div class="shorter shorter--flat"><ul>' + "".join(
+        f'<li><time>{escape(n.display_date)}</time><a href="{_esc(blog_href(n))}">{escape(n.title)}</a></li>'
+        for n in reading
+    ) + '</ul><p class="more"><a href="/blog/">All articles</a></p></div>'
     return _page(
         _page_hero(
             "AI SOLUTIONS", "Solving problems using AI",
             "You’re under pressure to deliver AI that works in production, not just in a demo. We build and operate "
-            "self-aligning AI systems: custom models, agent harnesses, and evaluation loops with a human in the loop, "
-            "grounded in production operations since 2007.",
+            "self-aligning AI systems, and we run our own solutions on the same stack we use for clients.",
             art=_px("self-aligning"),
             actions=_btn("Tell us the problem", "/engage/") + _btn("How an engagement works", "/engage/", ghost=True),
         ),
-        _section("01", "What we build", "Four kinds of system", body=build, stack=True),
         _section(
-            "02", "Engagements", "Client work with a business outcome",
+            "01", "Our solutions", "What we built from the work",
+            lead="Four in-house solutions, in use on our own work first.",
+            body=_products_grid(describe=True), stack=True,
+        ),
+        _section("02", "Supporting technology", "What the solutions run on", body=supporting, band=True),
+        _section("03", "What we build for clients", "Four kinds of system", body=build, stack=True),
+        _section(
+            "04", "Engagements", "Client work with a business outcome",
             lead="The systems we built, ran, and kept improving in production. The proof is years of production RLHF for "
             "a call-center QA operation: a data flywheel learning from expert feedback across hundreds of scorecards "
             "and millions of interactions.",
-            body=_card_grid(by_date(engagements), images, display_date=True), band=True,
+            body=_card_grid(by_date(engagements), images, display_date=True)
+            + (f'<h3 class="subhead">Integrations we have built</h3>{chips}' if integrations else ""),
+            band=True,
         ),
         _section(
-            "03", "How we work", "Under specs, tests, and a person who can say no",
-            lead="We call it cybernetic development: the governors that make an AI system safe to operate, from clear "
-            "specifications and layered verification to staged releases and feedback loops that carry production "
-            "learnings back into the system.",
-            body=principles + '<p class="more"><a href="/blog/cybernetic-development/">How we govern AI-built systems</a></p>'
-            '<p class="more"><a href="/engage/">How an engagement works</a></p>',
+            "05", "How we work", "From use case to long-term operation",
+            lead="We work under specs, tests, staged rollout, and a person who can say no: "
+            "cybernetic development. Every AI application we build follows the same lifecycle.",
+            body=stages + '<p class="more"><a href="/blog/cybernetic-development/">How we govern AI-built systems</a></p>',
+            stack=True,
         ),
-        _section(
-            "04", "Projects and examples", "Smaller builds, with the code published",
-            lead="Spinoffs and worked examples. The articles do the talking here.",
-            body=_card_grid(by_date(list(projects.values())), images, display_date=True), band=True,
-        ),
-        _section("05", "Integrations", "What we connect to",
-                 body=_card_grid(by_date(integrations), images, display_date=True, link=False, code=False)),
-        _section(
-            "06", "The process", "From use case to long-term operation",
-            lead="Every AI application we build follows the same lifecycle.",
-            body=stages + '<p class="more"><a href="https://primus.anth.us">See Primus</a></p>',
-            band=True, stack=True,
-        ),
+        _section("06", "Further reading", "Projects and articles", body=read_list, band=True),
         _cta(),
     )
 
@@ -1377,7 +1401,7 @@ def platform_index(platform: list[ContentNode]) -> str:
         _card(
             name, f"<p>{escape(line)}</p>",
             extra=_links(
-                ([("Visit " + name, href)] if ext else []) + [("On anth.us", f"/platform/{name.lower()}/")]
+                ([("Visit " + name, href)] if ext else []) + ([("On anth.us", f"/platform/{name.lower()}/")] if name in anthus_dom.SUPPORTING_PAGES else [])
             ),
         )
         for name, href, line, ext in anthus_dom.SUPPORTING
@@ -1385,9 +1409,9 @@ def platform_index(platform: list[ContentNode]) -> str:
 
     return _page(
         _page_hero(
-            "PRODUCTS AND PLATFORM", "The tools we built doing the work.",
+            "SOLUTIONS AND PLATFORM", "The tools we built doing the work.",
             "<strong>A technology stack that grew out of real delivery work.</strong> "
-            "It is not a speculative architecture diagram. This is the product line that emerged from building "
+            "It is not a speculative architecture diagram. This is the stack that emerged from building "
             "RLHF systems, durable agent workflows, retrieval-backed automation, hosted operator applications, "
             "and programmable media pipelines for real engagements. The same controls that matter in production "
             "software matter here: auditability, rollback paths, operator visibility, and clear evaluation loops.",
@@ -1395,9 +1419,9 @@ def platform_index(platform: list[ContentNode]) -> str:
             actions=_btn("See the solutions we deliver", "/ai-solutions/")
             + _btn("Read the cybernetic development thesis", "/blog/cybernetic-development/", ghost=True),
         ),
-        _section("01", "Products", "Four products", body=_products_grid()),
+        _section("01", "Solutions", "Our in-house solutions", body=_products_grid()),
         _section(
-            "02", "Supporting technology", "What the products run on",
+            "02", "Supporting technology", "What the solutions run on",
             lead="Smaller tools we use and ship alongside them.",
             body=supporting, band=True,
         ),
@@ -1478,7 +1502,7 @@ def engage_page() -> str:
         extra=_links([("Kanbus", "https://kanb.us")]),
     ) + _card(
         "Newsroom for a publication",
-        "<p>We stand up Papyrus as your editorial pipeline: stories move through Kanbus-governed stages from pitch to "
+        "<p>We stand up <a href=\"https://p.apyr.us\" rel=\"noopener\">Papyrus</a> as your editorial pipeline: stories move through Kanbus-governed stages from pitch to "
         "draft to published, with a human editor approving each move.</p>"
         "<p>Anth.us runs its own newsroom on it, and the board is public, so you can read the record behind the newest "
         "articles before you buy the pipeline.</p>",

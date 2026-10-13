@@ -448,6 +448,7 @@ main { display: block; }
 .product h3 { font-size: var(--step-4); line-height: 0.95; }
 @supports (grid-template-rows: subgrid) {
   .grid--products > .product { grid-row: span 4; display: grid; grid-template-rows: subgrid; gap: 0.9rem; align-content: start; }
+  .grid--products > .product--desc { grid-row: span 5; grid-template-rows: subgrid; }
 }
 .supporting { margin: clamp(1.5rem, 2.5vw, 2.5rem) 0 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem 1.25rem; }
 .supporting strong { font-family: var(--font-label); font-weight: 400; letter-spacing: 0.08em; text-transform: uppercase; font-size: 1.2rem; color: var(--ink-2); }
@@ -849,3 +850,5 @@ article .heading a.btn--ghost { color: var(--ink); }
 .opsnote p { margin: 0; }
 .opsnote__h { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.08em; font-size: 1.15rem; color: var(--ink-2); margin-bottom: 0.3rem !important; }
 @media (max-width: 40rem) { .opsnote { flex-direction: column; align-items: flex-start; } }
+
+.shorter--flat { margin-top: 0; max-width: 56rem; }

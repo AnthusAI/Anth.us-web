@@ -57,7 +57,7 @@ SITE_TITLE = "Anthus"
 MENU_LINKS = (
     ("AI Solutions", "/ai-solutions/", "What we build and run for clients, with the case studies."),
     ("Decision Models", "/decision-models/", "Aligning Jev and other decision models to your data."),
-    ("Products", "/platform/", "What we have built from the work: Cyclotron, Chatticus, Auritus, Primus."),
+    ("Platform", "/platform/", "The solutions and technology we built from the work."),
     ("Research", "/research/", "Experiments on how decision models behave, with the numbers."),
     ("Benchmarks", "/benchmarks/", "Public leaderboards for decision models: bias and reasoning depth."),
     ("Articles", "/blog/", "Long-form pieces on classifiers, agents, and the economics of AI."),
@@ -157,15 +157,15 @@ def _logo(*, current: bool = False) -> str:
     )
 
 
-#: Flagship products, always in this order: (name, site, one-liner, pictogram, anth.us page).
+#: The four flagship in-house solutions, always in this order: (name, site, one-liner, pictogram, anth.us page).
 PRODUCTS = (
     ("Cyclotron", "https://cyclotron.anth.us", "One AI decision that learns from your team’s corrections.",
      "self-aligning", None),
     ("Chatticus", "https://chattic.us", "Shared rooms where people and bots work together, with approvals.",
      "chat-room", "/platform/chatticus/"),
-    ("Auritus", "https://aurit.us",
-     "Listen to any page: a drop-in embed that turns your content into speech with open models you choose.",
-     "page-audio", None),
+    ("Papyrus", "https://p.apyr.us",
+     "An automated newsroom: agents watch your beat, research and draft, and your editors decide what publishes.",
+     "newsroom", None),
     ("Primus", "https://primus.anth.us",
      "The classifier lab: evaluate, deploy and improve AI with reviewer feedback.",
      "verdict-meter", "/platform/primus/"),
@@ -176,7 +176,12 @@ SUPPORTING = (
     ("Kanbus", "https://kanb.us", "Issue tracking in your repository, where agents can participate.", True),
     ("Tactus", "https://tactus.anth.us", "A programming language for reliable, tool-using AI agents.", True),
     ("Biblicus", "/platform/biblicus/", "Corpus analysis: extraction, retrieval and evidence-first knowledge workflows.", False),
+    ("Auritus", "https://aurit.us",
+     "Listen to any page: a drop-in embed that turns your content into speech with open models you choose.", True),
 )
+
+#: Supporting technology that has its own page under /platform/.
+SUPPORTING_PAGES = frozenset({"Kanbus", "Tactus", "Biblicus"})
 
 
 # Footer columns: (heading, ((label, href, external), ...)).
@@ -256,7 +261,7 @@ def _footer_html() -> str:
         + _logo()
         + "<p>Anthus builds AI-native systems with durable procedures, operational "
         "guardrails, and reusable platform components.</p></div>"
-        '<section class="site-footer__products" aria-labelledby="footer-products"><h2 id="footer-products">Products</h2>'
+        '<section class="site-footer__products" aria-labelledby="footer-products"><h2 id="footer-products">Solutions</h2>'
         f'<ul class="site-footer__plist">{products}</ul>'
         '<div class="site-footer__support"><h3>Supporting technology</h3>'
         f'<ul>{supporting}<li><a href="/platform/">All technology &rarr;</a></li></ul></div></section>'
