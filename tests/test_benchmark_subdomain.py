@@ -6,7 +6,7 @@ from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPOSITORY_ROOT / "web"))
-import anthus_page_html  # noqa: E402
+import anthus_pages  # noqa: E402
 import anthus_urls  # noqa: E402
 
 CUSTOM_RULES_FILE = REPOSITORY_ROOT / "web" / "custom-rules.json"
@@ -14,7 +14,7 @@ INTERNAL_BENCHMARK_LINK = re.compile(r'href="/biased-decisions/')
 
 
 def test_benchmarks_page_links_to_the_subdomain_not_an_internal_path():
-    benchmarks_html = anthus_page_html.benchmarks_html()
+    benchmarks_html = anthus_pages.benchmarks_page()
     assert not INTERNAL_BENCHMARK_LINK.search(benchmarks_html)
     assert 'href="https://biased-decisions.anth.us/"' in benchmarks_html
 
