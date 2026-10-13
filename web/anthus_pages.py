@@ -1341,6 +1341,14 @@ def _platform_card(node: ContentNode) -> str:
     )
 
 
+def _platform_line(node: ContentNode) -> str:
+    """Compact entry for the least prominent tier on /platform/: name and one line."""
+    return (
+        f'<li><a href="{_esc(platform_href(node))}">{escape(node.title)}</a> '
+        f"{escape(_fm(node, 'excerpt'))}</li>"
+    )
+
+
 def _platform_cards(nodes: list[ContentNode]) -> str:
     return '<ul class="grid">' + "".join(_platform_card(n) for n in nodes) + "</ul>"
 
@@ -1395,7 +1403,7 @@ def platform_index(platform: list[ContentNode]) -> str:
         ),
         _section(
             "03", "The rest of the platform", "Also in the platform",
-            body='<ul class="grid grid--list">' + "".join(_platform_card(n) for n in rest) + "</ul>",
+            body='<ul class="also-list">' + "".join(_platform_line(n) for n in rest) + "</ul>",
         ),
         _section(
             "04", "Layers", "How the platform fits together",
