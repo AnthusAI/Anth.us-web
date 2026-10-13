@@ -854,3 +854,9 @@ article .heading a.btn--ghost { color: var(--ink); }
 @media (max-width: 40rem) { .opsnote { flex-direction: column; align-items: flex-start; } }
 
 .shorter--flat { margin-top: 0; max-width: 56rem; }
+
+/* Draft review (shown by assets/drafts.js on ?drafts) */
+.drafts-review[hidden] { display: none; }
+.drafts-review { padding-block: var(--section-space); background: var(--panel); border-top: 1px dashed var(--pink); }
+.drafts-review > .container > p:not(.eyebrow) { color: var(--ink-2); margin: 0.75rem 0 clamp(1.5rem, 2.5vw, 2.5rem); }
+.pill--draft { font-family: var(--font-label); font-size: 1rem; letter-spacing: 0.08em; background: var(--pink); color: var(--on-pink); border-color: var(--pink); }
