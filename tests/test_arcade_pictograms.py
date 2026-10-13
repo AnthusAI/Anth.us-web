@@ -132,7 +132,6 @@ class PictogramTests(unittest.TestCase):
         banned = {
             "scorecard": [r"\bcards\b"],
             "relocate": ["never stopped", "no downtime", "never stop", "redundan"],
-            "timeline": ["production", "enterprise"],
             "platform-stack": ["RUNTIME", "runtime"],
         }
         for name, pats in banned.items():
@@ -148,8 +147,12 @@ class PictogramTests(unittest.TestCase):
         self.assertNotIn("redundan", rl)
         self.assertNotIn("Site C", rl)
         self.assertNotIn("SITE C", rl)
-        for lbl in ("2007", "2009", "TODAY"):
-            self.assertIn(lbl, ap.render("timeline"))
+        er = ap.render("eras")
+        for lbl in ("ON-PREM", "CLOUD", "SERVERLESS", "AI", "2007", "TODAY"):
+            self.assertIn(lbl, er)
+        texts = re.findall(r">([^<>]+)</text>", er)
+        self.assertEqual([x for x in texts if re.search(r"\d", x)], ["2007"])
+        self.assertIsNone(re.search(r"\b(19|20)\d\d\b", er.replace("2007", "")))
 
     def test_hero_has_phone_variant_with_single_label(self):
         html = ap.render("hero-loop")
