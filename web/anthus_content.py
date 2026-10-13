@@ -37,6 +37,7 @@ from datetime import datetime
 from pathlib import Path
 
 import anthus_dom
+from solution_sites import is_external
 from papyrus_content.markus_renderer.transforms import block_sentinel
 from anthus_mdx import (
     ConversionReport,
@@ -426,13 +427,17 @@ class Collections:
     posts: list[ContentNode]
     solutions: list[ContentNode]
     tags: dict[str, list[ContentNode]]
+    #: platform nodes that live on their own site: no page here, only redirects and link rewrites.
+    external_platform: list[ContentNode] = field(default_factory=list)
 
     @classmethod
     def from_nodes(cls, nodes: list[ContentNode]) -> "Collections":
         # Date descending; ties in ascending filename order (what live production
         # shows, measured against its listings).
         by_date = sorted(sorted(nodes, key=lambda n: n.source.name), key=lambda n: n.date, reverse=True)
-        platform = [n for n in by_date if n.is_platform]
+        every_platform = [n for n in by_date if n.is_platform]
+        platform = [n for n in every_platform if not is_external(n.slug)]
+        external_platform = [n for n in every_platform if is_external(n.slug)]
         blog = [n for n in by_date if not n.is_platform]
         # blog.jsx: published, tags nin [solutions, posts], not platform.
         articles = [
@@ -462,6 +467,7 @@ class Collections:
             posts=posts,
             solutions=solutions,
             tags=tags,
+            external_platform=external_platform,
         )
 
 

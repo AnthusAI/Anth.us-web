@@ -6,6 +6,8 @@ const keyValues = {
   "/blog/ai/": "/tags/ai/",
   "/blog/machine%20learning/index.html": "/tags/machine-learning/",
   "/articles/plexus-classifier-lab/": "/articles/primus-classifier-lab/",
+  "/platform/primus/": "https://primus.anth.us",
+  "/platform/primus/index.html": "https://primus.anth.us",
 };
 const handler = loadEdgeFunction("viewer-request.js", keyValues);
 
@@ -88,4 +90,11 @@ test("the rules the previous host never matched stay unmatched", async () => {
     const result = await outcome(filledIn(source));
     assert.ok(result.rewritten !== undefined, source);
   }
+});
+
+test("a solution with its own site redirects there, however its old URL is spelled", async () => {
+  const site = { status: 301, location: "https://primus.anth.us" };
+  assert.deepEqual(await outcome("/platform/primus/"), site);
+  assert.deepEqual(await outcome("/platform/primus/index.html"), site);
+  assert.deepEqual(await outcome("/platform/primus"), { status: 301, location: "/platform/primus/" });
 });

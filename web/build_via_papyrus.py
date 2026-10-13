@@ -266,6 +266,9 @@ def _absolutize(url: str, *, base_dir: str) -> str:
         absolute = "/" + posixpath.normpath(posixpath.join(base_dir, path))
     if urls.is_non_page(absolute):
         return absolute + sep + tail
+    external = _SITE_URLS.external_for(absolute)
+    if external is not None:
+        return external + "/"
     href = _SITE_URLS.resolve(absolute)
     if href is not None:
         return urls.page_url(href) + sep + tail

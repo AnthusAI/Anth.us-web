@@ -40,6 +40,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import arcade_pictograms
+from solution_sites import EXTERNAL_SITES
 import site_env  # PPY-f1f0a8: SITE_ENV guards
 
 POD_ROOT = Path(__file__).resolve().parent
@@ -161,27 +162,27 @@ def _logo(*, current: bool = False) -> str:
 PRODUCTS = (
     ("Cyclotron", "https://cyclotron.anth.us", "One AI decision that learns from your team’s corrections.",
      "self-aligning", None),
-    ("Chatticus", "https://chattic.us", "Shared rooms where people and bots work together, with approvals.",
-     "chat-room", "/platform/chatticus/"),
+    ("Chatticus", EXTERNAL_SITES["chatticus"], "Shared rooms where people and bots work together, with approvals.",
+     "chat-room", None),
     ("Papyrus", "https://p.apyr.us",
      "An automated newsroom: agents watch your beat, research and draft, and your editors decide what publishes.",
      "newsroom", None),
-    ("Primus", "https://primus.anth.us",
+    ("Primus", EXTERNAL_SITES["primus"],
      "The classifier lab: evaluate, deploy and improve AI with reviewer feedback.",
-     "verdict-meter", "/platform/primus/"),
+     "verdict-meter", None),
 )
 
 #: Supporting technology: (name, href, one-liner, external).
 SUPPORTING = (
-    ("Kanbus", "https://kanb.us", "Issue tracking in your repository, where agents can participate.", True),
-    ("Tactus", "https://tactus.anth.us", "A programming language for reliable, tool-using AI agents.", True),
+    ("Kanbus", EXTERNAL_SITES["kanbus"], "Issue tracking in your repository, where agents can participate.", True),
+    ("Tactus", EXTERNAL_SITES["tactus"], "A programming language for reliable, tool-using AI agents.", True),
     ("Biblicus", "/platform/biblicus/", "Corpus analysis: extraction, retrieval and evidence-first knowledge workflows.", False),
     ("Auritus", "https://aurit.us",
      "Listen to any page: a drop-in embed that turns your content into speech with open models you choose.", True),
 )
 
 #: Supporting technology that has its own page under /platform/.
-SUPPORTING_PAGES = frozenset({"Kanbus", "Tactus", "Biblicus"})
+SUPPORTING_PAGES = frozenset({"Biblicus"})
 
 
 # Footer columns: (heading, ((label, href, external), ...)).
