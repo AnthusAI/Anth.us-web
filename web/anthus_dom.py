@@ -35,11 +35,12 @@ so they never disturb emphasis or table parsing.
 from __future__ import annotations
 
 import html
-import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
 
+import arcade_pictograms
+from solution_sites import EXTERNAL_SITES
 import site_env  # PPY-f1f0a8: SITE_ENV guards
 
 POD_ROOT = Path(__file__).resolve().parent
@@ -50,101 +51,288 @@ POD_ROOT = Path(__file__).resolve().parent
 
 SITE_TITLE = "Anthus"
 
-# gatsby-config.mjs siteMetadata.menuLinks, in order. These are the production
-# route shapes; `build_via_papyrus._rewrite_internal_links` maps them to this
-# build's static paths, so the chrome and the content go through one mapper.
+# Primary navigation. Hrefs are production-shaped ("/blog/" is the articles
+# index); `build_via_papyrus._rewrite_internal_links` maps them to this build's
+# static paths, so the chrome and the content go through one mapper. The third
+# element is a one-line description (kept for the registry in anthus_pages).
 MENU_LINKS = (
     ("AI Solutions", "/ai-solutions/", "What we build and run for clients, with the case studies."),
     ("Decision Models", "/decision-models/", "Aligning Jev and other decision models to your data."),
-    ("Platform", "/platform/", "The components behind the work: Primus, Kanbus, and the rest."),
+    ("Platform", "/platform/", "The solutions and technology we built from the work."),
     ("Research", "/research/", "Experiments on how decision models behave, with the numbers."),
     ("Benchmarks", "/benchmarks/", "Public leaderboards for decision models: bias and reasoning depth."),
-    ("Reading List", "/reading/", "Papers and books we keep coming back to, one note each."),
-    ("About", "/about/", "Who we are, and the track record since 2007."),
     ("Articles", "/blog/", "Long-form pieces on classifiers, agents, and the economics of AI."),
-    ("Posts", "/posts/", "Short takes on what shipped this week."),
+    ("About", "/about/", "Who we are, and the track record since 2007."),
+)
+CTA_LINK = ("Start a project", "/engage/")
+
+# The wordmark is one SVG in Jersey 25 font units (1230 per em, cap height 750),
+# so the pixel "A" tile and the letters scale together and always line up. Set
+# as text beside an SVG, the A drifted a device pixel off the N at some sizes,
+# because browsers round a box and hint a glyph differently.
+#
+# The A: 8x10 cells over the N's ink width (570) and the cap height, on a tile.
+# NTHUS: Jersey 25 outlines (fontTools, rounded to integer units) laid out with
+# the header's .04em letter spacing; the tile-to-N gap is the font's own N-to-T gap.
+_LOGO_CELLS = (
+    "..XXXX..",
+    ".XX..XX.",
+    ".XX..XX.",
+    "XX....XX",
+    "XX....XX",
+    "XXXXXXXX",
+    "XXXXXXXX",
+    "XX....XX",
+    "XX....XX",
+    "XX....XX",
+)
+_LOGO_CAP = 750
+_LOGO_A_WIDTH = 570
+_LOGO_WIDTH = 4025
+_LOGO_NTHUS = "M1159 450V0H1309V750H1129V720H1099V660H1069V600H1039V540H1009V480H979V420H949V360H919V300H889V750H739V0H919V30H949V90H979V150H1009V210H1039V270H1069V330H1099V390H1129V450ZM1928 0V150H1778V750H1628V150H1478V0ZM2457 300V0H2607V750H2457V450H2247V750H2097V0H2247V300ZM2956 570V600H3106V570H3136V0H3286V630H3256V690H3226V720H3166V750H2896V720H2836V690H2806V630H2776V0H2926V570ZM3635 570V600H3785V570H3815V480H3785V450H3575V420H3515V390H3485V330H3455V120H3485V60H3515V30H3575V0H3845V30H3905V60H3935V120H3965V210H3815V180H3785V150H3635V180H3605V270H3635V300H3845V330H3905V360H3935V420H3965V630H3935V690H3905V720H3845V750H3575V720H3515V690H3485V630H3455V510H3605V570Z"
+
+
+def _logo_a_path() -> str:
+    """The A's cells as one path (rects and paths snap to pixels differently)."""
+    cw, rh = _LOGO_A_WIDTH / 8, _LOGO_CAP / 10
+    out = []
+    for y, row in enumerate(_LOGO_CELLS):
+        for match in re.finditer(r"X+", row):
+            out.append(
+                f"M{match.start() * cw:g} {y * rh:g}h{(match.end() - match.start()) * cw:g}v{rh:g}"
+                f"h{-(match.end() - match.start()) * cw:g}z"
+            )
+    return "".join(out)
+
+
+# One cell of tile padding around the A on every side. The padding eats one cell
+# of the tile-to-N gap, which reads as natural kerning.
+_LOGO_CW, _LOGO_RH = _LOGO_A_WIDTH / 8, _LOGO_CAP / 10
+_LOGO_SVG = (
+    f'<svg class="site-logo__svg" viewBox="{-_LOGO_CW:g} {-_LOGO_RH:g} '
+    f'{_LOGO_WIDTH + _LOGO_CW:g} {_LOGO_CAP + 2 * _LOGO_RH:g}" aria-hidden="true" focusable="false">'
+    f'<rect class="site-logo__tile" x="{-_LOGO_CW:g}" y="{-_LOGO_RH:g}" '
+    f'width="{_LOGO_A_WIDTH + 2 * _LOGO_CW:g}" height="{_LOGO_CAP + 2 * _LOGO_RH:g}"/>'
+    f'<path class="site-logo__a" d="{_logo_a_path()}"/>'
+    f'<path class="site-logo__word" d="{_LOGO_NTHUS}"/></svg>'
 )
 
-# The real `anthus-footer` React component's rendered output, captured from
-# `Anth.us/public/posts/index.html`. It is styled entirely with inline
-# `style=` attributes (no classes, no stylesheet), which is precisely why it
-# can be shipped as static markup and still be pixel-identical: there is no
-# CSS to miss. The only edit is the logo, where `gatsby-plugin-image`'s
-# placeholder/<picture> stack is replaced by the plain `<img>` this build
-# serves. Regenerate by re-capturing from a production page if the component
-# is ever updated upstream (github:AnthusAI/anthus-footer).
-_FOOTER_SOURCE = POD_ROOT / "anthus_footer.html"
 
-# Staging note: text and on/off decision live in site_env (PPY-f1f0a8).
+# "AI SOLUTIONS" in Jersey 10 outlines (1400/em, scaled to the wordmark's 1230/em,
+# .06em letter spacing), drawn in the same SVG as the wordmark: as live text beside
+# it, the two fonts' baselines rounded to different device pixels at some sizes.
+_LOCKUP_D = "M0 289H66V223H132V157H198V91H264V157H329V223H395V289H461V750H329V618H132V750H0ZM132 486H329V355H264V289H198V355H132ZM601 91H733V750H601ZM1210 552H1342V618H1539V486H1276V421H1210V157H1276V91H1605V157H1671V289H1539V223H1342V355H1605V421H1671V684H1605V750H1276V684H1210ZM1811 157H1877V91H2206V157H2272V684H2206V750H1877V684H1811ZM2074 552H2140V289H2074V223H2008V289H1943V552H2008V618H2074ZM2543 618H2741V750H2412V91H2543ZM3144 552H3210V91H3342V684H3276V750H2947V684H2881V91H3013V552H3079V618H3144ZM3614 223H3482V91H3877V223H3745V750H3614ZM4017 91H4149V750H4017ZM4288 157H4354V91H4684V157H4750V684H4684V750H4354V684H4288ZM4552 552H4618V289H4552V223H4486V289H4420V552H4486V618H4552ZM5153 552H5087V421H5021V750H4889V91H5087V223H5153V355H5219V486H5285V91H5416V750H5219V684H5153ZM5556 552H5688V618H5886V486H5622V421H5556V157H5622V91H5951V157H6017V289H5886V223H5688V355H5951V421H6017V684H5951V750H5622V684H5556Z"
+_LOCKUP_W = 6083
+_LOCKUP_GAP = 307.5  # .25em
+_LOCKUP_X = _LOGO_WIDTH + _LOCKUP_GAP
+
+
+def _brand(*, home_current: bool, lockup_href: str, lockup_label: str, lockup_current: bool) -> str:
+    """Header lockup "ANTHUS AI SOLUTIONS": one SVG, two links (home, solutions)."""
+    width = _LOCKUP_X + _LOCKUP_W + _LOGO_CW
+    home_attr = ' aria-current="page"' if home_current else ""
+    sol_attr = ' aria-current="page"' if lockup_current else ""
+    return (
+        f'<svg class="site-brand__svg" viewBox="{-_LOGO_CW:g} {-_LOGO_RH:g} {width:g} '
+        f'{_LOGO_CAP + 2 * _LOGO_RH:g}" role="group" aria-label="Anthus AI Solutions">'
+        f'<a class="site-brand__home" href="/"{home_attr} aria-label="Anthus home">'
+        f'<rect class="site-logo__tile" x="{-_LOGO_CW:g}" y="{-_LOGO_RH:g}" '
+        f'width="{_LOGO_A_WIDTH + 2 * _LOGO_CW:g}" height="{_LOGO_CAP + 2 * _LOGO_RH:g}"/>'
+        f'<path class="site-logo__a" d="{_logo_a_path()}"/>'
+        f'<path class="site-logo__word" d="{_LOGO_NTHUS}"/></a>'
+        f'<a class="site-brand__lockup" href="{html.escape(lockup_href, quote=True)}"{sol_attr} '
+        f'aria-label="{html.escape(lockup_label, quote=True)}">'
+        f'<rect class="site-brand__hit" x="{_LOCKUP_X:g}" y="{-_LOGO_RH:g}" width="{_LOCKUP_W:g}" '
+        f'height="{_LOGO_CAP + 2 * _LOGO_RH:g}"/>'
+        f'<path transform="translate({_LOCKUP_X:g} 0)" d="{_LOCKUP_D}"/>'
+        f'<rect class="site-brand__rule" x="{_LOCKUP_X:g}" y="{_LOGO_CAP + 40:g}" width="{_LOCKUP_W:g}" height="60"/>'
+        f"</a></svg>"
+    )
+
+
+def _logo(*, current: bool = False) -> str:
+    attrs = ' aria-current="page"' if current else ""
+    return (
+        f'<a class="site-logo" href="/"{attrs} aria-label="Anthus home">'
+        f'{_LOGO_SVG}</a>'
+    )
+
+
+#: The four flagship in-house solutions, always in this order: (name, site, one-liner, pictogram, anth.us page).
+PRODUCTS = (
+    ("Cyclotron", "https://cyclotron.anth.us", "One AI decision that learns from your team’s corrections.",
+     "self-aligning", None),
+    ("Chatticus", EXTERNAL_SITES["chatticus"], "Shared rooms where people and bots work together, with approvals.",
+     "chat-room", None),
+    ("Papyrus", "https://p.apyr.us",
+     "An automated newsroom: agents watch your beat, research and draft, and your editors decide what publishes.",
+     "newsroom", None),
+    ("Primus", EXTERNAL_SITES["primus"],
+     "The classifier lab: evaluate, deploy and improve AI with reviewer feedback.",
+     "verdict-meter", None),
+)
+
+#: Supporting technology: (name, href, one-liner, external).
+SUPPORTING = (
+    ("Kanbus", EXTERNAL_SITES["kanbus"], "Issue tracking in your repository, where agents can participate.", True),
+    ("Tactus", EXTERNAL_SITES["tactus"], "A programming language for reliable, tool-using AI agents.", True),
+    ("Biblicus", "/platform/biblicus/", "Corpus analysis: extraction, retrieval and evidence-first knowledge workflows.", False),
+    ("Auritus", "https://aurit.us",
+     "Listen to any page: a drop-in embed that turns your content into speech with open models you choose.", True),
+)
+
+#: Supporting technology that has its own page under /platform/.
+SUPPORTING_PAGES = frozenset({"Biblicus"})
+
+
+# Footer columns: (heading, ((label, href, external), ...)).
+FOOTER_COLUMNS = (
+    (
+        "Company",
+        (
+            ("About", "/about/", False),
+            ("Ryan Porter", "/ryan/", False),
+            ("Start a project", "/engage/", False),
+            (
+                "Contact",
+                "https://docs.google.com/forms/d/e/"
+                "1FAIpQLSdWlt4KpwPSBHzg3o8fikHcfrzxo5rCcV-0-zDt815NZ1tcyg/viewform?usp=sf_link",
+                True,
+            ),
+        ),
+    ),
+    (
+        "Work",
+        (
+            ("AI Solutions", "/ai-solutions/", False),
+            ("Decision Models", "/decision-models/", False),
+            ("Benchmarks", "/benchmarks/", False),
+        ),
+    ),
+    (
+        "Writing",
+        (
+            ("Articles", "/blog/", False),
+            ("Research", "/research/", False),
+            ("Reading List", "/reading/", False),
+            ("Posts", "/posts/", False),
+            ("Tags", "/tags/", False),
+        ),
+    ),
+    (
+        "Elsewhere",
+        (
+            ("GitHub", "https://github.com/AnthusAI", True),
+            ("LinkedIn", "https://www.linkedin.com/in/ryanalynporter/", True),
+            ("Discord", "https://discord.gg/uStyWraJ2M", True),
+        ),
+    ),
+)
+
+
+def _footer_link(label: str, href: str, external: bool) -> str:
+    rel = ' target="_blank" rel="noreferrer"' if external else ""
+    return f'<li><a href="{html.escape(href, quote=True)}"{rel}>{html.escape(label)}</a></li>'
 
 
 def _footer_html() -> str:
-    markup = _FOOTER_SOURCE.read_text(encoding="utf-8").strip()
-    closing = "</footer>"
-    if not markup.endswith(closing):
-        raise RuntimeError(f"{_FOOTER_SOURCE} does not end with </footer>")
-    return markup[: -len(closing)] + site_env.footer_note() + closing
+    columns = "".join(
+        f'<div><h2>{html.escape(title)}</h2><ul>'
+        + "".join(_footer_link(*item) for item in items)
+        + "</ul></div>"
+        for title, items in FOOTER_COLUMNS
+    )
+    note = site_env.footer_note()
+    products = "".join(
+        '<li class="site-footer__product">'
+        f'<a class="site-footer__pname" href="{html.escape(url, quote=True)}" rel="noopener">{html.escape(name)}</a>'
+        f"<p>{html.escape(line)}</p>"
+        + (f'<a class="site-footer__also" href="{page}">On anth.us</a>' if page else "")
+        + "</li>"
+        for name, url, line, _px, page in PRODUCTS
+    )
+    noopener = ' rel="noopener"'
+    supporting = "".join(
+        f'<li><a href="{html.escape(href, quote=True)}"{noopener if ext else ""}>{html.escape(name)}</a></li>'
+        for name, href, _line, ext in SUPPORTING
+    )
+    return (
+        '<footer class="site-footer"><div class="container site-footer__inner">'
+        '<div class="site-footer__brand">'
+        + _logo()
+        + "<p>Anthus builds AI-native systems with durable procedures, operational "
+        "guardrails, and reusable platform components.</p></div>"
+        '<section class="site-footer__products" aria-labelledby="footer-products"><h2 id="footer-products">Solutions</h2>'
+        f'<ul class="site-footer__plist">{products}</ul>'
+        '<div class="site-footer__support"><h3>Supporting technology</h3>'
+        f'<ul>{supporting}<li><a href="/platform/">All technology &rarr;</a></li></ul></div></section>'
+        f'<nav class="site-footer__cols" aria-label="Footer">{columns}</nav>'
+        + (f'<div class="site-footer__note">{note}</div>' if note else "")
+        + "</div></footer>"
+    )
 
 
 FOOTER_HTML = _footer_html()
 
 
 def _header_html(active_path: str) -> str:
-    """`Anth.us/src/components/header.js`, rendered.
+    """Sticky site header: logo, primary nav, and the START A PROJECT button.
 
-    `priority-plus` is initialised against `ul.js-p-target` by
-    `assets/site-nav.js`; the server-rendered markup is a plain list, exactly
-    as in production, so the nav works with JavaScript disabled.
+    The nav is a plain list, so it works with JavaScript disabled; below 78rem
+    `assets/site-nav.js` turns it into a disclosure behind a MENU button.
     """
     items = []
-    for label, href, description in MENU_LINKS:
-        attrs = f'href="{html.escape(href, quote=True)}"'
-        if _same_route(href, active_path):
-            # Gatsby's <Link activeClassName="active"> on an exact route match.
-            attrs = f'aria-current="page" class="active" {attrs}'
-        items.append(
-            f"<li><a {attrs}>"
-            f'<span class="menu-title">{html.escape(label)}</span>'
-            f'<span class="menu-subtitle">{html.escape(description)}</span></a></li>'
-        )
-    home = _same_route("/", active_path)
-    logo = (
-        '<a aria-current="page" class="logo active" href="/">Anthus&nbsp;</a>'
-        if home
-        else '<a class="logo" href="/">Anthus&nbsp;</a>'
+    for index, (label, href, _description) in enumerate(MENU_LINKS):
+        current = ' aria-current="page"' if _same_route(href, active_path) else ""
+        # The first item is the "Anthus AI Solutions" lockup in the bar; its
+        # nav copy only shows in the collapsed menu on very narrow screens.
+        extra = ' class="site-nav__lockup-copy"' if index == 0 else ""
+        items.append(f'<li{extra}><a href="{html.escape(href, quote=True)}"{current}>{html.escape(label)}</a></li>')
+    cta_label, cta_href = CTA_LINK
+    items.append(
+        f'<li><a class="btn btn--sm" href="{cta_href}"><span>{html.escape(cta_label.upper())} '
+        "&rarr;</span></a></li>"
     )
+    first_label, first_href, _ = MENU_LINKS[0]
+    lockup_current = ' aria-current="page"' if _same_route(first_href, active_path) else ""
     return (
-        "<header><div class=\"content\">"
-        + logo
-        + '<div class="menu"><nav><ul class="js-p-target">'
+        '<header class="site-header" data-open="false"><div class="container site-header__inner">'
+        '<div class="site-brand">'
+        + _brand(
+            home_current=_same_route("/", active_path), lockup_href=first_href,
+            lockup_label=first_label, lockup_current=bool(lockup_current),
+        )
+        + "</div>"
+        + '<button class="site-menu-toggle" type="button" aria-label="Menu" aria-expanded="false" '
+        'aria-controls="site-nav"><span class="site-menu-toggle__bars" aria-hidden="true"></span></button>'
+        '<nav class="site-nav" id="site-nav" aria-label="Primary"><ul>'
         + "".join(items)
-        + "</ul></nav></div></div></header>"
+        + "</ul></nav></div></header>"
     )
 
 
 def _same_route(menu_href: str, active_path: str) -> bool:
-    """Gatsby's `activeClassName` semantics: exact route match only."""
+    """Exact route match only."""
     return menu_href.strip("/") == (active_path or "").strip("/")
 
 
+#: One stylesheet link (preconnect + display=swap), DESIGN.md section 2.
 _FONTS = (
-    "https://fonts.googleapis.com/css?family=Jersey+25:400|Geist+Mono:400,500"
-    "|Montserrat:400,500,600,900&display=block"
+    "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600"
+    "&family=Geist+Mono:wght@400;500&family=Jersey+10&family=Jersey+25"
+    "&family=Jersey+25+Charted&display=swap"
 )
 
 #: Markup placed after ``</title>`` by ``SiteChrome.head_html``.
 HEAD_HTML = (
-    # Same tags, same order and same `?v=` as the live Gatsby head.
+    '<meta name="color-scheme" content="light dark">\n'
+    "<script>document.documentElement.classList.add('js')</script>\n"
     '<link rel="icon" href="/favicon-32x32.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50" type="image/png"/>\n'
     '<link rel="manifest" href="/manifest.webmanifest" crossorigin="anonymous"/>\n'
-    '<link rel="apple-touch-icon" sizes="48x48" href="/icons/icon-48x48.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
-    '<link rel="apple-touch-icon" sizes="72x72" href="/icons/icon-72x72.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
-    '<link rel="apple-touch-icon" sizes="96x96" href="/icons/icon-96x96.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
-    '<link rel="apple-touch-icon" sizes="144x144" href="/icons/icon-144x144.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
     '<link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
-    '<link rel="apple-touch-icon" sizes="256x256" href="/icons/icon-256x256.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
-    '<link rel="apple-touch-icon" sizes="384x384" href="/icons/icon-384x384.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
     '<link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512x512.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
+    '<link rel="preconnect" href="https://fonts.googleapis.com">\n'
+    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
     f'<link href="{_FONTS}" rel="stylesheet">\n'
 )
 
@@ -166,73 +354,35 @@ def route_for(active_href: str) -> str:
     return "/" + href
 
 
+#: A generated page that lays out its own full-bleed sections starts with this.
+BARE_MARKER = "<!--bare-->"
+
+
 def render_masthead(route: str) -> str:
     return _header_html(route)
 
 
 def render_envelope(*, fragment: str, route: str, scripts: str) -> str:
-    """Everything between ``<body>`` and ``</body>``: `layout.js`, rendered.
+    """Everything between ``<body>`` and ``</body>``.
 
-    The outer ``#___gatsby`` / ``#gatsby-focus-wrapper`` divs are reproduced
-    because production has them; keeping them makes a structure diff against
-    ``Anth.us/public/`` read cleanly.
+    The homepage and every generated page compose their own full-bleed
+    sections (they start with ``BARE_MARKER``); article and platform-product
+    bodies are wrapped in the standard content container.
     """
+    if fragment.startswith(BARE_MARKER):
+        body = fragment[len(BARE_MARKER):]
+    elif route == "/":
+        body = fragment
+    else:
+        body = f'<div class="container page">{fragment}</div>'
     return (
-        '<div id="___gatsby"><div style="outline:none" tabindex="-1" '
-        'id="gatsby-focus-wrapper">\n'
-        '<div class="layout">'
+        '<a class="skip-link" href="#main">Skip to content</a>\n'
         + _header_html(route)
-        + '<div class="wrapper"><main>'
-        + fragment
-        + "</main></div>"
+        + f'\n<main id="main">{body}</main>\n'
         + FOOTER_HTML
-        + "</div>\n"
-        "</div></div>\n" + scripts
+        + "\n"
+        + scripts
     )
-
-
-# --------------------------------------------------------------------------
-# CSS Modules
-# --------------------------------------------------------------------------
-
-_HASHES = POD_ROOT / "css" / "css-module-hashes.json"
-
-
-class _CssModules(dict):
-    """`index.module.css` / `platform.module.css` class names, as Gatsby hashes them.
-
-    Gatsby's css-loader renames every local class to
-    `<file>-module--<localName>--<hash>`. The hash is derived inside webpack and
-    is not reproducible outside it, so the mapping is committed once in
-    `web/css/css-module-hashes.json` -- read here *and* by
-    `bin/build-theme-css.py`, which rewrites the stylesheet with the same
-    values. One source of truth means a class can never exist in the markup
-    and not in the CSS.
-
-    Lookups are `modules["index:listItem"]`. A missing key raises rather than
-    returning a blank class, because a silently classless element is exactly
-    the kind of invisible layout regression this whole module exists to avoid.
-    """
-
-    def __missing__(self, key: str) -> str:
-        raise KeyError(
-            f"No CSS-module class {key!r}. Known keys come from {_HASHES.name}; "
-            "regenerate it with bin/build-theme-css.py --extract-hashes."
-        )
-
-
-_MODULES: _CssModules | None = None
-
-
-def css_modules() -> _CssModules:
-    global _MODULES
-    if _MODULES is None:
-        raw = json.loads(_HASHES.read_text(encoding="utf-8"))
-        _MODULES = _CssModules(
-            {key: f"{key.split(':')[0]}-module--{key.split(':')[1]}--{value}"
-             for key, value in raw.items()}
-        )
-    return _MODULES
 
 
 # --------------------------------------------------------------------------
@@ -483,7 +633,7 @@ DROP_PREFIXES = ("markus-", "papyrus-")
 
 @dataclass(frozen=True)
 class ArticleHeading:
-    """`Anth.us/src/templates/blog-post.jsx`'s `.heading` block."""
+    """The article header: eyebrow (date, tags), title, dek, byline."""
 
     title: str
     date: str = ""
@@ -491,11 +641,25 @@ class ArticleHeading:
     assistants_html: str = ""
     repository: str = ""
     draft: bool = False
+    tags: tuple[str, ...] = ()
+    dek: str = ""
+    pictogram_html: str = ""
 
     def html(self) -> str:
-        parts = [f"<h1>{html.escape(self.title)}</h1>"]
+        parts = []
+        if self.pictogram_html:
+            parts.append(f'<div class="heading__px">{self.pictogram_html}</div>')
+        meta = ""
         if self.date:
-            parts.append(f'<div class="date">{html.escape(self.date)}</div>')
+            meta += f"<time>{html.escape(self.date)}</time>"
+        for tag in self.tags:
+            slug = (tag or "").strip().lower().replace(" ", "-")
+            meta += f'<a class="pill" href="/tags/{html.escape(slug, quote=True)}/">#{html.escape(tag)}</a>'
+        if meta:
+            parts.append(f'<p class="heading__meta">{meta}</p>')
+        parts.append(f"<h1>{html.escape(self.title)}</h1>")
+        if self.dek:
+            parts.append(f'<p class="heading__dek">{html.escape(self.dek)}</p>')
         if self.authors_html:
             parts.append(f'<div class="authors">{self.authors_html}</div>')
         if self.assistants_html:
@@ -509,16 +673,12 @@ class ArticleHeading:
             )
         heading = '<div class="heading">' + "".join(parts) + "</div>"
         if self.draft:
-            # Production renders a diagonal watermark over the whole article
-            # for `state: draft`; `.draft-overlay` in layout.scss does the
-            # work and must be the article's first child.
+            # `.draft-overlay` must be the article's first child.
             heading = (
                 '<div class="draft-overlay"><h1 class="draft-overlay-text">DRAFT'
                 "</h1></div>" + heading
             )
         return heading
-
-
 
 
 def assert_no_markus_classes(html_text: str, where: str) -> None:
@@ -557,26 +717,52 @@ def _joined(entries: list[str], css: str) -> str:
     last = len(entries) - 1
     for index, entry in enumerate(entries):
         out.append(f'<span class="{css}">{_markdown_inline(entry)}</span>')
+        # Some authored entries already begin with "and " ("and the Anthus GPT").
+        next_has_and = index < last and entries[index + 1].lstrip().lower().startswith("and ")
         if index < last - 1:
             out.append(", ")
         elif index == last - 1:
-            out.append(", and " if len(entries) > 2 else " and ")
+            out.append(" " if next_has_and else (", and " if len(entries) > 2 else " and "))
     return "".join(out)
 
 
-#: `src/components/engage-cta.jsx`, rendered; last child of `<article>` for
-#: posts tagged `client-acquisition`.
+#: Closing call to action on posts tagged `client-acquisition`.
 ENGAGE_CTA_HTML = (
-    '<div class="engage-cta-module--box--92c7c">'
-    '<h2 class="engage-cta-module--heading--f8246">We do this for clients, at scale</h2>'
-    '<p class="engage-cta-module--text--60ac0">Anthus has run this kind of loop in '
-    "production for years: reviewers correct the model and say why, the explanation "
-    "becomes policy, and the system gets more trustworthy month over month across "
+    '<aside class="engage-box notch"><h2>We do this for clients, at scale</h2>'
+    "<p>Anthus has run this kind of loop in production for years: reviewers correct the model and say why, "
+    "the explanation becomes policy, and the system gets more trustworthy month over month across "
     "hundreds of scorecards and millions of interactions. Bring us the judgment task "
     "and we&#x27;ll run it on Primus with your reviewers in the loop, and hand you a "
     "scorecard you can inspect after the first month.</p>"
-    '<a class="button" href="/engage/">See how an engagement works</a></div>'
+    '<a class="btn" href="/engage/"><span>See how an engagement works &rarr;</span></a></aside>'
 )
+
+
+def node_pictogram(node) -> str | None:
+    """The `pictogram:` front-matter name for an item, validated.
+
+    An unknown name fails the build rather than rendering nothing.
+    """
+    raw = node.front_matter.get("pictogram")
+    name = str(raw).strip() if raw not in (None, "") else ""
+    if not name:
+        return None
+    if name not in arcade_pictograms.NAMES:
+        raise ValueError(
+            f"{getattr(node, 'source', node)}: unknown pictogram {name!r} in front matter; "
+            f"known names: {', '.join(arcade_pictograms.NAMES)}"
+        )
+    return name
+
+
+def _dek(node) -> str:
+    text = node.excerpt_text.strip()
+    return text if 0 < len(text) <= 320 else ""
+
+
+def _pictogram_html(node) -> str:
+    name = node_pictogram(node)
+    return arcade_pictograms.render(name) if name else ""
 
 
 def article_heading(node) -> ArticleHeading:
@@ -608,4 +794,7 @@ def article_heading(node) -> ArticleHeading:
         assistants_html=assistants_html,
         repository=str(front.get("repository") or ""),
         draft=not node.published,
+        tags=tuple(t for t in node.tags if t != "featured"),
+        dek=_dek(node),
+        pictogram_html=_pictogram_html(node),
     )

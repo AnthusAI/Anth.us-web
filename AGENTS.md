@@ -77,7 +77,7 @@ colspan tables -- crosses it as Papyrus sentinels (`inline_sentinel`,
 `block_sentinel`) and is re-emitted by `FragmentTransform`. Every other page
 (home, listings, posts, tags, platform index, about, ai-solutions, ryan, 404,
 engage, reading, research, decision-models) is **generated HTML** from
-`anthus_pages` / `anthus_page_html` and rendered by calling
+`anthus_pages` (arcade design language, see `web/DESIGN.md`) and rendered by calling
 `markus_shell.render_page` directly, bypassing Markus. The page envelope is
 `SiteChrome` hooks (`render_masthead`, `render_body`, `head_html`,
 `stylesheets`, `asset_root`), with no monkeypatching. A post-pass over
@@ -247,8 +247,14 @@ ANTHUS_SITE_ORIGIN=https://<review-host> \
   `anthus_mdx._convert_image_wrappers` encodes it as `layout="full@figure-cfi"`
   and `anthus_dom.anthus_image_wrap` decodes it. `anthus_layout_sizes` registers
   every combination.
-* **`web/css/anthus-theme.css` is generated** (`bin/build-theme-css.py`); do not
-  edit it by hand. Papyrus copies it to `dist/css/site-theme.css`.
+* **The site stylesheet is hand-written.** `web/css/arcade.css` (the design
+  system, `web/DESIGN.md`) and `web/css/arcade-pictograms.css` (pictogram
+  sprites) are the source of truth: edit them directly. `web/site_css.py`
+  concatenates them; the build stages the result and Papyrus copies it to
+  `dist/css/site-theme.css`, and the projector ships the same bytes.
+  `web/css/anthus-theme.css` (generated from the old Gatsby repo; its generator
+  has been removed) is no longer shipped; do not edit it, and do not
+  expect its hashed CSS-module classes to be styled by the new sheet.
 * **Do not strip tag-shaped prose.** `<N>`, `<arm>`, `<QUERY>` appear in
   sentences as placeholders. `anthus_mdx` only strips names in
   `_KNOWN_HTML_TAGS`; everything else is left for Markus to escape, which is
