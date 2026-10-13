@@ -313,7 +313,7 @@ def _rewrite_internal_links(html: str, *, active_href: str) -> str:
 # Social metadata
 # --------------------------------------------------------------------------
 
-_DEFAULT_COVER = "/assets/site/serverless-ai-software-solutions.png"
+_DEFAULT_COVER = "/assets/site/share-card.png"
 _PAGE_META: dict[str, tuple[str, str]] = {}  # active_href -> (description, image)
 #: active_href -> JSON-LD `Article` object, for published articles only (as live).
 _ARTICLE_LD: dict[str, dict] = {}
