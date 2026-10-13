@@ -1,18 +1,17 @@
 const HTML_CACHE_CONTROL = "public, max-age=0, s-maxage=60, must-revalidate";
 const ASSET_CACHE_CONTROL = "public, max-age=0, s-maxage=31536000";
+const UTF8_SUFFIX = "; charset=utf-8";
 
-const CONTENT_TYPE_BY_STORED_TYPE = {
-  "text/html; charset=utf-8": "text/html",
-  "application/xml": "text/xml",
-  "text/plain; charset=utf-8": "text/plain",
-};
+function previousContentType(stored) {
+  const withoutCharset = stored.endsWith(UTF8_SUFFIX) ? stored.substring(0, stored.length - UTF8_SUFFIX.length) : stored;
+  return withoutCharset === "application/xml" ? "text/xml" : withoutCharset;
+}
 
 function handler(event) {
   const response = event.response;
   const headers = response.headers;
-  const stored = headers["content-type"] ? headers["content-type"].value : "";
-  if (CONTENT_TYPE_BY_STORED_TYPE[stored] !== undefined) {
-    headers["content-type"] = { value: CONTENT_TYPE_BY_STORED_TYPE[stored] };
+  if (headers["content-type"] !== undefined) {
+    headers["content-type"] = { value: previousContentType(headers["content-type"].value) };
   }
   if (response.statusCode !== 200) {
     delete headers["cache-control"];
