@@ -189,7 +189,7 @@ _CASES = (
         "and a bespoke data warehouse and business intelligence system.",
         "In continuous operation since 2007.",
         ("What it was", "What it integrated", "Outcome"),
-        "Operations footnote: when an AWS data center failed, we relocated the system within hours.",
+        "",
     ),
 )
 
