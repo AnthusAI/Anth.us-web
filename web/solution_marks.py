@@ -1,6 +1,7 @@
 """Solution marks: each in-house solution's own logo, ported as a static inline SVG string.
 
-Sources (read-only, ported faithfully; animation is CSS in css/arcade.css, "Solution marks"):
+Sources (read-only, ported faithfully; motion is SMIL here, in SVG user units, so Safari text zoom cannot
+shift it, and web/assets/px-live.js starts and stops it; colour drift is CSS in css/arcade.css, "Solution marks"):
 
 * Cyclotron: the "cycle mark" (``RefreshCwWide``, 42 x 24, 2px round stroke) from the cyclotron package's
   ``trace-ui/src/components/ui/cycle-mark.tsx`` / ``refresh-cw-wide.tsx``. It adapts through ``currentColor``.
@@ -30,9 +31,30 @@ _CYCLOTRON_STATIC = (
     '<path d="M8 16H3v5"/>'
 )
 #: One arrow (a dashed run along the loop plus its riding arrowhead); arrow 2 is arrow 1 turned half a turn.
+#: Every animation here has begin="indefinite": px-live.js begins it when the mark is on screen and ends it
+#: when it is not, so the logo pose is what shows otherwise (no JavaScript, reduced motion, off screen).
+_EASE = "0.42 0 0.58 1"      # CSS ease-in-out
+_LAP = 'dur="4.5s" begin="indefinite" repeatCount="indefinite"'
+_CYCLOTRON_LEN = 93.579      # length of the loop path; the dash pattern 42.789 + 50.79 sums to it
 _CYCLOTRON_ARROW = (
-    f'<path class="sm-cyc-run" d="{_CYCLOTRON_LOOP}"/>'
-    '<path class="sm-cyc-head" d="M-3.536 -3.536L0 0L-3.536 3.536"/>'
+    f'<path class="sm-cyc-run" d="{_CYCLOTRON_LOOP}">'
+    f'<animate attributeName="stroke-dashoffset" values="0;-46.789;-46.789" keyTimes="0;0.35;1" '
+    f'calcMode="spline" keySplines="{_EASE};0 0 1 1" {_LAP}/></path>'
+    '<path class="sm-cyc-head" d="M-3.536 -3.536L0 0L-3.536 3.536">'
+    f'<animateMotion path="{_CYCLOTRON_LOOP}" rotate="auto" keyPoints="{42.6 / _CYCLOTRON_LEN:.4f};'
+    f'{89.4 / _CYCLOTRON_LEN:.4f};{89.4 / _CYCLOTRON_LEN:.4f}" keyTimes="0;0.35;1" calcMode="spline" '
+    f'keySplines="{_EASE};0 0 1 1" {_LAP}/></path>'
+)
+
+_SEVEN = 'dur="7s" begin="indefinite" repeatCount="indefinite" calcMode="spline"'
+#: Chatticus eyes glance (ease-in-out) and blink (CSS "ease"); the lid scales about (14, 14).
+_GAZE = (
+    'values="0 0;0 0;1.4 -0.6;1.4 -0.6;-1.4 0.4;-1.4 0.4;0 0" keyTimes="0;0.18;0.26;0.48;0.58;0.78;1" '
+    + f'keySplines="{";".join([_EASE] * 6)}" {_SEVEN}'
+)
+_BLINK = (
+    'values="1 1;1 1;1 0.1;1 1;1 1;1 0.1;1 1;1 1" keyTimes="0;0.38;0.395;0.41;0.85;0.865;0.88;1" '
+    + f'keySplines="{";".join(["0.25 0.1 0.25 1"] * 7)}" {_SEVEN}'
 )
 
 _PAPYRUS_PLANT = (
@@ -47,9 +69,11 @@ _MARKS: dict[str, tuple[str, str, str]] = {
     "Cyclotron": (
         "0 0 42 24", "sm--cyclotron",
         f'<g class="sm-cyc-static" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" '
-        f'stroke-linejoin="round">{_CYCLOTRON_STATIC}</g>'
+        f'stroke-linejoin="round">{_CYCLOTRON_STATIC}'
+        f'<animate attributeName="opacity" values="0;1" keyTimes="0;0.35" calcMode="discrete" {_LAP}/></g>'
         '<g class="sm-cyc-live" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" '
-        f'stroke-linejoin="round">{_CYCLOTRON_ARROW}<g transform="rotate(180 21 12)">{_CYCLOTRON_ARROW}</g></g>',
+        f'stroke-linejoin="round">{_CYCLOTRON_ARROW}<g transform="rotate(180 21 12)">{_CYCLOTRON_ARROW}</g>'
+        f'<animate attributeName="opacity" values="1;0" keyTimes="0;0.35" calcMode="discrete" {_LAP}/></g>',
     ),
     "Chatticus": (
         "0 0 28 28", "sm--chatticus",
@@ -57,8 +81,10 @@ _MARKS: dict[str, tuple[str, str, str]] = {
         'A8 8 0 0 1 8 12L8 12A8 8 0 0 1 16 4Z"/>'
         '<path class="sm-chat-body" d="M8 8L12 8A8 8 0 0 1 20 16L20 16A8 8 0 0 1 12 24L1.85 24'
         'A1.85 1.85 0 0 1 0 22.15L0 16A8 8 0 0 1 8 8Z"/>'
-        '<g class="sm-chat-eyes"><g class="sm-chat-lids">'
-        '<circle cx="10" cy="14" r="2"/><circle cx="18" cy="14" r="2"/></g></g>',
+        f'<g class="sm-chat-eyes"><animateTransform attributeName="transform" type="translate" {_GAZE}/>'
+        f'<g transform="translate(14 14)"><g class="sm-chat-lids"><animateTransform attributeName="transform" '
+        f'type="scale" {_BLINK}/><g transform="translate(-14 -14)">'
+        '<circle cx="10" cy="14" r="2"/><circle cx="18" cy="14" r="2"/></g></g></g></g>',
     ),
     "Papyrus": (
         "0 0 300 411", "sm--papyrus",
