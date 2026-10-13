@@ -253,7 +253,7 @@ def _footer_html() -> str:
     note = site_env.footer_note()
     products = "".join(
         '<li class="site-footer__product">'
-        f'<a class="site-footer__pname" href="{html.escape(url, quote=True)}" rel="noopener">{solution_marks.mark(name)}{html.escape(name)}</a>'
+        f'<a class="site-footer__pname" href="{html.escape(url, quote=True)}" rel="noopener">{html.escape(name)}{solution_marks.mark(name)}</a>'
         f"<p>{html.escape(line)}</p>"
         + (f'<a class="site-footer__also" href="{page}">On anth.us</a>' if page else "")
         + "</li>"

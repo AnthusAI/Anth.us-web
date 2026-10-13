@@ -868,7 +868,7 @@ article .heading a.btn--ghost { color: var(--ink); }
 .pill--draft { font-family: var(--font-label); font-size: 1rem; letter-spacing: 0.08em; background: var(--pink); color: var(--on-pink); border-color: var(--pink); }
 
 /* ----------------------------------------------------------- Solution marks
-   Each solution's own logo (web/solution_marks.py), small beside its name in the footer's Solutions block (a dark
+   Each solution's own logo (web/solution_marks.py), small to the right of its name in the footer's Solutions block (a dark
    band in both modes, so they follow the footer ink). Chatticus clay and the Primus gradient are the brands' own.
    Animations run only while on screen (.is-live, set by assets/px-live.js) and never under reduced motion. */
 .site-footer__pname { display: inline-flex; align-items: center; gap: 0.7rem; }
