@@ -24,8 +24,8 @@ def _svg_part(html: str) -> str:
 
 class PictogramTests(unittest.TestCase):
     def test_names(self):
-        self.assertEqual(len(ap.NAMES), 13)
-        self.assertEqual(len(set(ap.NAMES)), 13)
+        self.assertEqual(len(ap.NAMES), 15)
+        self.assertEqual(len(set(ap.NAMES)), 15)
 
     def test_every_name_renders_well_formed(self):
         for name in ap.NAMES:
@@ -102,24 +102,22 @@ class PictogramTests(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertLess(len(_svg_part(ap.render(name))), 16000)
 
-    def test_scorecard_pile_and_scoring_share_one_clock(self):
+    def test_scorecard_one_document_per_row_on_one_clock(self):
         f = ap._BUILDERS["scorecard"]()
         html = f.figure()
-        self.assertEqual(len(f.meta["pile"]), len(ap._SC_T))
-        for k, T in enumerate(ap._SC_T):
-            # same keyframe class => the pile card and the first scored row start together
-            self.assertEqual(f.meta["pile"][k], f.meta["row0"][k])
-            i = CSS.index("@keyframes %s{" % f.meta["pile"][k])
-            body = CSS[i:CSS.index("\n", i)]
-            if T:
-                self.assertIn(f"{T}%{{opacity:1}}", body)
-            self.assertIn(f'class="an {f.meta["pile"][k]}"', html)
-        self.assertEqual(html.count(f'class="an {f.meta["pile"][1]}"'), 2)
+        self.assertEqual(len(f.meta["docs"]), len(f.meta["rows"]))
+        self.assertEqual(len(f.meta["rows"]), 6)  # rows scored per loop == documents added
+        for i, t in enumerate(ap._SC_ROWS):
+            self.assertEqual(f.meta["rows"][i], f.meta["docs"][i])  # identical keyframes
+            k = CSS.index("@keyframes %s{" % f.meta["rows"][i])
+            body = CSS[k:CSS.index("\n", k)]
+            self.assertIn(f"{t}%{{opacity:1}}", body)
+            self.assertEqual(html.count(f'class="an {f.meta["rows"][i]}"'), 2)  # row + doc
 
     def test_copy_rules(self):
         banned = {
             "scorecard": [r"\bcards\b"],
-            "relocate": ["never stopped", "no downtime", "never stop"],
+            "relocate": ["never stopped", "no downtime", "never stop", "redundan"],
             "timeline": ["production", "enterprise"],
             "platform-stack": ["RUNTIME", "runtime"],
         }
@@ -133,7 +131,9 @@ class PictogramTests(unittest.TestCase):
         self.assertLess(ps.index("DECISION MODELS"), ps.index("AGENTS"))  # below agents
         rl = ap.render("relocate")
         self.assertIn("DOORS", rl)
-        self.assertIn("redundancy", rl)
+        self.assertNotIn("redundan", rl)
+        self.assertNotIn("Site C", rl)
+        self.assertNotIn("SITE C", rl)
         for lbl in ("2007", "2009", "TODAY"):
             self.assertIn(lbl, ap.render("timeline"))
 
