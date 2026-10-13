@@ -104,16 +104,16 @@ def _logo_a_path() -> str:
     return "".join(out)
 
 
-# One cell of tile padding around the A on every side; NTHUS moves right by one
-# cell so the tile-to-N gap stays the font's own letter gap.
+# One cell of tile padding around the A on every side. The padding eats one cell
+# of the tile-to-N gap, which reads as natural kerning.
 _LOGO_CW, _LOGO_RH = _LOGO_A_WIDTH / 8, _LOGO_CAP / 10
 _LOGO_SVG = (
     f'<svg class="site-logo__svg" viewBox="{-_LOGO_CW:g} {-_LOGO_RH:g} '
-    f'{_LOGO_WIDTH + 2 * _LOGO_CW:g} {_LOGO_CAP + 2 * _LOGO_RH:g}" aria-hidden="true" focusable="false">'
+    f'{_LOGO_WIDTH + _LOGO_CW:g} {_LOGO_CAP + 2 * _LOGO_RH:g}" aria-hidden="true" focusable="false">'
     f'<rect class="site-logo__tile" x="{-_LOGO_CW:g}" y="{-_LOGO_RH:g}" '
     f'width="{_LOGO_A_WIDTH + 2 * _LOGO_CW:g}" height="{_LOGO_CAP + 2 * _LOGO_RH:g}"/>'
     f'<path class="site-logo__a" d="{_logo_a_path()}"/>'
-    f'<path class="site-logo__word" transform="translate({_LOGO_CW:g} 0)" d="{_LOGO_NTHUS}"/></svg>'
+    f'<path class="site-logo__word" d="{_LOGO_NTHUS}"/></svg>'
 )
 
 
@@ -123,7 +123,7 @@ _LOGO_SVG = (
 _LOCKUP_D = "M0 289H66V223H132V157H198V91H264V157H329V223H395V289H461V750H329V618H132V750H0ZM132 486H329V355H264V289H198V355H132ZM601 91H733V750H601ZM1210 552H1342V618H1539V486H1276V421H1210V157H1276V91H1605V157H1671V289H1539V223H1342V355H1605V421H1671V684H1605V750H1276V684H1210ZM1811 157H1877V91H2206V157H2272V684H2206V750H1877V684H1811ZM2074 552H2140V289H2074V223H2008V289H1943V552H2008V618H2074ZM2543 618H2741V750H2412V91H2543ZM3144 552H3210V91H3342V684H3276V750H2947V684H2881V91H3013V552H3079V618H3144ZM3614 223H3482V91H3877V223H3745V750H3614ZM4017 91H4149V750H4017ZM4288 157H4354V91H4684V157H4750V684H4684V750H4354V684H4288ZM4552 552H4618V289H4552V223H4486V289H4420V552H4486V618H4552ZM5153 552H5087V421H5021V750H4889V91H5087V223H5153V355H5219V486H5285V91H5416V750H5219V684H5153ZM5556 552H5688V618H5886V486H5622V421H5556V157H5622V91H5951V157H6017V289H5886V223H5688V355H5951V421H6017V684H5951V750H5622V684H5556Z"
 _LOCKUP_W = 6083
 _LOCKUP_GAP = 307.5  # .25em
-_LOCKUP_X = _LOGO_WIDTH + _LOGO_CW + _LOCKUP_GAP
+_LOCKUP_X = _LOGO_WIDTH + _LOCKUP_GAP
 
 
 def _brand(*, home_current: bool, lockup_href: str, lockup_label: str, lockup_current: bool) -> str:
@@ -138,7 +138,7 @@ def _brand(*, home_current: bool, lockup_href: str, lockup_label: str, lockup_cu
         f'<rect class="site-logo__tile" x="{-_LOGO_CW:g}" y="{-_LOGO_RH:g}" '
         f'width="{_LOGO_A_WIDTH + 2 * _LOGO_CW:g}" height="{_LOGO_CAP + 2 * _LOGO_RH:g}"/>'
         f'<path class="site-logo__a" d="{_logo_a_path()}"/>'
-        f'<path class="site-logo__word" transform="translate({_LOGO_CW:g} 0)" d="{_LOGO_NTHUS}"/></a>'
+        f'<path class="site-logo__word" d="{_LOGO_NTHUS}"/></a>'
         f'<a class="site-brand__lockup" href="{html.escape(lockup_href, quote=True)}"{sol_attr} '
         f'aria-label="{html.escape(lockup_label, quote=True)}">'
         f'<rect class="site-brand__hit" x="{_LOCKUP_X:g}" y="{-_LOGO_RH:g}" width="{_LOCKUP_W:g}" '
