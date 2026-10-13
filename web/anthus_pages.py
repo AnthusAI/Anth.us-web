@@ -33,6 +33,7 @@ previous page copy or the content front matter (DESIGN.md section 8).
 from __future__ import annotations
 
 from html import escape
+from urllib.parse import quote
 
 import anthus_dom
 import arcade_pictograms
@@ -41,9 +42,27 @@ from anthus_urls import FEATURED_COUNT, GRID_SIZE, collection_page_count, tag_sl
 
 BARE = anthus_dom.BARE_MARKER
 
-CONTACT_URL = (
+_FORM_URL = (
     "https://docs.google.com/forms/d/e/"
-    "1FAIpQLSdWlt4KpwPSBHzg3o8fikHcfrzxo5rCcV-0-zDt815NZ1tcyg/viewform?usp=sf_link"
+    "1FAIpQLSdWlt4KpwPSBHzg3o8fikHcfrzxo5rCcV-0-zDt815NZ1tcyg/viewform"
+)
+#: The Contact form's "How could we help you?" question (entry.923803174) is its one
+#: free-text field, so the four qualification questions travel as a prefilled template
+#: in it. The Engage page script fills in the source page and solution from the link.
+FORM_ENTRY = "entry.923803174"
+FORM_TEMPLATE = (
+    "Solution or problem: \n"
+    "Rough volume or scale: \n"
+    "Do you have an AWS account (yes/no): \n"
+    "Timeline: \n"
+)
+
+CONTACT_URL = f"{_FORM_URL}?usp=pp_url&{FORM_ENTRY}=" + quote(FORM_TEMPLATE)
+
+#: One sentence, everywhere ownership is stated.
+OWNERSHIP = (
+    "You own and keep everything we build for you. Our solutions are open source and stay open. Integration code "
+    "specific to your project is yours and private, and anything it depends on in our public projects stays public."
 )
 
 SITE_TITLE = "Anthus"
@@ -292,6 +311,13 @@ def _platform_tile(node: ContentNode) -> str:
     )
 
 
+#: Where each solution came from: (link text, href). Chatticus has no engagement to cite yet.
+_SOLUTION_EVIDENCE = {
+    "Cyclotron": ("Built from Call Criteria", "/blog/call-criteria/"),
+    "Primus": ("Built from Call Criteria", "/blog/call-criteria/"),
+    "Papyrus": ("Anth.us runs on it", "/about/#loop"),
+}
+
 _SOLUTION_DESCRIPTIONS = {
     "Cyclotron": "It starts on day one with a decision model’s general training, refits a small model on each "
                  "correction, and lets an LLM propose better questions that code tests before they go live. "
@@ -308,6 +334,12 @@ _SOLUTION_DESCRIPTIONS = {
 def _product_card(name: str, url: str, line: str, pictogram: str, page: str | None, *, describe: bool = False) -> str:
     also = f'<a href="{_esc(page)}">On anth.us</a>' if page else ""
     desc = f"<p>{escape(_SOLUTION_DESCRIPTIONS[name])}</p>" if describe and name in _SOLUTION_DESCRIPTIONS else ""
+    if describe:
+        # Evidence next to the ask: the engagement the solution came out of, then the way in.
+        evidence = _SOLUTION_EVIDENCE.get(name)
+        if evidence:
+            also += f'<a href="{_esc(evidence[1])}">{escape(evidence[0])}</a>'
+        also += f'<a href="/engage/?solution={quote(name)}">Work with us on {escape(name)}</a>'
     return (
         f'<li class="card notch product card--static{" product--desc" if desc else ""}">'
         f'<div class="card__px">{_px(pictogram)}</div><h3>{escape(name)}</h3><p>{escape(line)}</p>{desc}'
@@ -1253,7 +1285,7 @@ def ai_solutions_page(blog: list[ContentNode], images: ImageIndex | None = None)
         _section(
             "05", "How we work", "From use case to long-term operation",
             lead="We work under specs, tests, staged rollout, and a person who can say no: "
-            "cybernetic development. Every AI application we build follows the same lifecycle.",
+            "cybernetic development. Every AI application we build follows the same lifecycle. " + OWNERSHIP,
             body=stages + '<p class="more"><a href="/blog/cybernetic-development/">How we govern AI-built systems</a></p>',
             stack=True,
         ),
@@ -1552,24 +1584,50 @@ def engage_page() -> str:
         ("A decision point",
          "At the end of the month you have real evidence to decide whether to extend, expand, or stop."),
     ))
+    tiers = '<ul class="grid grid--2">' + _card(
+        "Open source",
+        "<p>The code is public on GitHub. Run it yourself.</p>"
+        "<p>Cyclotron, Chatticus, Papyrus and Primus are open source, and so are the technologies under them: "
+        "Kanbus, Tactus, Biblicus and Auritus. Each solution has its own site with the repository and a quickstart.</p>",
+        extra=_links([("Cyclotron", "https://cyclotron.anth.us/"), ("Primus", "https://primus.anth.us"),
+                      ("Papyrus", "https://p.apyr.us"), ("All the solutions", "/ai-solutions/")]),
+    ) + _card(
+        "We build and run it with you",
+        "<p>We deploy it in your AWS account, integrate it with your systems, and operate it. Then we either keep "
+        "running it with you or hand it off.</p>"
+        "<p>This covers all four solutions, and custom AI work that fits none of them. Tell us the problem and we "
+        "start from there.</p>",
+        extra=_links([("Tell us the problem", "#tell-us")]),
+    ) + "</ul>"
+    checklist = (
+        '<div class="prose"><p>The form has one open question. Answer these four in it, in a line each. Rough answers '
+        "are fine, and “I don’t know yet” is a real answer.</p>"
+        "<ol><li><strong>Which solution or problem?</strong> Cyclotron, Chatticus, Papyrus, Primus, or the problem "
+        "in your own words.</li>"
+        "<li><strong>Rough volume or scale.</strong> Decisions a month, documents, users, whatever fits.</li>"
+        "<li><strong>Do you have an AWS account?</strong> Yes or no. We work in yours.</li>"
+        "<li><strong>Timeline.</strong> When you need something real in front of your team.</li></ol>"
+        f'<div class="btn-row">{_btn("Open the contact form", CONTACT_URL).replace("<a ", "<a data-contact ", 1)}</div></div>'
+    )
     return _page(
         _page_hero(
             "ENGAGE ANTHUS", "How an engagement works",
-            "An engagement means Anthus runs the system for you. Your experts stay in the loop, reviewing the cases that "
-            "matter and shaping what the system learns. When it ends, you own what comes out of it: the model, the "
-            "pipeline, the board, the record.",
+            "Two ways to work with us, and both start with a conversation. Run our open-source solutions yourself, or "
+            "have us build and run them with you in your AWS account. Your experts stay in the loop either way. "
+            + OWNERSHIP,
             art=_px("engagement-path"),
-            actions=_btn("Start an engagement", CONTACT_URL),
+            actions=_btn("Tell us the problem", "#tell-us"),
         ),
+        _section("01", "Two ways in", "Open source, or built and run with you", body=tiers, stack=True),
         _section(
-            "01", "Where we start", "Three examples",
+            "02", "Where we start", "Three examples",
             lead="These are shapes engagements often take. They aren’t a menu. Most real problems don’t fit one box, "
             "and we take on AI solutions work of any kind.",
-            body=examples, stack=True,
+            body=examples, stack=True, band=True,
         ),
-        _section("02", "Month one", "What a first month produces", body=first_month, band=True),
+        _section("03", "Month one", "What a first month produces", body=first_month),
         _section(
-            "03", "Month six", "What month six looks like",
+            "04", "Month six", "What month six looks like",
             body=_prose(
                 "Picture the same judgment task half a year in. Your reviewers still see cases, but only the ones the "
                 "system can’t clear on its own, and that queue has been shrinking each month as the scorecard fills in. "
@@ -1578,14 +1636,36 @@ def engage_page() -> str:
                 "cleared, and the person who approved it. Nothing runs on a guess, and nothing runs on us: the model, "
                 "the pipeline, the board, and the record are yours.",
             ),
+            band=True,
         ),
+        _section("05", "Tell us", "Four things that help us reply", body=checklist, section_id="tell-us"),
         _cta(
             "Bring us the problem.",
             "Tell us the problem, even if it’s half-formed, and we’ll scope the first month together. Anything you "
             "send goes through a short contact form.",
-            label="Start an engagement", href=CONTACT_URL,
-        ),
+            label="Open the contact form", href=CONTACT_URL,
+        ).replace("<a ", "<a data-contact ", 1) + _ENGAGE_SCRIPT,
     )
+
+
+#: Carries where the visitor came from into the form. `/engage/?from=<page>&solution=<name>` is set on the
+#: links that lead here (assets/site-nav.js adds `from`); the form's one free-text question is prefilled with
+#: the four qualification prompts, the solution, and the source page, so each enquiry says what brought it in.
+_ENGAGE_SCRIPT = """<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var from = (q.get('from') || '').slice(0, 120), solution = (q.get('solution') || '').slice(0, 60);
+  if (!from && !solution) return;
+  var text = decodeURIComponent(%s).replace('Solution or problem: ', 'Solution or problem: ' + solution);
+  if (from) text += '(Came from: ' + from + ')';
+  document.querySelectorAll('a[data-contact]').forEach(function (a) {
+    var u = new URL(a.href);
+    u.searchParams.set(%s, text);
+    a.href = u.toString();
+  });
+})();
+</script>"""
+_ENGAGE_SCRIPT = _ENGAGE_SCRIPT % (repr(quote(FORM_TEMPLATE)).replace("'", '"'), repr(FORM_ENTRY).replace("'", '"'))
 
 
 # --------------------------------------------------------------------------
@@ -1617,7 +1697,7 @@ _DECISION_QA = (
     ("Can I own the classifier instead of paying per request forever?",
      "Yes. Once the hosted model is aligned, you can distill it into a small model you serve yourself. A 66-million-"
      "parameter student trained from an aligned Jev system scored 91.2 percent against the human label, above its "
-     "teacher’s 89.0, at 5 to 15 milliseconds an item, with a per-slice ship gate deciding when it was ready.",
+     "teacher’s 89.0, at 5 to 15 milliseconds an item, with a per-slice ship gate deciding when it was ready. " + OWNERSHIP,
      [("Distilling an Aligned Jev System into a Classifier You Own", "/blog/distilling-jev-into-a-classifier/")]),
     ("Can I run this loop myself?",
      'Yes. The loop is open source as <a href="https://cyclotron.anth.us/">Cyclotron</a>, under the MIT license. A '

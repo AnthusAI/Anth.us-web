@@ -28,3 +28,20 @@
     if (window.innerWidth >= 1248) set(false);
   });
 })();
+
+/* Intent from the click: a link to the Engage page carries the page it was clicked on
+ * (`/engage/?from=<page>`), and the Engage page passes it to the contact form. A link may already
+ * name a solution (`?solution=<name>`). */
+(function () {
+  "use strict";
+  if (/^\/engage\//.test(location.pathname)) return;
+  var links = document.querySelectorAll('a[href]');
+  for (var i = 0; i < links.length; i++) {
+    var a = links[i];
+    if (a.origin !== location.origin || !/^\/engage(\/|\/index\.html|\.html)?$/.test(a.pathname)) continue;
+    if (a.search.indexOf("from=") !== -1) continue;
+    var u = new URL(a.href);
+    u.searchParams.set("from", location.pathname);
+    a.href = u.toString();
+  }
+})();
