@@ -182,11 +182,14 @@ _CASES = (
     (
         "Venue Driver",
         "/blog/venue-driver/",
-        "relocate",
-        "Ticketing and reservations backbone for Las Vegas nightlife.",
-        "An AWS data center failed catastrophically.",
-        "We relocated the entire system within hours — ticket scanning never stopped.",
+        "venue-system",
+        "Ticketing, VIP table reservations and guest lists for Las Vegas nightlife.",
+        "A bespoke, serverless, event-driven system (AWS Lambda, Amplify, SQS), operationally mature.",
+        "Integrated with Tao Group’s in-house loyalty system, Madison Square Garden Entertainment’s ServiceNow ITSM, "
+        "and a bespoke data warehouse and business intelligence system.",
         "In continuous operation since 2007.",
+        ("What it was", "What it integrated", "Outcome"),
+        "Operations footnote: when an AWS data center failed, we relocated the system within hours.",
     ),
 )
 
@@ -206,6 +209,13 @@ _STATS = (
 
 
 def _px(name: str) -> str:
+    """Inline pictogram; a name that has not landed yet renders a placeholder frame."""
+    if name not in arcade_pictograms.NAMES:
+        return (
+            f'<figure class="px px--pending" data-px="{_esc(name)}" role="img" aria-label="{_esc(name)} (coming)">'
+            '<svg class="px__svg" viewBox="0 0 128 80" aria-hidden="true"><rect x="1" y="1" width="126" height="78" '
+            'fill="none" class="pd" stroke="currentColor" stroke-dasharray="4 4"/></svg></figure>'
+        )
     return arcade_pictograms.render(name)
 
 
@@ -264,15 +274,17 @@ def _capability_card(title: str, url: str, pictogram: str, body: str) -> str:
     )
 
 
-def _case_card(client, href, pictogram, context, problem, did, outcome) -> str:
+def _case_card(client, href, pictogram, context, problem, did, outcome,
+               labels=("Problem", "What we did", "Outcome"), footnote="") -> str:
+    foot = f'<p class="case__foot">{escape(footnote)}</p>' if footnote else ""
     return (
         '<li class="card notch case card--link">'
         f'<div class="card__px">{_px(pictogram)}</div>'
         f'<h3><a href="{_esc(href)}">{escape(client)}</a></h3>'
         f'<p class="case__ctx">{escape(context)}</p>'
-        f"<dl><div><dt>Problem</dt><dd>{escape(problem)}</dd></div>"
-        f"<div><dt>What we did</dt><dd>{escape(did)}</dd></div>"
-        f'<div><dt>Outcome</dt><dd class="case__out">{escape(outcome)}</dd></div></dl></li>'
+        f"<dl><div><dt>{labels[0]}</dt><dd>{escape(problem)}</dd></div>"
+        f"<div><dt>{labels[1]}</dt><dd>{escape(did)}</dd></div>"
+        f'<div><dt>{labels[2]}</dt><dd class="case__out">{escape(outcome)}</dd></div></dl>{foot}</li>'
     )
 
 
@@ -490,11 +502,12 @@ def _prose(*paragraphs: str) -> str:
 _HIDDEN_TAGS = frozenset({"featured", "solutions", "engagement", "integrations"})
 
 
-def _card_visual(node: ContentNode, images: ImageIndex | None) -> str:
+def _card_visual(node: ContentNode, images: ImageIndex | None, eager: bool = False) -> str:
     """The 16:10 visual slot of a listing card.
 
     A `pictogram:` front-matter name wins (inline, animated, follows light/dark);
-    else the item's preview image; else a first-letter tile so cards still align.
+    else the item's preview image (shown whole, `contain`, unless its aspect is within
+    ~10% of 16:10); else a first-letter tile so cards still align.
     """
     name = anthus_dom.node_pictogram(node)
     if name:
@@ -503,8 +516,10 @@ def _card_visual(node: ContentNode, images: ImageIndex | None) -> str:
     if src:
         size = anthus_dom._dimensions(src)
         dims = f' width="{size[0]}" height="{size[1]}"' if size else ""
+        fit = " acard__vis--cover" if size and abs(size[0] / size[1] / 1.6 - 1) <= 0.10 else ""
+        load = "eager" if eager else "lazy"
         return (
-            f'<div class="acard__vis"><img src="{_esc(src)}" alt="" loading="lazy" decoding="async"{dims}></div>'
+            f'<div class="acard__vis{fit}"><img src="{_esc(src)}" alt="" loading="{load}" decoding="async"{dims}></div>'
         )
     letter = next((c for c in node.title if c.isalnum()), "A").upper()
     return f'<div class="acard__vis acard__vis--letter" aria-hidden="true"><span>{escape(letter)}</span></div>'
@@ -518,6 +533,7 @@ def _text_card(
     display_date: bool = False,
     link: bool = True,
     code: bool = True,
+    eager: bool = False,
 ) -> str:
     """The listing card: visual, mono date + tags, Jersey 25 title, clamped excerpt.
 
@@ -541,7 +557,7 @@ def _text_card(
     foot = '<span class="card__link" aria-hidden="true">Read</span>' if link else ""
     cls = "card--link" if link else "card--static"
     return (
-        f'<li class="card notch acard {cls}">{_card_visual(node, images)}<div class="acard__body">'
+        f'<li class="card notch acard {cls}">{_card_visual(node, images, eager)}<div class="acard__body">'
         f'<p class="acard__meta">{meta}</p>{heading}{excerpt}{extra}{foot}</div></li>'
     )
 
@@ -553,7 +569,9 @@ def _article_card(node: ContentNode, images: ImageIndex | None = None) -> str:
 def _card_grid(nodes: list[ContentNode], images: ImageIndex | None = None, **kw) -> str:
     if not nodes:
         return ""
-    return '<ul class="grid grid--list">' + "".join(_text_card(n, images, **kw) for n in nodes) + "</ul>"
+    return '<ul class="grid grid--list">' + "".join(
+        _text_card(n, images, eager=i < 3, **kw) for i, n in enumerate(nodes)
+    ) + "</ul>"
 
 
 # --------------------------------------------------------------------------
@@ -911,16 +929,24 @@ _HISTORY = (
 )
 
 _HELD_UP = (
+    ("What it was",
+     "A bespoke ticketing, VIP table reservation and guest list system: serverless (AWS Lambda and Amplify), "
+     "event-driven (SQS queues), and operationally mature."),
+    ("What it integrated",
+     "Tao Group’s in-house loyalty system, Madison Square Garden Entertainment’s ITSM (ServiceNow), and a bespoke "
+     "data warehouse and business intelligence system."),
     ("Never breached",
      'The hackers never got us, despite being a <a href="https://twitter.com/RyanAlynPorter/status/890982980721790976">'
      "prime target</a>."),
-    ("A data center failed",
-     "When a catastrophic failure struck an entire AWS data center, we relocated the entire system to a new one "
-     "within hours. It was briefly down and back up before tickets needed scanning at the doors, so ticket "
-     "scanning at nightclubs proceeded without a hitch. Afterwards we added redundancy to improve high availability."),
     ("Everything else",
      "Massive DDoS attacks, primary database server failures, silent failures in third-party systems, and "
      "everything else you could imagine. We always kept the revenue flowing."),
+)
+
+_OPS_FOOTNOTE = (
+    "When a catastrophic failure struck an entire AWS data center, we relocated the entire system to a new one "
+    "within hours. It was briefly down and back up before tickets needed scanning at the doors, so ticket "
+    "scanning at nightclubs proceeded without a hitch. Afterwards we added redundancy to improve high availability."
 )
 
 _VALUES = (
@@ -1053,7 +1079,9 @@ def about_page() -> str:
         ),
         _section("02", "Track record", "What held up",
                  lead="An impeccable record in reliability and security, kept through every technology shift: cloud computing, serverless, and now AI.",
-                 body=held, band=True),
+                 body=held + '<aside class="opsnote"><div class="opsnote__px">' + _px("relocate") + "</div>"
+                 '<div><p class="opsnote__h">Operations footnote</p><p>' + _OPS_FOOTNOTE + "</p></div></aside>",
+                 band=True),
         _section(
             "03", "Mission", "What we’re here to do",
             body=(
