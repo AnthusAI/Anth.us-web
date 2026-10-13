@@ -1,8 +1,8 @@
 /* px-live: run pictogram animations only while on screen and the tab is visible.
- * Adds/removes .is-live on every .px figure. Vanilla, no deps, safe with defer. */
+ * Adds/removes .is-live on every .px figure and .sm solution mark. Vanilla, no deps, safe with defer. */
 (function () {
   function init() {
-    var figs = [].slice.call(document.querySelectorAll('.px'));
+    var figs = [].slice.call(document.querySelectorAll('.px, .sm'));
     if (!figs.length) return;
     if (!('IntersectionObserver' in window)) {
       figs.forEach(function (f) { f.classList.add('is-live'); });

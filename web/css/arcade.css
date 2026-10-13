@@ -866,3 +866,49 @@ article .heading a.btn--ghost { color: var(--ink); }
 .drafts-review { padding-block: var(--section-space); background: var(--panel); border-top: 1px dashed var(--pink); }
 .drafts-review > .container > p:not(.eyebrow) { color: var(--ink-2); margin: 0.75rem 0 clamp(1.5rem, 2.5vw, 2.5rem); }
 .pill--draft { font-family: var(--font-label); font-size: 1rem; letter-spacing: 0.08em; background: var(--pink); color: var(--on-pink); border-color: var(--pink); }
+
+/* ----------------------------------------------------------- Solution marks
+   Each solution's own logo (web/solution_marks.py), small to the right of its name in the footer's Solutions block (a dark
+   band in both modes, so they follow the footer ink). Chatticus clay and the Primus gradient are the brands' own.
+   Animations run only while on screen (.is-live, set by assets/px-live.js) and never under reduced motion. */
+.site-footer__pname { display: inline-flex; align-items: center; gap: 0.7rem; }
+.sm { flex: none; height: 2rem; width: auto; color: var(--footer-ink); overflow: visible; }
+.sm--cyclotron { width: 3.5rem; height: auto; }
+.sm--papyrus { width: 1.5rem; height: auto; }
+.sm--chatticus, .sm--primus { width: 2rem; }
+
+/* Cyclotron: arrows ride the racetrack. At rest the logo pose; the animated loop pose matches it exactly. */
+.sm-cyc-live { display: none; }
+.sm--cyclotron.is-live .sm-cyc-live { display: inline; animation: sm-cyc-show 4.5s step-end infinite; }
+.sm--cyclotron.is-live .sm-cyc-static { animation: sm-cyc-hide 4.5s step-end infinite; }
+/* The logo pose between laps, the loop pose (arrowheads riding the path) only while the arrows move. */
+@keyframes sm-cyc-show { 0% { opacity: 1; } 35% { opacity: 0; } }
+@keyframes sm-cyc-hide { 0% { opacity: 0; } 35% { opacity: 1; } }
+.sm-cyc-run { stroke-dasharray: 42.789 50.79; animation: sm-cyc-run 4.5s ease-in-out infinite; }
+.sm-cyc-head { offset-path: path("M3 12a9 9 0 0 1 9-9h18a9.75 9.75 0 0 1 6.74 2.74L39 8V12a9 9 0 0 1-9 9H12a9.75 9.75 0 0 1-6.74-2.74L3 16Z"); offset-rotate: auto; offset-distance: 42.6px; animation: sm-cyc-head 4.5s ease-in-out infinite; }
+@keyframes sm-cyc-run { 0% { stroke-dashoffset: 0; } 35%, 100% { stroke-dashoffset: -46.789; } }
+@keyframes sm-cyc-head { 0% { offset-distance: 42.6px; } 35%, 100% { offset-distance: 89.4px; } }
+
+/* Chatticus: clay body and paper eyes (the brand's), shadow bubble from the site's light/dark pair. Eyes glance and blink. */
+.sm-chat-shadow { fill: #6f6c58; } /* the Chatticus dark-surface shadow bubble, lifted to read on the footer */
+.sm-chat-body { fill: #ef6a47; }
+.sm-chat-eyes { fill: #f2efe7; }
+.sm--chatticus.is-live .sm-chat-eyes { animation: sm-chat-gaze 7s ease-in-out infinite; }
+.sm--chatticus.is-live .sm-chat-lids { transform-box: view-box; transform-origin: 14px 14px; animation: sm-chat-blink 7s infinite; }
+@keyframes sm-chat-gaze { 0%, 18%, 100% { transform: translate(0, 0); } 26%, 48% { transform: translate(1.4px, -0.6px); } 58%, 78% { transform: translate(-1.4px, 0.4px); } }
+@keyframes sm-chat-blink { 0%, 38%, 41%, 100% { transform: scaleY(1); } 39.5% { transform: scaleY(0.1); } 85%, 88% { transform: scaleY(1); } 86.5% { transform: scaleY(0.1); } }
+
+/* Primus: the grid drifts through the brand gradient (the original takes 80s a lap; this is a small mark). */
+.sm-pri-p { fill: var(--footer-bg); fill-opacity: 0.85; }
+.sm-pri-cell { fill: #0d74ce; }
+.sm-pri-c1 { fill: #5eb1ef; } .sm-pri-c2 { fill: #0d74ce; } .sm-pri-c3 { fill: #7a4fc0; } .sm-pri-c4 { fill: #c2298a; }
+.sm--primus.is-live .sm-pri-cell { animation: sm-pri-drift 14s linear infinite; }
+.sm--primus.is-live .sm-pri-c1 { animation-delay: 0s; } .sm--primus.is-live .sm-pri-c2 { animation-delay: -3.5s; }
+.sm--primus.is-live .sm-pri-c3 { animation-delay: -7s; } .sm--primus.is-live .sm-pri-c4 { animation-delay: -10.5s; }
+@keyframes sm-pri-drift { 0%, 100% { fill: #5eb1ef; } 12% { fill: #0d74ce; } 55% { fill: #c2298a; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .sm-cyc-live { display: none !important; }
+  .sm-cyc-static { display: inline !important; }
+  .sm--chatticus .sm-chat-eyes, .sm--chatticus .sm-chat-lids, .sm--primus .sm-pri-cell { animation: none !important; }
+}
