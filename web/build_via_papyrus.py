@@ -477,13 +477,13 @@ def generate_pages(collections: Collections, images: ImageIndex) -> None:
     _generated(
         "ai-solutions.html",
         _page_title(meta["/ai-solutions/"]["title"]),
-        pages.ai_solutions_page(collections.blog),
+        pages.ai_solutions_page(collections.blog, images),
         meta_key="/ai-solutions/",
     )
     _generated(
         "ryan.html",
         _page_title(meta["/ryan/"]["title"]),
-        pages.ryan_page(collections.solutions),
+        pages.ryan_page(collections.solutions, images),
         meta_key="/ryan/",
     )
     _generated(
