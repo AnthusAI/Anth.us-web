@@ -876,6 +876,12 @@ article .heading a.btn--ghost { color: var(--ink); }
 .sm--cyclotron { width: 3.5rem; height: auto; }
 .sm--papyrus { width: 1.5rem; height: auto; }
 .sm--chatticus, .sm--primus { width: 2rem; }
+/* The same marks to the right of the name on the solution cards (light or dark page, so page ink). */
+.product__name { display: flex; align-items: center; gap: 0.6rem; }
+.product__name .sm { color: var(--ink); height: 1.6rem; }
+.product__name .sm--cyclotron { width: 2.8rem; height: auto; }
+.product__name .sm--papyrus { width: 1.2rem; height: auto; }
+.product__name .sm--chatticus, .product__name .sm--primus { width: 1.6rem; }
 
 /* Cyclotron: arrows ride the racetrack. At rest the logo pose; the animated loop pose matches it exactly. */
 .sm-cyc-live { display: none; }
