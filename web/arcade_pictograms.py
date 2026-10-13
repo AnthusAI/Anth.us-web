@@ -48,6 +48,7 @@ NAMES: tuple[str, ...] = (
     "chat-room",
     "page-audio",
     "venue-system",
+    "newsroom",
 )
 
 CSS_BEGIN = "/* BEGIN GENERATED KEYFRAMES */"
@@ -915,12 +916,88 @@ def venue_system() -> Fig:
     return f
 
 
+_NS = [  # item shapes by stage: signal, assignment, packet, draft
+    ["#####"] * 5,
+    ["#####", "#...#", "#...#", "#...#", "#####"],
+    ["#####", ".....", "#####", ".....", "#####"],
+    ["#####", "#...#", "#.#.#", "#...#", "#.#.#", "#####"],
+]
+
+
+def newsroom() -> Fig:
+    f = Fig(
+        "newsroom", "nr", 128, 92,
+        "Animated diagram of an automated newsroom built around a beat. Signal blocks come "
+        "from the beat and move through four stages, signal, assign, packet and draft, "
+        "carried by small blue agent sprites. The block changes shape at each stage. After "
+        "the draft stage, a human editor stands in front of the published box. One draft "
+        "passes the editor, who marks it with a check, and reaches published. A second "
+        "draft is held back and marked with a cross.",
+        "Agents watch the beat, assign, report and draft. A person, the executive editor, "
+        "approves each item before it publishes.",
+        [("check", "Approved"), ("cross", "Held"), ("robot", "Agent"), ("person", "Editor")],
+        L=12, t0=-9.0)
+    R1, R2 = 12, 60                  # box tops (20 tall)
+    X = (2, 48, 94)
+    names = (("BEAT", "SIGNAL", "ASSIGN"), ("PACKET", "DRAFT", "PUBLISHED"))
+    # tracks (centre of the item row is y0 + 5.5)
+    f.add(G("d", R(34, R1 + 4, 14, 3), R(80, R1 + 4, 14, 3), R(34, R2 + 4, 14, 3),
+            R(80, R2 + 4, 14, 3), R(109, 32, 3, 14), R(17, 45, 95, 3), R(17, 48, 3, 12),
+            R(80, 47, 0, 0)))
+    f.add(bmp(ARROW_R, 40, R1 + 3, "k"), bmp(ARROW_R, 86, R1 + 3, "k"),
+          bmp(ARROW_R, 40, R2 + 3, "k"), bmp(ARROW_D, 16, 51, "k"))
+    for row, y0 in enumerate((R1, R2)):
+        for c in range(3):
+            x = X[c]
+            f.add(R(x, y0, 32, 20, "g"), box(x, y0, 32, 20, "k"),
+                  f.T(x + 16, y0 - 3 if row == 0 else y0 + 28, names[row][c], anchor="middle"))
+            if (row, c) not in ((0, 0), (1, 2)):
+                f.add(bmp(ROBOT_C, x + 3, y0 + 11, "b"))
+    f.add(G("d", *[R(6 + 7 * k, R1 + 11, 5, 5) for k in range(3)]))      # beat signals
+    f.add(bmp(PERSON, 83, 69, "k"), f.T(86, 90, "EDITOR", anchor="middle"))
+    # item paths: (kind, duration %, x, y); item top-left, row y = y0 + 3
+    ya, yb, yz = R1 + 3, R2 + 3, 44
+    steps = [("m", 7, 62, ya), ("h", 3), ("m", 7, 108, ya), ("h", 3), ("m", 5, 108, yz),
+             ("m", 12, 16, yz), ("m", 3, 16, yb), ("h", 3), ("m", 7, 62, yb), ("h", 3)]
+    def build(t0, ending):
+        t, x, y = t0, 16, ya
+        pts, holds = [(0, x, y), (t, x, y)], []
+        for st in steps + ending:
+            t += st[1]
+            if st[0] == "m":
+                x, y = st[2], st[3]
+            else:
+                holds.append(t)
+            pts.append((t, x, y))
+        return pts, holds
+    # A passes the editor and is published; B is held back
+    ptsA, hA = build(2, [("m", 8, 108, yb)])
+    ptsB, hB = build(30, [("m", 3, 73, yb)])
+    for pts, holds, pose, last in ((ptsA, hA, (108, yb), 3), (ptsB, hB, (73, yb), 3)):
+        shapes = ""
+        sw = [holds[0], holds[1], holds[2]]
+        for k in range(4):
+            tg = []
+            if k > 0:
+                tg.append((sw[k - 1], 1))
+            if k < 3:
+                tg.append((sw[k], 0))
+            init = 1 if k == 0 else 0
+            shapes += f.A(bmp(_NS[k], 0, 0, "b"), vis=(init, tg), show=(k == last))
+        f.add(f.A(shapes, pose, mv=pts))
+    tA = ptsA[-1][0] - 8 + round(8 * (84 - 62) / 46)
+    tB = ptsB[-1][0]
+    f.add(f.A(bmp(CHECK, 84, 54, "b"), vis=(0, [(tA, 1), (tA + 18, 0)]), show=True))
+    f.add(f.A(bmp(CROSS, 73, 53, "p"), vis=(0, [(tB, 1)]), show=True))
+    return f
+
+
 _BUILDERS = {
     "hero-loop": hero_loop, "knowledge-base": knowledge_base, "self-aligning": self_aligning,
     "agent-harness": agent_harness, "confidence-gate": confidence_gate, "scorecard": scorecard,
     "relocate": relocate, "platform-stack": platform_stack, "engagement-path": engagement_path,
     "verdict-meter": verdict_meter, "leaderboard": leaderboard, "timeline": timeline,
-    "lost-sprite": lost_sprite, "chat-room": chat_room, "page-audio": page_audio, "venue-system": venue_system,
+    "lost-sprite": lost_sprite, "chat-room": chat_room, "page-audio": page_audio, "venue-system": venue_system, "newsroom": newsroom,
 }
 
 
