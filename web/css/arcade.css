@@ -438,6 +438,18 @@ main { display: block; }
 .prose-block { max-width: 62ch; }
 .prose-block p { color: var(--ink); }
 
+/* Product cards (pictogram cards: never more than two columns) */
+.grid--products { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 40rem) { .grid--products { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.product h3 { font-size: var(--step-4); line-height: 0.95; }
+@supports (grid-template-rows: subgrid) {
+  .grid--products > .product { grid-row: span 4; display: grid; grid-template-rows: subgrid; gap: 0.9rem; align-content: start; }
+}
+.supporting { margin: clamp(1.5rem, 2.5vw, 2.5rem) 0 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem 1.25rem; }
+.supporting strong { font-family: var(--font-label); font-weight: 400; letter-spacing: 0.08em; text-transform: uppercase; font-size: 1.2rem; color: var(--ink-2); }
+.supporting a { font-family: var(--font-display); font-size: 1.6rem; color: var(--ink); text-decoration: none; }
+.supporting a:hover { color: var(--pink-deep); text-decoration: underline; text-underline-offset: 4px; }
+
 /* Platform tiles */
 .tile { padding: 1.25rem 1.4rem 1.4rem; gap: 0.5rem; }
 .tile h3 { font-size: calc(var(--step-3) * 0.95); }
@@ -483,6 +495,16 @@ main { display: block; }
 .site-footer__brand { margin-bottom: 2.5rem; max-width: 36rem; }
 .site-footer__brand .site-logo { color: var(--footer-ink); margin-bottom: 1rem; --logo-tile: #ff57b4; --logo-glyph: #ffffff; }
 .site-footer__brand p { color: var(--footer-ink-2); margin: 0; }
+.site-footer__products { margin-bottom: 3rem; padding-bottom: 2.5rem; border-bottom: 1px solid var(--footer-line); }
+.site-footer__products > h2 { font-size: 1.25rem; margin-bottom: 1.25rem; color: var(--footer-ink-2); }
+.site-footer__plist { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 1.75rem 2rem !important; }
+.site-footer__product p { margin: 0.25rem 0 0.5rem; color: var(--footer-ink-2); font-size: 0.93rem; line-height: 1.45; }
+.site-footer__product .site-footer__pname { font-family: var(--font-display); font-size: 2rem; line-height: 1; letter-spacing: 0.02em; text-decoration: none; }
+.site-footer__also { font-family: var(--font-label); font-size: 1.1rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--footer-ink-2) !important; }
+.site-footer__also::after { content: " \2192"; }
+.site-footer__support { margin-top: 2rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem 1.5rem; }
+.site-footer__support h3 { font-family: var(--font-label); font-weight: 400; font-size: 1.15rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--footer-ink-2); margin: 0; }
+.site-footer__support ul { display: flex !important; flex-wrap: wrap; gap: 0.4rem 1.5rem !important; }
 .site-footer__cols { display: grid; gap: 2rem 2.5rem; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); }
 .site-footer h2 { font-family: var(--font-label); font-size: 1.25rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--footer-ink-2); margin: 0 0 0.9rem; line-height: 1; }
 .site-footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
@@ -795,6 +817,11 @@ article .heading .authors { font-size: 0.9rem; }
   .grid--caps > .card > p { align-self: start; }
   .grid--2 > .case { grid-row: span 4; display: grid; grid-template-rows: subgrid; gap: 0.9rem; align-content: start; }
 }
+
+/* A pictogram never fills a wide viewport: it sits beside text in a column, capped. */
+figure.px { max-inline-size: 36rem; margin-inline: auto; }
+.hero__art figure.px, .heading__px figure.px { max-inline-size: 52rem; }
+.acard__vis--px figure.px { max-inline-size: none; margin: 0; }
 
 /* Buttons and pills inside article headers keep their own colours. */
 article .heading a.btn { color: var(--on-pink); text-decoration: none; }
