@@ -50,101 +50,178 @@ POD_ROOT = Path(__file__).resolve().parent
 
 SITE_TITLE = "Anthus"
 
-# gatsby-config.mjs siteMetadata.menuLinks, in order. These are the production
-# route shapes; `build_via_papyrus._rewrite_internal_links` maps them to this
-# build's static paths, so the chrome and the content go through one mapper.
+# Primary navigation. Hrefs are production-shaped ("/blog/" is the articles
+# index); `build_via_papyrus._rewrite_internal_links` maps them to this build's
+# static paths, so the chrome and the content go through one mapper. The third
+# element is a one-line description (kept for the registry in anthus_pages).
 MENU_LINKS = (
-    ("AI Solutions", "/ai-solutions/", "What we build and run for clients, with the case studies."),
+    ("Solutions", "/ai-solutions/", "What we build and run for clients, with the case studies."),
     ("Decision Models", "/decision-models/", "Aligning Jev and other decision models to your data."),
     ("Platform", "/platform/", "The components behind the work: Primus, Kanbus, and the rest."),
     ("Research", "/research/", "Experiments on how decision models behave, with the numbers."),
     ("Benchmarks", "/benchmarks/", "Public leaderboards for decision models: bias and reasoning depth."),
-    ("Reading List", "/reading/", "Papers and books we keep coming back to, one note each."),
-    ("About", "/about/", "Who we are, and the track record since 2007."),
     ("Articles", "/blog/", "Long-form pieces on classifiers, agents, and the economics of AI."),
-    ("Posts", "/posts/", "Short takes on what shipped this week."),
+    ("About", "/about/", "Who we are, and the track record since 2007."),
+)
+CTA_LINK = ("Start a project", "/engage/")
+
+# The pixel "A" mark: 6x6 cells, drawn as rects (DESIGN.md section 5).
+_LOGO_CELLS = ("..XX..", ".X..X.", "X....X", "XXXXXX", "X....X", "X....X")
+_LOGO_MARK = (
+    '<span class="site-logo__mark"><svg viewBox="0 0 6 6" aria-hidden="true" focusable="false">'
+    + "".join(
+        f'<rect x="{x}" y="{y}" width="1" height="1"/>'
+        for y, row in enumerate(_LOGO_CELLS)
+        for x, cell in enumerate(row)
+        if cell == "X"
+    )
+    + "</svg></span>"
 )
 
-# The real `anthus-footer` React component's rendered output, captured from
-# `Anth.us/public/posts/index.html`. It is styled entirely with inline
-# `style=` attributes (no classes, no stylesheet), which is precisely why it
-# can be shipped as static markup and still be pixel-identical: there is no
-# CSS to miss. The only edit is the logo, where `gatsby-plugin-image`'s
-# placeholder/<picture> stack is replaced by the plain `<img>` this build
-# serves. Regenerate by re-capturing from a production page if the component
-# is ever updated upstream (github:AnthusAI/anthus-footer).
-_FOOTER_SOURCE = POD_ROOT / "anthus_footer.html"
 
-# Staging note: text and on/off decision live in site_env (PPY-f1f0a8).
+def _logo(*, current: bool = False) -> str:
+    attrs = ' aria-current="page"' if current else ""
+    return (
+        f'<a class="site-logo" href="/"{attrs} aria-label="Anthus home">'
+        f'{_LOGO_MARK}<span class="site-logo__word">ANTHUS</span></a>'
+    )
+
+
+# Footer columns: (heading, ((label, href, external), ...)).
+FOOTER_COLUMNS = (
+    (
+        "Company",
+        (
+            ("About", "/about/", False),
+            ("Ryan Porter", "/ryan/", False),
+            ("Start a project", "/engage/", False),
+            (
+                "Contact",
+                "https://docs.google.com/forms/d/e/"
+                "1FAIpQLSdWlt4KpwPSBHzg3o8fikHcfrzxo5rCcV-0-zDt815NZ1tcyg/viewform?usp=sf_link",
+                True,
+            ),
+        ),
+    ),
+    (
+        "Work",
+        (
+            ("Solutions", "/ai-solutions/", False),
+            ("Decision Models", "/decision-models/", False),
+            ("Benchmarks", "/benchmarks/", False),
+        ),
+    ),
+    (
+        "Platform",
+        (
+            ("Overview", "/platform/", False),
+            ("Primus", "https://primus.anth.us/", True),
+            ("Tactus", "https://tactus.anth.us/", True),
+            ("Korporus", "https://korpor.us/", True),
+            ("Biblicus", "https://github.com/AnthusAI/Biblicus", True),
+            ("Babulus", "https://babul.us/", True),
+            ("Kanbus", "https://kanb.us/", True),
+            ("Caducus", "https://caduc.us/", True),
+        ),
+    ),
+    (
+        "Writing",
+        (
+            ("Articles", "/blog/", False),
+            ("Research", "/research/", False),
+            ("Reading List", "/reading/", False),
+            ("Posts", "/posts/", False),
+            ("Tags", "/tags/", False),
+        ),
+    ),
+    (
+        "Elsewhere",
+        (
+            ("GitHub", "https://github.com/AnthusAI", True),
+            ("LinkedIn", "https://www.linkedin.com/in/ryanalynporter/", True),
+            ("Discord", "https://discord.gg/uStyWraJ2M", True),
+        ),
+    ),
+)
+
+
+def _footer_link(label: str, href: str, external: bool) -> str:
+    rel = ' target="_blank" rel="noreferrer"' if external else ""
+    return f'<li><a href="{html.escape(href, quote=True)}"{rel}>{html.escape(label)}</a></li>'
 
 
 def _footer_html() -> str:
-    markup = _FOOTER_SOURCE.read_text(encoding="utf-8").strip()
-    closing = "</footer>"
-    if not markup.endswith(closing):
-        raise RuntimeError(f"{_FOOTER_SOURCE} does not end with </footer>")
-    return markup[: -len(closing)] + site_env.footer_note() + closing
+    columns = "".join(
+        f'<div><h2>{html.escape(title)}</h2><ul>'
+        + "".join(_footer_link(*item) for item in items)
+        + "</ul></div>"
+        for title, items in FOOTER_COLUMNS
+    )
+    note = site_env.footer_note()
+    return (
+        '<footer class="site-footer"><div class="container site-footer__inner">'
+        '<div class="site-footer__brand">'
+        + _logo()
+        + "<p>Anthus builds AI-native systems with durable procedures, operational "
+        "guardrails, and reusable platform components.</p></div>"
+        f'<nav class="site-footer__cols" aria-label="Footer">{columns}</nav>'
+        + (f'<div class="site-footer__note">{note}</div>' if note else "")
+        + "</div></footer>"
+    )
 
 
 FOOTER_HTML = _footer_html()
 
 
 def _header_html(active_path: str) -> str:
-    """`Anth.us/src/components/header.js`, rendered.
+    """Sticky site header: logo, primary nav, and the START A PROJECT button.
 
-    `priority-plus` is initialised against `ul.js-p-target` by
-    `assets/site-nav.js`; the server-rendered markup is a plain list, exactly
-    as in production, so the nav works with JavaScript disabled.
+    The nav is a plain list, so it works with JavaScript disabled; below 60rem
+    `assets/site-nav.js` turns it into a disclosure behind a MENU button.
     """
     items = []
-    for label, href, description in MENU_LINKS:
-        attrs = f'href="{html.escape(href, quote=True)}"'
-        if _same_route(href, active_path):
-            # Gatsby's <Link activeClassName="active"> on an exact route match.
-            attrs = f'aria-current="page" class="active" {attrs}'
-        items.append(
-            f"<li><a {attrs}>"
-            f'<span class="menu-title">{html.escape(label)}</span>'
-            f'<span class="menu-subtitle">{html.escape(description)}</span></a></li>'
-        )
-    home = _same_route("/", active_path)
-    logo = (
-        '<a aria-current="page" class="logo active" href="/">Anthus&nbsp;</a>'
-        if home
-        else '<a class="logo" href="/">Anthus&nbsp;</a>'
+    for label, href, _description in MENU_LINKS:
+        current = ' aria-current="page"' if _same_route(href, active_path) else ""
+        items.append(f'<li><a href="{html.escape(href, quote=True)}"{current}>{html.escape(label)}</a></li>')
+    cta_label, cta_href = CTA_LINK
+    items.append(
+        f'<li><a class="btn btn--sm" href="{cta_href}"><span>{html.escape(cta_label.upper())} '
+        "&rarr;</span></a></li>"
     )
     return (
-        "<header><div class=\"content\">"
-        + logo
-        + '<div class="menu"><nav><ul class="js-p-target">'
+        '<header class="site-header" data-open="false"><div class="container site-header__inner">'
+        + _logo(current=_same_route("/", active_path))
+        + '<button class="site-menu-toggle" type="button" aria-expanded="false" '
+        'aria-controls="site-nav"><span class="site-menu-toggle__bars" aria-hidden="true"></span>'
+        '<span class="site-menu-toggle__label">Menu</span></button>'
+        '<nav class="site-nav" id="site-nav" aria-label="Primary"><ul>'
         + "".join(items)
-        + "</ul></nav></div></div></header>"
+        + "</ul></nav></div></header>"
     )
 
 
 def _same_route(menu_href: str, active_path: str) -> bool:
-    """Gatsby's `activeClassName` semantics: exact route match only."""
+    """Exact route match only."""
     return menu_href.strip("/") == (active_path or "").strip("/")
 
 
+#: One stylesheet link (preconnect + display=swap), DESIGN.md section 2.
 _FONTS = (
-    "https://fonts.googleapis.com/css?family=Jersey+25:400|Geist+Mono:400,500"
-    "|Montserrat:400,500,600,900&display=block"
+    "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600"
+    "&family=Geist+Mono:wght@400;500&family=Jersey+10&family=Jersey+25"
+    "&family=Jersey+25+Charted&display=swap"
 )
 
 #: Markup placed after ``</title>`` by ``SiteChrome.head_html``.
 HEAD_HTML = (
-    # Same tags, same order and same `?v=` as the live Gatsby head.
+    '<meta name="color-scheme" content="light dark">\n'
+    "<script>document.documentElement.classList.add('js')</script>\n"
     '<link rel="icon" href="/favicon-32x32.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50" type="image/png"/>\n'
     '<link rel="manifest" href="/manifest.webmanifest" crossorigin="anonymous"/>\n'
-    '<link rel="apple-touch-icon" sizes="48x48" href="/icons/icon-48x48.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
-    '<link rel="apple-touch-icon" sizes="72x72" href="/icons/icon-72x72.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
-    '<link rel="apple-touch-icon" sizes="96x96" href="/icons/icon-96x96.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
-    '<link rel="apple-touch-icon" sizes="144x144" href="/icons/icon-144x144.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
     '<link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
-    '<link rel="apple-touch-icon" sizes="256x256" href="/icons/icon-256x256.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
-    '<link rel="apple-touch-icon" sizes="384x384" href="/icons/icon-384x384.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
     '<link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512x512.png?v=cb47134a6f0f3e5ab08e7c145f2bbe50"/>\n'
+    '<link rel="preconnect" href="https://fonts.googleapis.com">\n'
+    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
     f'<link href="{_FONTS}" rel="stylesheet">\n'
 )
 
@@ -171,23 +248,19 @@ def render_masthead(route: str) -> str:
 
 
 def render_envelope(*, fragment: str, route: str, scripts: str) -> str:
-    """Everything between ``<body>`` and ``</body>``: `layout.js`, rendered.
+    """Everything between ``<body>`` and ``</body>``.
 
-    The outer ``#___gatsby`` / ``#gatsby-focus-wrapper`` divs are reproduced
-    because production has them; keeping them makes a structure diff against
-    ``Anth.us/public/`` read cleanly.
+    The homepage composes its own full-bleed sections; every other page is
+    wrapped in the standard content container.
     """
+    body = fragment if route == "/" else f'<div class="container page">{fragment}</div>'
     return (
-        '<div id="___gatsby"><div style="outline:none" tabindex="-1" '
-        'id="gatsby-focus-wrapper">\n'
-        '<div class="layout">'
+        '<a class="skip-link" href="#main">Skip to content</a>\n'
         + _header_html(route)
-        + '<div class="wrapper"><main>'
-        + fragment
-        + "</main></div>"
+        + f'\n<main id="main">{body}</main>\n'
         + FOOTER_HTML
-        + "</div>\n"
-        "</div></div>\n" + scripts
+        + "\n"
+        + scripts
     )
 
 

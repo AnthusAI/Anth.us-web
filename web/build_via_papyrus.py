@@ -77,6 +77,7 @@ import anthus_dom as dom  # noqa: E402
 import anthus_page_html  # noqa: E402
 import anthus_pages as pages  # noqa: E402
 import anthus_urls as urls  # noqa: E402
+import site_css  # noqa: E402
 import site_env  # noqa: E402  (PPY-f1f0a8)
 from anthus_content import (  # noqa: E402
     POSTS_PER_PAGE,
@@ -192,12 +193,12 @@ def _render_body(ctx: PageContext, parts: BodyParts) -> str:
 ANTHUS_CHROME = SiteChrome(
     site_name=pages.SITE_TITLE,
     tagline=None,
-    scripts=("assets/priority-plus.js", "assets/site-nav.js"),
+    scripts=("assets/site-nav.js", "assets/px-live.js"),
     lang="en",
     # Production's <body> has no class. An empty value renders `class=""`
     # through Papyrus's shell; `_finish_page` removes the empty attribute.
     body_class="",
-    # `build_markus_site(site_css=web/css/anthus-theme.css)` copies the file to
+    # `build_markus_site(site_css=<staged arcade sheet>)` copies the file to
     # `css/site-theme.css`; the destination name is fixed by Papyrus.
     stylesheets=("css/site-theme.css",),
     head_html=dom.HEAD_HTML,
@@ -444,6 +445,7 @@ def generate_pages(collections: Collections, images: ImageIndex) -> None:
             posts=collections.posts,
             images=images,
             blog=collections.blog,
+            platform=collections.platform,
         ),
     )
     for number, text in pages.articles_collection(collections.articles, images).items():
@@ -604,8 +606,9 @@ def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
                 target = dest / path.relative_to(SITE_ASSETS)
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(path, target)
-    for script in ("site-nav.js", "priority-plus.js"):
-        shutil.copy2(POD_ROOT / "assets" / script, staging_assets / script)
+    for script in ("site-nav.js", "px-live.js"):
+        if (POD_ROOT / "assets" / script).is_file():
+            shutil.copy2(POD_ROOT / "assets" / script, staging_assets / script)
 
     # Fail loudly on a chrome image the generated pages reference but that is
     # not committed -- a silently broken hero is worse than a failed build.
@@ -881,7 +884,7 @@ def main() -> int:
         content_dir=STAGING,
         out_dir=DIST,
         theme=None,
-        site_css=POD_ROOT / "css" / "anthus-theme.css",
+        site_css=site_css.stage(_BUILD_DIR / "site-theme-src.css"),
         chrome=ANTHUS_CHROME,
         sections=("platform",),
         images=IMAGES,

@@ -43,6 +43,7 @@ import markusmd  # noqa: E402
 import anthus_dom as dom  # noqa: E402
 import anthus_pages as pages  # noqa: E402
 import anthus_urls as urls  # noqa: E402
+import site_css  # noqa: E402
 import site_env  # noqa: E402
 import build_via_papyrus as site_build  # noqa: E402
 from anthus_content import Collections, ContentNode, ImageIndex, _slugify, stage_nodes  # noqa: E402
@@ -71,9 +72,8 @@ OWNED_TOP_LEVEL_DIRECTORIES = frozenset(
 LEGACY_OG_IMAGES_PATH = MODULE_DIRECTORY / "legacy-og-images.json"
 LEGACY_REDIRECT_RULES_PATH = MODULE_DIRECTORY / "legacy-redirect-rules.json"
 SNAPSHOTS_KEPT = 4
-SITE_THEME_SOURCE = MODULE_DIRECTORY / "css" / "anthus-theme.css"
 SITE_THEME_KEY = "css/site-theme.css"
-CHROME_SCRIPT_NAMES = ("site-nav.js", "priority-plus.js")
+CHROME_SCRIPT_NAMES = ("site-nav.js", "px-live.js")
 SITE_IMAGES_DIRECTORY = MODULE_DIRECTORY / "assets" / "site"
 STATIC_ROOT_DIRECTORY = MODULE_DIRECTORY / "static-root"
 _HREF_RE = re.compile(r"""\bhref=(["'])(.*?)\1""", re.S)
@@ -89,9 +89,11 @@ def files_under(directory: Path, key_prefix: str = "") -> dict[str, bytes]:
 
 def read_committed_static_files() -> dict[str, bytes]:
     """The stylesheet, chrome scripts, site images and root files the full build copies into the site, byte for byte."""
-    files = {SITE_THEME_KEY: SITE_THEME_SOURCE.read_bytes()}
+    files = {SITE_THEME_KEY: site_css.stylesheet_bytes()}
     for name in CHROME_SCRIPT_NAMES:
-        files[f"assets/{name}"] = (MODULE_DIRECTORY / "assets" / name).read_bytes()
+        script = MODULE_DIRECTORY / "assets" / name
+        if script.is_file():
+            files[f"assets/{name}"] = script.read_bytes()
     files.update(files_under(SITE_IMAGES_DIRECTORY, "assets/site/"))
     files.update(files_under(STATIC_ROOT_DIRECTORY))
     return files
