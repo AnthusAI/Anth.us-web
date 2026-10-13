@@ -293,8 +293,9 @@ main { display: block; }
 .site-logo:hover { color: var(--ink); }
 /* One SVG wordmark (anthus_dom._LOGO_SVG), drawn in Jersey 25 font units: the tile IS the A
    of ANTHUS and scales with the letters, so it always matches their cap height. Its height
-   is the font's cap height (750/1230 em) and it sits on the baseline. */
-.site-logo__svg { display: inline-block; vertical-align: baseline; height: 0.6098em; width: auto; overflow: visible; shape-rendering: crispEdges; }
+   is the cap height (750/1230 em) plus one tile cell (75 units) above and below, and the
+   cell below hangs under the baseline. */
+.site-logo__svg { display: inline-block; vertical-align: -0.061em; height: 0.7317em; width: auto; overflow: visible; shape-rendering: crispEdges; }
 .site-logo__tile { fill: var(--logo-tile); }
 .site-logo__a { fill: var(--logo-glyph); }
 .site-logo__word { fill: currentColor; }
