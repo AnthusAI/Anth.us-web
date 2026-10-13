@@ -415,10 +415,22 @@ def _collection_page(directory: str, title: str, number: int, fragment: str) -> 
     _register_meta(href, pages.COLLECTION_DESCRIPTIONS[title], None)
 
 
+def _pictogram_og(node: ContentNode) -> str | None:
+    """og:image fallback for an item with `pictogram:` and no preview image.
+
+    The PNGs are rendered by `bin/render-pictogram-pngs.py` and committed; the
+    build only reads them (a missing file falls back to the default cover).
+    """
+    name = dom.node_pictogram(node)
+    if name and (SITE_ASSETS / "pictograms" / f"{name}.png").is_file():
+        return f"/assets/site/pictograms/{name}.png"
+    return None
+
+
 def register_article_metadata(collections: Collections, images: ImageIndex) -> None:
     for node in collections.blog:
         href = f"articles/{node.slug}.html"
-        _register_meta(href, node.excerpt_text, pages._preview(node, images))
+        _register_meta(href, node.excerpt_text, pages._preview(node, images) or _pictogram_og(node))
         if node.published:
             _ARTICLE_LD[href] = {
                 "@context": "https://schema.org",
@@ -508,7 +520,7 @@ def generate_pages(collections: Collections, images: ImageIndex) -> None:
     for number, text in pages.posts_collection(collections.posts, images).items():
         _collection_page("posts", "Posts", number, text)
 
-    for slug, (label, text) in pages.tag_pages(collections.tags).items():
+    for slug, (label, text) in pages.tag_pages(collections.tags, images).items():
         _generated(f"tags/{slug}.html", label if slug != "index" else "Tags", text)
 
 

@@ -39,6 +39,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+import arcade_pictograms
 import site_env  # PPY-f1f0a8: SITE_ENV guards
 
 POD_ROOT = Path(__file__).resolve().parent
@@ -538,9 +539,12 @@ class ArticleHeading:
     draft: bool = False
     tags: tuple[str, ...] = ()
     dek: str = ""
+    pictogram_html: str = ""
 
     def html(self) -> str:
         parts = []
+        if self.pictogram_html:
+            parts.append(f'<div class="heading__px">{self.pictogram_html}</div>')
         meta = ""
         if self.date:
             meta += f"<time>{html.escape(self.date)}</time>"
@@ -628,9 +632,31 @@ ENGAGE_CTA_HTML = (
 )
 
 
+def node_pictogram(node) -> str | None:
+    """The `pictogram:` front-matter name for an item, validated.
+
+    An unknown name fails the build rather than rendering nothing.
+    """
+    raw = node.front_matter.get("pictogram")
+    name = str(raw).strip() if raw not in (None, "") else ""
+    if not name:
+        return None
+    if name not in arcade_pictograms.NAMES:
+        raise ValueError(
+            f"{getattr(node, 'source', node)}: unknown pictogram {name!r} in front matter; "
+            f"known names: {', '.join(arcade_pictograms.NAMES)}"
+        )
+    return name
+
+
 def _dek(node) -> str:
     text = node.excerpt_text.strip()
     return text if 0 < len(text) <= 320 else ""
+
+
+def _pictogram_html(node) -> str:
+    name = node_pictogram(node)
+    return arcade_pictograms.render(name) if name else ""
 
 
 def article_heading(node) -> ArticleHeading:
@@ -664,4 +690,5 @@ def article_heading(node) -> ArticleHeading:
         draft=not node.published,
         tags=tuple(t for t in node.tags if t != "featured"),
         dek=_dek(node),
+        pictogram_html=_pictogram_html(node),
     )

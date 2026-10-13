@@ -79,3 +79,24 @@ time, falling back to `$ANTHUS_SITE_ORIGIN` or `http://localhost:8080`. It is
 deliberately **not** `https://anth.us`: canonical and `og:url` must not claim
 to be production while this is a staging copy. Set `ANTHUS_SITE_ORIGIN` if you
 need absolute URLs in a local build.
+
+## Listing visuals and the `pictogram:` front-matter field
+
+Every listing card (articles, posts, research, reading, tags, solutions, the
+homepage writing section) has a 16:10 visual slot: the item's `pictogram:`
+(inline animated SVG, any name in `arcade_pictograms.NAMES`; an unknown name fails
+the build), else its `preview_image` (lazy, with width/height), else a
+first-letter tile. An item with `pictogram:` also shows it at the top of its
+article header.
+
+An inline SVG cannot be an og:image, so each pictogram has a committed PNG
+(1200x630, light mode, static frame) in `web/assets/site/pictograms/<name>.png`.
+The build never renders them; it reads them: an item with `pictogram:` and no
+`preview_image` uses its PNG for `og:image` / `twitter:image`. After adding or
+changing a pictogram, regenerate and commit them:
+
+    python3 bin/render-pictogram-pngs.py            # all
+    python3 bin/render-pictogram-pngs.py self-aligning   # one
+
+(Needs Node with puppeteer, default `~/Projects/Pilobol.us/node_modules/puppeteer`,
+and Chrome; override with `PUPPETEER_DIR` / `PUPPETEER_EXECUTABLE_PATH`.)
