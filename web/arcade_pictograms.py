@@ -13,12 +13,11 @@ Public API (stable; page code depends on it):
 Styling lives in web/css/arcade-pictograms.css; the on-screen toggle is
 web/assets/px-live.js.
 
-Animation keyframes are generated from the same track definitions that place
-the sprites, so they can never drift apart. After changing a track, run
-
-    python3 web/arcade_pictograms.py --write-css
-
-which rewrites the marked GENERATED block of arcade-pictograms.css.
+Motion is SMIL (animateTransform / animate with discrete keyTimes), generated from the
+same tracks that place the sprites. Every length is an SVG user unit: no CSS px in any
+transform, so WebKit's text zoom cannot move a sprite off its track. web/assets/px-live.js
+pauses and resumes the animations (svg.pauseAnimations) and drops them under
+prefers-reduced-motion, leaving each sprite on its static pose attribute.
 
 Every coordinate is an integer on a one-unit pixel grid. Sprites are ASCII
 bitmaps merged into rects. Colour only via CSS classes (pk ink, pp pink,
@@ -51,8 +50,6 @@ NAMES: tuple[str, ...] = (
     "newsroom",
 )
 
-CSS_BEGIN = "/* BEGIN GENERATED KEYFRAMES */"
-CSS_END = "/* END GENERATED KEYFRAMES */"
 
 # --------------------------------------------------------------------------
 # bitmaps (rows of '#', 'o' = bg cutout, other chars per palette)
@@ -134,7 +131,6 @@ class Fig:
         self.alt = None
         self.meta: dict = {}
         self.parts: list[str] = []
-        self.kfs: dict[str, str] = {}
         self.defs = ""
 
     # -- text -------------------------------------------------------------
@@ -146,80 +142,93 @@ class Fig:
     def add(self, *s):
         self.parts.extend(s)
 
-    # -- keyframes --------------------------------------------------------
-    def _kf(self, body: str) -> str:
-        if body not in self.kfs:
-            self.kfs[body] = f"px-{self.abbr}-{len(self.kfs) + 1}"
-        return self.kfs[body]
+    # -- motion (SMIL, so every length is an SVG user unit and never a CSS px) ----------
+    def _timing(self, rep=1) -> str:
+        return (f'dur="{_n(self.L / rep)}s" begin="{_n(self.t0)}s" '
+                f'repeatCount="indefinite" calcMode="discrete"')
 
     @staticmethod
-    def _vis_body(init, tg):
-        kf, prev = [(0, init)], init
+    def _stepped(pts):
+        """[(pct, (v...), n)] -> discrete (times, values): CSS steps(n, end) between points."""
+        times, vals = [], []
+        for i, (p, v, n) in enumerate(pts):
+            if i + 1 == len(pts):
+                times.append(p)
+                vals.append(v)
+                break
+            q, w = pts[i + 1][0], pts[i + 1][1]
+            for k in range(n):
+                times.append(p + (q - p) * k / n)
+                vals.append(tuple(a + (b - a) * k / n for a, b in zip(v, w)))
+        return times, vals
+
+    def _smil(self, tag, extra, times, vals, rep=1) -> str:
+        kt = ";".join(_n(round(t / 100, 4)) for t in times)
+        vs = ";".join(" ".join(_n(x) for x in v) for v in vals)
+        return f'<{tag} {extra} values="{vs}" keyTimes="{kt}" {self._timing(rep)}/>'
+
+    def _vis_anim(self, init, tg) -> str:
+        times, vals = [0], [(init,)]
         for t, v in tg:
-            kf += [(t - 0.01, prev), (t, v)]
-            prev = v
-        kf.append((100, prev))
-        return "".join(f"{_n(t)}%{{opacity:{v}}}" for t, v in kf)
+            times.append(t)
+            vals.append((v,))
+        return self._smil("animate", 'attributeName="opacity"', times, vals)
 
     def vcls(self, init, tg) -> str:
-        """Keyframe class a vis track with this clock uses (shared clocks share it)."""
-        return self._kf(self._vis_body(init, tg))
+        """The animation a vis track with this clock uses (shared clocks are identical strings)."""
+        return self._vis_anim(init, tg)
 
-    def A(self, inner, pose=None, mv=None, sc=None, vis=None, hop=4, rep=1, show=True):
-        """Wrap ``inner`` in animation groups.
+    def A(self, inner, pose=None, mv=None, sc=None, vis=None, hop=4, rep=1, show=True,
+          org=(0, 0)):
+        """Wrap ``inner`` in animation groups (all SMIL, user units).
 
         mv:  [(pct, x, y), ...] stepped translate (hop = unit size of one step)
-        sc:  ([(pct, sx, sy, steps), ...], (static_sx, static_sy)) stepped scale
+        sc:  [(pct, sx, sy, steps), ...] stepped scale about ``org``
         vis: (initial 0/1, [(pct, 0/1), ...]) hard toggles
         show: static (reduced-motion) visibility
         """
         s = inner
         if vis is not None:
             init, tg = vis
-            body = self._vis_body(init, tg)
             op = "" if show else ' opacity="0"'
-            s = f'<g class="an {self._kf(body)}"{op}>{s}</g>'
+            s = f'<g{op}>{self._vis_anim(init, tg)}{s}</g>'
         elif not show:
             s = f'<g opacity="0">{s}</g>'
         if sc is not None:
-            pts, (ssx, ssy) = sc
-            body = ""
-            for i, (p, sx, sy, n) in enumerate(pts):
-                body += (f"{_n(p)}%{{transform:scale({_n(sx)},{_n(sy)});"
-                         f"animation-timing-function:steps({n},end)}}")
-            tr = "" if (ssx, ssy) == (1, 1) else f' transform="scale({_n(ssx)} {_n(ssy)})"'
-            s = f'<g class="an sx {self._kf(body)}"{tr}>{s}</g>'
+            pts = list(sc)
+            if pts[-1][0] < 100:
+                pts.append((100, pts[-1][1], pts[-1][2], 1))
+            times, vals = self._stepped([(p, (sx, sy), n) for p, sx, sy, n in pts])
+            a = self._smil("animateTransform", 'attributeName="transform" type="scale"',
+                           times, vals)
+            ox, oy = org
+            if org != (0, 0):
+                s = f'<g transform="translate({_n(-ox)} {_n(-oy)})">{s}</g>'
+            s = f'<g>{a}{s}</g>'
+            if org != (0, 0):
+                s = f'<g transform="translate({_n(ox)} {_n(oy)})">{s}</g>'
         if mv is not None:
             pts = list(mv)
             if pts[0][0] > 0:
                 pts.insert(0, (0, pts[0][1], pts[0][2]))
             if pts[-1][0] < 100:
                 pts.append((100, pts[-1][1], pts[-1][2]))
-            body = ""
+            sp = []
             for i, (p, x, y) in enumerate(pts):
+                n = 1
                 if i + 1 < len(pts):
-                    d = max(abs(pts[i + 1][1] - x), abs(pts[i + 1][2] - y))
-                    n = max(1, round(d / hop))
-                else:
-                    n = 1
-                body += (f"{_n(p)}%{{transform:translate({_n(x)}px,{_n(y)}px);"
-                         f"animation-timing-function:steps({n},end)}}")
-            rc = f" r{rep}" if rep > 1 else ""
+                    n = max(1, round(max(abs(pts[i + 1][1] - x), abs(pts[i + 1][2] - y)) / hop))
+                sp.append((p, (x, y), n))
+            times, vals = self._stepped(sp)
+            a = self._smil("animateTransform", 'attributeName="transform" type="translate"',
+                           times, vals, rep)
             tr = f' transform="translate({_n(pose[0])} {_n(pose[1])})"' if pose else ""
-            s = f'<g class="an{rc} {self._kf(body)}"{tr}>{s}</g>'
+            s = f'<g{tr}>{a}{s}</g>'
         elif pose is not None and pose != (0, 0):
             s = f'<g transform="translate({_n(pose[0])} {_n(pose[1])})">{s}</g>'
         return s
 
     # -- output -----------------------------------------------------------
-    def css(self) -> str:
-        out = [f'.px[data-px="{self.name}"]{{--px-L:{_n(self.L)}s;--px-t0:{_n(self.t0)}s}}']
-        if self.alt:
-            out.append(self.alt.css())
-        for body, nm in self.kfs.items():
-            out.append(f".{nm}{{animation-name:{nm}}}@keyframes {nm}{{{body}}}")
-        return "\n".join(out)
-
     def svg(self, plain=False, v="") -> str:
         d = f"<defs>{self.defs}</defs>" if self.defs else ""
         a = ('' if plain else f' role="img" aria-label="{self.label}"')
@@ -498,8 +507,8 @@ def confidence_gate() -> Fig:
         ok = 14 + fl >= TH
         f.add(f.A(_item(), (2, y), mv=[(0, -9, y), (t, -9, y), (t + 4, 2, y)], hop=3))
         f.add(R(14, y + 1, 80, 5, "d"))
-        f.add(f.A(R(14, y + 1, fl, 5, "b"),
-                  sc=([(0, 0, 1, 1), (t + 4, 0, 1, 8), (t + 12, 1, 1, 1)], (1, 1))))
+        f.add(f.A(R(14, y + 1, fl, 5, "b"), org=(14, y + 1),
+                  sc=[(0, 0, 1, 1), (t + 4, 0, 1, 8), (t + 12, 1, 1, 1)]))
         if ok:
             g = bmp(CHECK, 98, y + 1, "b") + f.T(106, y + 6, "AUTO")
         else:
@@ -578,11 +587,10 @@ def relocate() -> Fig:
         [("cross", "Site down"), ("check", "Serving")],
         L=12, t0=-9.6)
     # the clip rect grows left to right (stepped), revealing the heartbeat trace as time passes
-    g = f.A('<rect x="34" y="58" width="94" height="22"/>',
-            sc=([(0, 0, 1, 1), (4, 0, 1, 23), (84, 1, 1, 1)], (1, 1)))
-    kf = re.search(r'class="an sx (px-rl-\d+)"', g).group(1)
-    f.defs = (f'<clipPath id="px-rl-c"><rect class="an sx {kf}" x="34" y="58" width="94" '
-              f'height="22"/></clipPath>')
+    wt, wv = f._stepped([(0, (0,), 1), (4, (0,), 23), (84, (94,), 1), (100, (94,), 1)])
+    f.defs = (f'<clipPath id="px-rl-c"><rect x="34" y="58" width="94" height="22">'
+              + f._smil("animate", 'attributeName="width"', wt, wv)
+              + "</rect></clipPath>")
     RX = (10, 88)
     f.add(f.A(box(10, 10, 28, 42, "k", 2), vis=(1, [(18, 0)]), show=False),
           f.A(box(10, 10, 28, 42, "d", 2), vis=(0, [(18, 1)])))
@@ -690,8 +698,8 @@ def verdict_meter() -> Fig:
 
     def verdict(on, off, fillcells, glyph, word, c):
         gl = (bmp(CHECK, 97, 12, "b", s=3) if glyph == "check" else bmp(CROSS, 97, 12, "p", s=3))
-        fill = f.A(R(90, 54, 28 * fillcells // 8 + (0 if fillcells == 8 else 0), 5, c),
-                   sc=([(0, 0, 1, 1), (on + 2, 0, 1, fillcells), (on + 12, 1, 1, 1)], (1, 1)))
+        fill = f.A(R(90, 54, 28 * fillcells // 8, 5, c), org=(90, 54),
+                   sc=[(0, 0, 1, 1), (on + 2, 0, 1, fillcells), (on + 12, 1, 1, 1)])
         s = gl + f.T(105, 46, word, fs=7, anchor="middle", c="k") + fill
         return f.A(s, vis=(0, [(on, 1), (off, 0)]), show=(word == "YES"))
 
@@ -726,7 +734,7 @@ def leaderboard() -> Fig:
             sc += [(52, 56 / 88, 1, 8), (62, 1, 1, 1)]
         mv = [(0, 12, ys[sr]), (46, 12, ys[sr]), (56, 12, ys[fr])] if fr != sr else None
         inner = R(0, 0, ln, 8, c)
-        f.add(f.A(inner, (12, ys[fr]), mv=mv, sc=(sc, (1, 1)), hop=5))
+        f.add(f.A(inner, (12, ys[fr]), mv=mv, sc=sc, hop=5))
     return f
 
 
@@ -742,7 +750,8 @@ def timeline() -> Fig:
         L=8, t0=-7.0)
     f.add(R(6, 44, 118, 4, "d"))
     f.add(G("k", *[R(6 + round(117 * k / 19), 49, 1, 2) for k in range(20)]))
-    f.add(f.A(R(6, 44, 118, 4, "b"), sc=([(0, 0, 1, 1), (6, 0, 1, 28), (82, 1, 1, 1)], (1, 1))))
+    f.add(f.A(R(6, 44, 118, 4, "b"), org=(6, 44),
+              sc=[(0, 0, 1, 1), (6, 0, 1, 28), (82, 1, 1, 1)]))
     f.add(R(21, 51, 1, 12, "k"))
     for x, h, t, c in ((6, 8, 8, "b"), (18, 16, 14, "b"), (117, 28, 82, "p")):
         f.add(f.A(R(x, 42 - h, 7, h, c), vis=(0, [(t, 1)])))
@@ -806,7 +815,8 @@ def chat_room() -> Fig:
     f.add(f.A(bmp(QUEST, 63, 39, "p"), vis=(0, [(22, 1), (40, 0)]), show=False))
     f.add(f.A(bmp(CHECK, 63, 40, "b"), vis=(0, [(40, 1)])))
     f.add(G("d", R(60, 51, 46, 3)))
-    f.add(f.A(R(60, 51, 46, 3, "b"), sc=([(0, 0, 1, 1), (42, 0, 1, 12), (56, 1, 1, 1)], (1, 1))))
+    f.add(f.A(R(60, 51, 46, 3, "b"), org=(60, 51),
+              sc=[(0, 0, 1, 1), (42, 0, 1, 12), (56, 1, 1, 1)]))
     f.add(f.A(box(16, 37, 14, 12, "k") + bmp(CHECK, 20, 41, "b"), vis=(0, [(38, 1), (58, 0)]),
               show=False))
     # row 3: another request, declined
@@ -855,7 +865,7 @@ def page_audio() -> Fig:
         for c in range(4):
             pts += [(t + 10 + 14 * c, 1, 0.6, 2), (t + 17 + 14 * c, 1, 1, 2)]
         pts = [p for p in pts if p[0] < 100]
-        f.add(f.A(R(0, -h, 2, h, "b"), (82 + 4 * k, 58), sc=(pts, (1, 1))))
+        f.add(f.A(R(0, -h, 2, h, "b"), (82 + 4 * k, 58), sc=pts))
     f.add(f.T(101, 68, "AUDIO", anchor="middle"))
     return f
 
@@ -1008,22 +1018,8 @@ def render(name: str) -> str:
     return _BUILDERS[name]().figure()
 
 
-def keyframes_css() -> str:
-    return "\n".join(_BUILDERS[n]().css() for n in NAMES)
-
-
-def write_css(path: Path | None = None) -> Path:
-    path = path or Path(__file__).resolve().parent / "css" / "arcade-pictograms.css"
-    text = path.read_text()
-    a, b = text.index(CSS_BEGIN) + len(CSS_BEGIN), text.index(CSS_END)
-    path.write_text(text[:a] + "\n" + keyframes_css() + "\n" + text[b:])
-    return path
-
-
 if __name__ == "__main__":
-    if "--write-css" in sys.argv:
-        print(write_css())
-    elif len(sys.argv) > 1 and sys.argv[1] in _BUILDERS:
+    if len(sys.argv) > 1 and sys.argv[1] in _BUILDERS:
         print(render(sys.argv[1]))
     else:
-        print("usage: arcade_pictograms.py --write-css | <name>")
+        print("usage: arcade_pictograms.py <name>")
