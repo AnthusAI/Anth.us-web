@@ -24,8 +24,8 @@ def _svg_part(html: str) -> str:
 
 class PictogramTests(unittest.TestCase):
     def test_names(self):
-        self.assertEqual(len(ap.NAMES), 16)
-        self.assertEqual(len(set(ap.NAMES)), 16)
+        self.assertEqual(len(ap.NAMES), 17)
+        self.assertEqual(len(set(ap.NAMES)), 17)
 
     def test_every_name_renders_well_formed(self):
         for name in ap.NAMES:
