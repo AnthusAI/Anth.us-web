@@ -1155,7 +1155,7 @@ def about_page() -> str:
             "ABOUT ANTHUS", "About us",
             "We are an AI engineering company that builds and operates self-aligning AI systems (custom models, agent "
             "harnesses, and evaluation loops with a human in the loop) for teams that need them to keep working in production.",
-            art=_px("timeline"),
+            art=_px("eras"),
         ),
         _section(
             "01", "History", "Since 2007",
