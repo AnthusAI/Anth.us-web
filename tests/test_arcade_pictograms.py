@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "web"))
 
 import arcade_pictograms as ap  # noqa: E402
+from arcade_pictograms import _n  # noqa: E402
 
 CSS = (ROOT / "web" / "css" / "arcade-pictograms.css").read_text()
 SVG_NS = "{http://www.w3.org/2000/svg}"
@@ -60,7 +61,7 @@ class PictogramTests(unittest.TestCase):
                 self.assertNotIn("http", _svg_part(html).replace("http://www.w3.org", ""))
 
     def test_only_rects_and_text_as_shapes(self):
-        allowed = {"svg", "g", "rect", "text", "defs", "clipPath", "use"}
+        allowed = {"svg", "g", "rect", "text", "defs", "clipPath", "use", "animate", "animateTransform"}
         for name in ap.NAMES:
             with self.subTest(name=name):
                 for el in ET.fromstring(_svg_part(ap.render(name))).iter():
@@ -73,25 +74,39 @@ class PictogramTests(unittest.TestCase):
                 for m in re.finditer(r'<rect[^>]*?\s(?:x|y|width|height)="([^"]+)"', svg):
                     self.assertRegex(m.group(1), r"^-?\d+$")
 
-    def test_unique_prefixes_and_css_coverage(self):
+    def test_motion_is_smil_in_user_units(self):
+        # Safari scales CSS px under text zoom differently from SVG user units, so no movement may
+        # depend on a CSS length: no CSS animation, no px in any transform, no style attributes.
+        self.assertNotRegex(CSS, r"@keyframes|animation-|translate\(|scale\(|(?<![-\w])transform\s*:")
         for name in ap.NAMES:
             with self.subTest(name=name):
                 html = ap.render(name)
-                abbr = ap._BUILDERS[name]().abbr
-                for cls in set(re.findall(r'class="an(?: sx| r\d)* (px-[a-z]+-\d+)"', html)):
-                    self.assertTrue(cls.startswith((f"px-{abbr}-", "px-hm-")))
-                    self.assertIn(f"@keyframes {cls}{{", CSS, "run --write-css")
+                self.assertNotIn("style=", html)
+                self.assertNotIn('class="an', html)
+                for m in re.finditer(r'transform="([^"]*)"', html):
+                    self.assertNotRegex(m.group(1), r"px|em|%")
+                for m in re.finditer(r'(?:values|keyTimes|begin|dur)="([^"]*)"', html):
+                    self.assertNotRegex(m.group(1), r"[0-9](px|em|rem|%)")
+                self.assertNotRegex(html, r"translate\([^)]*(px|em)")
+                self.assertIn("<animate", html)
+                self.assertIn('repeatCount="indefinite"', html)
+                self.assertIn('begin="', html)
+
+    def test_solution_marks_have_no_css_length_motion(self):
+        css = (ROOT / "web" / "css" / "arcade.css").read_text()
+        for needle in ("offset-distance", "offset-path", "sm-chat-gaze", "sm-chat-blink",
+                       "sm-cyc-head", "sm-cyc-show"):
+            self.assertNotIn(needle, css)
+        marks = (ROOT / "web" / "solution_marks.py").read_text()
+        self.assertIn("animateMotion", marks)
+        self.assertNotRegex(marks, r"translate\([^)]*px")
 
     def test_css_contract(self):
         for token in ("--px-ink", "--px-pink", "--px-blue", "--px-dim", "--px-bg",
                       "#1b1426", "#dc5497", "#0389d7", "#d6e6f2", "#fbfdff",
                       "#f3eef8", "#ff57b4", "#3fb2f7", "#2e2540", "#0e0b16",
-                      "prefers-color-scheme:dark", "prefers-reduced-motion:reduce",
-                      "animation-play-state:paused", ".is-live"):
+                      "prefers-color-scheme:dark"):
             self.assertIn(token, CSS)
-        self.assertEqual(ap.keyframes_css().strip(),
-                         CSS.split(ap.CSS_BEGIN)[1].split(ap.CSS_END)[0].strip(),
-                         "generated keyframes are stale: run --write-css")
 
     def test_deterministic(self):
         for name in ap.NAMES:
@@ -100,7 +115,7 @@ class PictogramTests(unittest.TestCase):
     def test_size_budget(self):
         for name in ap.NAMES:
             with self.subTest(name=name):
-                self.assertLess(len(_svg_part(ap.render(name))), 16000)
+                self.assertLess(len(_svg_part(ap.render(name))), 30000)
 
     def test_scorecard_one_document_per_row_on_one_clock(self):
         f = ap._BUILDERS["scorecard"]()
@@ -108,11 +123,10 @@ class PictogramTests(unittest.TestCase):
         self.assertEqual(len(f.meta["docs"]), len(f.meta["rows"]))
         self.assertEqual(len(f.meta["rows"]), 6)  # rows scored per loop == documents added
         for i, t in enumerate(ap._SC_ROWS):
-            self.assertEqual(f.meta["rows"][i], f.meta["docs"][i])  # identical keyframes
-            k = CSS.index("@keyframes %s{" % f.meta["rows"][i])
-            body = CSS[k:CSS.index("\n", k)]
-            self.assertIn(f"{t}%{{opacity:1}}", body)
-            self.assertEqual(html.count(f'class="an {f.meta["rows"][i]}"'), 2)  # row + doc
+            self.assertEqual(f.meta["rows"][i], f.meta["docs"][i])  # identical animation
+            anim = f.meta["rows"][i]
+            self.assertTrue(anim.split('keyTimes="')[1].startswith(f"0;{_n(t / 100)}"))
+            self.assertEqual(html.count(anim), 2)  # the row's marks and its document
 
     def test_copy_rules(self):
         banned = {
