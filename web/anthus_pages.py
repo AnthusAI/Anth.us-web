@@ -1493,8 +1493,7 @@ def engage_page() -> str:
         "Factory-run software project",
         "<p>We build your software the way we build our own: work tracked as Kanbus issues in the repository, agents "
         "doing the implementation, and a human approval trail on every merge.</p>"
-        "<p>Anthus runs its own projects this way, including this site. The commits are public, so you can see the "
-        "process instead of taking it on faith.</p>",
+        "<p>Anthus runs its own projects this way, including this site.</p>",
         extra=_links([("Kanbus", "https://kanb.us")]),
     ) + _card(
         "Newsroom for a publication",
