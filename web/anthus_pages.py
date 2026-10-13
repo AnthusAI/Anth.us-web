@@ -956,9 +956,9 @@ _HELD_UP = (
 )
 
 _OPS_FOOTNOTE = (
-    "When a catastrophic failure struck an entire AWS data center, we relocated the entire system to a new one "
-    "within hours. It was briefly down and back up before tickets needed scanning at the doors, so ticket "
-    "scanning at nightclubs proceeded without a hitch."
+    "A catastrophic failure once took out an entire AWS data center. We moved the whole system to a new one "
+    "within hours, and it was back up before the doors opened, so ticket scanning at the venues went ahead "
+    "without a hitch."
 )
 
 _VALUES = (
@@ -1092,7 +1092,7 @@ def about_page() -> str:
         _section("02", "Track record", "What held up",
                  lead="An impeccable record in reliability and security, kept through every technology shift: cloud computing, serverless, and now AI.",
                  body=held + '<aside class="opsnote"><div class="opsnote__px">' + _px("relocate") + "</div>"
-                 '<div><p class="opsnote__h">Operations footnote</p><p>' + _OPS_FOOTNOTE + "</p></div></aside>",
+                 '<div><p class="opsnote__h">When an AWS data center failed</p><p>' + _OPS_FOOTNOTE + "</p></div></aside>",
                  band=True),
         _section(
             "03", "Mission", "What we’re here to do",

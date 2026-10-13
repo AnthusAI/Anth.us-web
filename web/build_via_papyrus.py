@@ -510,13 +510,13 @@ def generate_pages(collections: Collections, images: ImageIndex) -> None:
     _generated(
         "reading.html",
         _page_title(meta["/reading/"]["title"]),
-        pages.reading_page(collections.blog),
+        pages.reading_page(collections.blog, images),
         meta_key="/reading/",
     )
     _generated(
         "research.html",
         _page_title(meta["/research/"]["title"]),
-        pages.research_page(collections.blog),
+        pages.research_page(collections.blog, images),
         meta_key="/research/",
     )
 
