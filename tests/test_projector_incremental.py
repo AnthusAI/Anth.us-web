@@ -22,6 +22,8 @@ REPOSITORY = Path(__file__).resolve().parent.parent
 EXPORT = os.environ.get("ANTHUS_PROJECTOR_EXPORT")
 REFERENCE = os.environ.get("ANTHUS_PROJECTOR_REFERENCE")
 PAPYRUS = os.environ.get("PAPYRUS_ROOT")
+PUBLIC_DATA = os.environ.get("ANTHUS_PROJECTOR_PUBLIC_DATA") == "1"
+PUBLIC_DATA_KEY_PREFIXES = ("_data/", "_plugins/")
 SKIP = not (EXPORT and PAPYRUS)
 
 if not SKIP:
@@ -185,7 +187,12 @@ def reference_tokens():
 def make_projector(state_path):
     state = json.loads(Path(state_path).read_text())
     config = reference_tokens() or anthus_projector.default_projector_config()
-    return anthus_projector.AnthusProjector(state, config)
+    settings = None
+    if PUBLIC_DATA:
+        from papyrus_content.projection.public_data import PublicDataSettings
+
+        settings = PublicDataSettings()
+    return anthus_projector.AnthusProjector(state, config, public_data_settings=settings)
 
 
 @unittest.skipIf(SKIP, "needs PAPYRUS_ROOT and ANTHUS_PROJECTOR_EXPORT")
@@ -244,6 +251,12 @@ class IncrementalProjectionOfTheRealCorpus(unittest.TestCase):
         for item_id in corpus.rows:
             corpus.publish(item_id)
         pages, redirects = self.full(corpus, "parity")
+        static_root = REPOSITORY / "web" / "static-root"
+        served_from_static_root = {path.relative_to(static_root).as_posix() for path in static_root.rglob("*") if path.is_file()}
+        pages = {key: digest for key, digest in pages.items() if key not in served_from_static_root}
+        if PUBLIC_DATA:
+            self.assertTrue([key for key in pages if key.startswith("_data/")])
+            pages = {key: digest for key, digest in pages.items() if not key.startswith(PUBLIC_DATA_KEY_PREFIXES)}
         reference = tree_digests(Path(REFERENCE))
         renditions_made_at_upload = ("assets/responsive/", "assets/content/")
         reference = {key: digest for key, digest in reference.items() if not key.startswith(renditions_made_at_upload)}
