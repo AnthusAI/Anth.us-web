@@ -832,6 +832,9 @@ article .heading .authors { font-size: 0.9rem; }
 
 /* A pictogram never fills a wide viewport: it sits beside text in a column, capped. */
 figure.px { max-inline-size: 36rem; margin-inline: auto; }
+/* A pictogram embedded in an article body with {{pictogram <name>}} (anthus_mdx._convert_pictograms). */
+.body-px { margin: 2rem 0; }
+.body-px figure.px { max-inline-size: 30rem; margin-inline: 0; }
 .hero__art figure.px, .heading__px figure.px { max-inline-size: 52rem; }
 .acard__vis--px figure.px { max-inline-size: none; margin: 0; }
 

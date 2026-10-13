@@ -1147,6 +1147,25 @@ _IMPORT_RE = re.compile(r"^\s*(?:import|export)\s+.*?(?:;|$)\n?", re.M)
 _JSX_EXPR_RE = re.compile(r"\{\s*props\.pageContext[^}]*\}")
 
 
+_PICTOGRAM_RE = re.compile(r"^[ \t]*\{\{pictogram ([a-z0-9-]+)\}\}[ \t]*$", re.M)
+
+
+def _convert_pictograms(text: str) -> str:
+    """``{{pictogram <name>}}`` on its own line embeds an animated pictogram.
+
+    Plain text rather than a directive, so the CMS saves it whatever Markus version it
+    validates with; an unknown name fails the build (``arcade_pictograms.render``).
+    """
+    import arcade_pictograms
+
+    return _PICTOGRAM_RE.sub(
+        lambda m: "\n\n" + block_sentinel(
+            '<div class="body-px">' + arcade_pictograms.render(m.group(1)) + "</div>"
+        ) + "\n\n",
+        text,
+    )
+
+
 def normalize_body(
     body: str,
     *,
@@ -1180,6 +1199,7 @@ def normalize_body(
     text = _convert_image_wrappers(text)
     text = _convert_figures(text, report, resolve_image_path)
     text = _convert_block_html(text, report)
+    text = _convert_pictograms(text)
     text = _restore_code(text, code_blocks)
 
     # Collapse the blank-line churn the unwrapping above leaves behind.
