@@ -27,6 +27,13 @@ export default defineSite({
     brandId: "anth-us",
     auth: resolvedAuthConfiguration,
     reader: { amplifyAppId: "d15dpu9buefmq0", branchName: "main" },
+    publication: {
+      kind: "s3-projection",
+      projector: "web/projector.py",
+      staticDir: "web",
+      edgeDistributionArn: "arn:aws:cloudfront::000000000000:distribution/DISTRIBUTION_ID",
+      cache: { htmlSMaxAgeSeconds: 60 },
+    },
     stagingBuild: { enabled: true },
     features: {
       consoleResponder: false,

@@ -30,6 +30,7 @@ Pipeline
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import posixpath
@@ -44,13 +45,13 @@ REPO_ROOT = POD_ROOT.parent
 DEFAULT_PAPYRUS = REPO_ROOT.parent / "Papyrus"
 
 PAPYRUS_ROOT = Path(os.environ.get("PAPYRUS_ROOT", DEFAULT_PAPYRUS)).resolve()
-if not (PAPYRUS_ROOT / "src" / "papyrus_content").is_dir():
+if (PAPYRUS_ROOT / "src" / "papyrus_content").is_dir():
+    sys.path.insert(0, str(PAPYRUS_ROOT / "src"))
+elif os.environ.get("PAPYRUS_ROOT") or importlib.util.find_spec("papyrus_content") is None:
     sys.exit(
         f"Papyrus not found at {PAPYRUS_ROOT}. "
         "Set PAPYRUS_ROOT to your Papyrus checkout."
     )
-
-sys.path.insert(0, str(PAPYRUS_ROOT / "src"))
 sys.path.insert(0, str(POD_ROOT))
 
 from papyrus_content.markus_renderer import build as markus_build  # noqa: E402

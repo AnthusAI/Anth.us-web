@@ -172,9 +172,19 @@ def operations(corpus, rng):
     return kind, item_id
 
 
+def reference_tokens():
+    """The two cache-busting tokens of the reference build: an article's and the home page's."""
+    if not REFERENCE:
+        return None
+    pattern = re.compile(r'__markusAssetVersion = "([0-9a-f]+)"')
+    article = pattern.search((Path(REFERENCE) / "articles" / "rtk" / "index.html").read_text(encoding="utf-8"))
+    home = pattern.search((Path(REFERENCE) / "index.html").read_text(encoding="utf-8"))
+    return {"markus_pages": article.group(1), "generated_pages": home.group(1)}
+
+
 def make_projector(state_path):
     state = json.loads(Path(state_path).read_text())
-    config = json.loads((REPOSITORY / "web" / "projector-config.json").read_text())
+    config = reference_tokens() or anthus_projector.default_projector_config()
     return anthus_projector.AnthusProjector(state, config)
 
 
@@ -235,11 +245,22 @@ class IncrementalProjectionOfTheRealCorpus(unittest.TestCase):
             corpus.publish(item_id)
         pages, redirects = self.full(corpus, "parity")
         reference = tree_digests(Path(REFERENCE))
-        self.assertEqual(sorted(pages), sorted(k for k in reference if k.endswith(".html") or k in ("sitemap-0.xml", "sitemap-index.xml", "robots.txt")))
+        renditions_made_at_upload = ("assets/responsive/", "assets/content/")
+        reference = {key: digest for key, digest in reference.items() if not key.startswith(renditions_made_at_upload)}
+        self.assertEqual(sorted(pages), sorted(reference))
         self.assertEqual({k: v for k, v in pages.items()}, {k: reference[k] for k in pages})
-        rules = json.loads((Path(REFERENCE).parent / "custom-rules.json").read_text())
-        exact = {r["source"]: r["target"] for r in rules if r["status"] == "301" and "<" not in r["source"] and "<" not in r["target"]}
-        self.assertEqual(redirects, exact)
+        generated = json.loads((Path(REFERENCE).parent / "custom-rules.json").read_text())
+        legacy = json.loads((REPOSITORY / "web" / "legacy-redirect-rules.json").read_text())
+        never_matched = {"/blog/plexus/", "/blog/plexus/index.html", "/blog/plexus-classifier-lab/", "/blog/plexus-classifier-lab/index.html"}
+        for rule in generated + legacy:
+            if rule["status"] != "301" or "<" in rule["source"] or rule["source"] in never_matched:
+                continue
+            self.assertIn(rule["source"], redirects, rule)
+        for rule in generated:
+            if rule["status"] == "301" and "<" not in rule["source"] and rule["source"] not in never_matched:
+                self.assertEqual(redirects[rule["source"]], rule["target"], rule)
+        self.assertFalse(never_matched & set(redirects))
+        self.assertFalse([source for source in redirects if "<" in source or "<" in redirects[source]])
 
     def test_random_edits_match_a_full_projection_and_write_only_what_changed(self):
         for seed in SEEDS:

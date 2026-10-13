@@ -1,9 +1,10 @@
 """Anth.us as a Papyrus SiteProjector: render pages from stored item data, in process.
 
-Deploy-time inputs next to this module: ``site-state.json`` (written by
-``bin/make_site_state.py``) and ``projector-config.json`` with the two cache-busting
-version tokens of the build (``markus_pages`` for Markus-rendered pages,
-``generated_pages`` for generated ones).
+Inputs next to this module: ``site-state.json`` (committed; rewritten by
+``bin/make_site_state.py`` when the set of images changes) and the optional
+``projector-config.json`` that pins the two cache-busting version tokens
+(``markus_pages``, ``generated_pages``). Without it both tokens are derived from the
+stylesheet, chrome scripts and site images (the parity test pins them to a reference build).
 
 Pages: blog (articles) and platform item pages, every generated page (home,
 collections and their pagination, tags, topic pages), the sitemap, and the exact-match
@@ -29,7 +30,9 @@ import sys
 from pathlib import Path, PurePosixPath
 from types import SimpleNamespace
 
-MODULE_DIRECTORY = Path(__file__).resolve().parent
+#: In the content-actions function this file is bundled as ``site_projector.py`` and the ``web``
+#: directory as ``site_static``, named by PAPYRUS_SITE_STATIC_DIR.
+MODULE_DIRECTORY = Path(os.environ.get("PAPYRUS_SITE_STATIC_DIR") or Path(__file__).resolve().parent)
 os.environ.setdefault("ANTHUS_BUILD_DIR", "/tmp/build")
 os.environ.setdefault("SITE_ENV", "production")
 os.environ.setdefault("AWS_BRANCH", "main")
@@ -44,6 +47,8 @@ import site_env  # noqa: E402
 import build_via_papyrus as site_build  # noqa: E402
 from anthus_content import Collections, ContentNode, ImageIndex, _slugify, stage_nodes  # noqa: E402
 from papyrus_content.markus_renderer import build as markus_build  # noqa: E402
+from papyrus_content.projection.projector import static_version  # noqa: E402
+from papyrus_content.projection.writers import request_paths_for_key  # noqa: E402
 from papyrus_content.markus_renderer import images as markus_images  # noqa: E402
 from papyrus_content.markus_renderer import shell as markus_shell  # noqa: E402
 from papyrus_content.markus_renderer.images import (  # noqa: E402
@@ -64,8 +69,62 @@ OWNED_TOP_LEVEL_DIRECTORIES = frozenset(
     {"articles", "platform", "posts", "tags", "about", "ai-solutions", "ryan", "engage", "decision-models", "benchmarks", "reading", "research"}
 )
 LEGACY_OG_IMAGES_PATH = MODULE_DIRECTORY / "legacy-og-images.json"
+LEGACY_REDIRECT_RULES_PATH = MODULE_DIRECTORY / "legacy-redirect-rules.json"
 SNAPSHOTS_KEPT = 4
+SITE_THEME_SOURCE = MODULE_DIRECTORY / "css" / "anthus-theme.css"
+SITE_THEME_KEY = "css/site-theme.css"
+CHROME_SCRIPT_NAMES = ("site-nav.js", "priority-plus.js")
+SITE_IMAGES_DIRECTORY = MODULE_DIRECTORY / "assets" / "site"
+STATIC_ROOT_DIRECTORY = MODULE_DIRECTORY / "static-root"
 _HREF_RE = re.compile(r"""\bhref=(["'])(.*?)\1""", re.S)
+
+
+def files_under(directory: Path, key_prefix: str = "") -> dict[str, bytes]:
+    return {
+        key_prefix + path.relative_to(directory).as_posix(): path.read_bytes()
+        for path in sorted(directory.rglob("*"))
+        if path.is_file()
+    }
+
+
+def read_committed_static_files() -> dict[str, bytes]:
+    """The stylesheet, chrome scripts, site images and root files the full build copies into the site, byte for byte."""
+    files = {SITE_THEME_KEY: SITE_THEME_SOURCE.read_bytes()}
+    for name in CHROME_SCRIPT_NAMES:
+        files[f"assets/{name}"] = (MODULE_DIRECTORY / "assets" / name).read_bytes()
+    files.update(files_under(SITE_IMAGES_DIRECTORY, "assets/site/"))
+    files.update(files_under(STATIC_ROOT_DIRECTORY))
+    return files
+
+
+def placeholder_source_matcher(source: str):
+    """Compile a redirect source the way the previous host matched it: ``<name>`` is one path segment, ``<*>`` is the rest."""
+    escaped = re.escape(source)
+    escaped = escaped.replace("<\\*>", ".*").replace("<*>", ".*")
+    return re.compile("^" + re.sub(r"<(\w+)>", r"[^/]+", escaped) + "$")
+
+
+def effective_exact_redirects(ordered_rules: list[dict], page_request_paths: set[str]) -> dict[str, str]:
+    """The exact 301 rules that can fire: the previous host took the first matching rule, ahead of any file.
+
+    An exact rule listed after a pattern rule that matches its source never fired, and a rule whose
+    source is now a page of this site must not hide that page.
+    """
+    patterns: list[re.Pattern] = []
+    exact: dict[str, str] = {}
+    for rule in ordered_rules:
+        if rule["status"] != "301":
+            continue
+        source, target = rule["source"], rule["target"]
+        if "<" in source:
+            patterns.append(placeholder_source_matcher(source))
+            continue
+        if source in exact or source in page_request_paths:
+            continue
+        if any(pattern.match(source) for pattern in patterns):
+            continue
+        exact[source] = target
+    return exact
 
 
 def convert_fragment_in_process(source, *, theme=None, markus_executable="markus", transform=None):
@@ -227,11 +286,17 @@ class Snapshot:
                 page_images={href: image for href, (_description, image) in site_build._PAGE_META.items()},
                 dist=None,
             )
-            self._redirects = {
-                rule["source"]: rule["target"]
-                for rule in ruleset.rules
-                if rule["status"] == "301" and "<" not in rule["source"] and "<" not in rule["target"]
+            legacy_rules = json.loads(LEGACY_REDIRECT_RULES_PATH.read_text(encoding="utf-8"))
+            generated_sources = {rule["source"] for rule in ruleset.rules}
+            ordered_rules = [*ruleset.rules, *(rule for rule in legacy_rules if rule["source"] not in generated_sources)]
+            page_request_paths = {
+                request_path for output in self.output_by_href.values() for request_path in request_paths_for_key(output)
+            } | {
+                request_path
+                for href in self.page_set
+                for request_path in request_paths_for_key(urls.page_output(href))
             }
+            self._redirects = effective_exact_redirects(ordered_rules, page_request_paths)
         return self._redirects
 
 
@@ -381,16 +446,25 @@ class AnthusProjector:
         return key.endswith(".html") and key.split("/", 1)[0] in OWNED_TOP_LEVEL_DIRECTORIES
 
     def static_files(self):
-        return {
+        files = {
             "robots.txt": site_env.robots_txt().encode("utf-8"),
             "sitemap-index.xml": site_env.sitemap_index_xml().encode("utf-8"),
         }
+        files.update(read_committed_static_files())
+        return files
 
     def redirects(self, site):
         return dict(self._snapshot(site).redirects())
 
 
+def default_projector_config() -> dict:
+    """The cache-busting token of the stylesheet, chrome scripts and site images, for Markus-rendered and generated pages alike."""
+    token = static_version(read_committed_static_files())
+    return {"markus_pages": token, "generated_pages": token}
+
+
 def create_projector() -> AnthusProjector:
     state = json.loads((MODULE_DIRECTORY / "site-state.json").read_text(encoding="utf-8"))
-    config = json.loads((MODULE_DIRECTORY / "projector-config.json").read_text(encoding="utf-8"))
+    config_path = MODULE_DIRECTORY / "projector-config.json"
+    config = json.loads(config_path.read_text(encoding="utf-8")) if config_path.is_file() else default_projector_config()
     return AnthusProjector(state, config)

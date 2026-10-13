@@ -76,5 +76,5 @@ next-env.d.ts
 # Content root derived from a CMS export (CMS-driven build)
 web/content-root/
 
-web/site-state.json
+# Pins the cache-busting tokens for the byte-parity check against a reference build
 web/projector-config.json
