@@ -36,6 +36,7 @@ from html import escape
 from urllib.parse import quote
 
 import anthus_dom
+import solution_marks
 import arcade_pictograms
 from anthus_content import ContentNode, ImageIndex
 from anthus_urls import FEATURED_COUNT, GRID_SIZE, collection_page_count, tag_slug
@@ -342,7 +343,8 @@ def _product_card(name: str, url: str, line: str, pictogram: str, page: str | No
         also += f'<a href="/engage/?solution={quote(name)}">Work with us on {escape(name)}</a>'
     return (
         f'<li class="card notch product card--static{" product--desc" if desc else ""}">'
-        f'<div class="card__px">{_px(pictogram)}</div><h3>{escape(name)}</h3><p>{escape(line)}</p>{desc}'
+        f'<div class="card__px">{_px(pictogram)}</div><h3 class="product__name">{escape(name)}{solution_marks.mark(name)}</h3>'
+        f'<p>{escape(line)}</p>{desc}'
         f'<div class="card__links"><a href="{_esc(url)}" rel="noopener">Visit {escape(name)}</a>{also}</div></li>'
     )
 
