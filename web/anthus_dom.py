@@ -137,6 +137,8 @@ def _brand(*, home_current: bool, lockup_href: str, lockup_label: str, lockup_cu
         f'<svg class="site-brand__svg" viewBox="{-_LOGO_CW:g} {-_LOGO_RH:g} {width:g} '
         f'{_LOGO_CAP + 2 * _LOGO_RH:g}" role="group" aria-label="Anthus AI Solutions">'
         f'<a class="site-brand__home" href="/"{home_attr} aria-label="Anthus home">'
+        f'<rect class="site-brand__hit" x="{-_LOGO_CW:g}" y="{-_LOGO_RH:g}" '
+        f'width="{_LOGO_WIDTH + _LOGO_CW:g}" height="{_LOGO_CAP + 2 * _LOGO_RH:g}"/>'
         f'<rect class="site-logo__tile" x="{-_LOGO_CW:g}" y="{-_LOGO_RH:g}" '
         f'width="{_LOGO_A_WIDTH + 2 * _LOGO_CW:g}" height="{_LOGO_CAP + 2 * _LOGO_RH:g}"/>'
         f'<path class="site-logo__a" d="{_logo_a_path()}"/>'
