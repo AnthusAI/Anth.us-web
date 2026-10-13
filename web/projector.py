@@ -76,7 +76,7 @@ LEGACY_REDIRECT_RULES_PATH = MODULE_DIRECTORY / "legacy-redirect-rules.json"
 SNAPSHOTS_KEPT = 4
 PROJECTION_SETTINGS_PATH = MODULE_DIRECTORY / "projection.json"
 SITE_THEME_KEY = "css/site-theme.css"
-CHROME_SCRIPT_NAMES = ("site-nav.js", "px-live.js")
+CHROME_SCRIPT_NAMES = ("site-nav.js", "px-live.js", "drafts.js")
 SITE_IMAGES_DIRECTORY = MODULE_DIRECTORY / "assets" / "site"
 STATIC_ROOT_DIRECTORY = MODULE_DIRECTORY / "static-root"
 _HREF_RE = re.compile(r"""\bhref=(["'])(.*?)\1""", re.S)
@@ -307,6 +307,7 @@ class Snapshot:
         self.generated = dict(site_build.GENERATED)
         self.page_meta = dict(site_build._PAGE_META)
         self.article_ld = dict(site_build._ARTICLE_LD)
+        self.draft_hrefs = set(site_build._DRAFT_HREFS)
         page_set = set(self.generated)
         page_set |= {f"articles/{markus_build.slugify(node.slug)}.html" for node in self.collections.blog}
         page_set |= {f"platform/{markus_build.slugify(node.slug)}.html" for node in self.collections.platform}
@@ -327,10 +328,12 @@ class Snapshot:
         site_build._PAGE_META.update(self.page_meta)
         site_build._ARTICLE_LD.clear()
         site_build._ARTICLE_LD.update(self.article_ld)
+        site_build._DRAFT_HREFS.clear()
+        site_build._DRAFT_HREFS.update(self.draft_hrefs)
         site_build._SITE_URLS = self.urls
 
     def sitemap_urls(self) -> list[str]:
-        outputs = [urls.page_output(href) for href in sorted(self.page_set)]
+        outputs = [urls.page_output(href) for href in sorted(self.page_set - self.draft_hrefs)]
         return sorted(
             {site_build._canonical_url(output) for output in outputs if output != "404.html"}
         )
@@ -440,6 +443,7 @@ class AnthusProjector:
         site_build.GENERATED.clear()
         site_build._PAGE_META.clear()
         site_build._ARTICLE_LD.clear()
+        site_build._DRAFT_HREFS.clear()
         site_build._UNRESOLVED_LINKS.clear()
 
     def _snapshot(self, site) -> Snapshot:
