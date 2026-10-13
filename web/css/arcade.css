@@ -265,7 +265,6 @@ main { display: block; }
 .site-nav__lockup-copy { display: none; }
 @media (max-width: 29.99rem) {
   .site-brand { font-size: 1.6rem; }
-  .site-menu-toggle__label { display: none; }
 }
 
 .site-header {
