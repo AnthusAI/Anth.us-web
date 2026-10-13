@@ -1,6 +1,6 @@
 # Anth.us infrastructure
 
-`site.json` configures the Papyrus Amplify app-shell stack (the CMS app) for this publication. The public site is **not** an Amplify reader app: it is an S3 projection behind the CloudFront stack `papyrus-edge-anth-us` (`edge/anth-us-s3.template.yaml`), with the edge functions in `edge/viewer-request.js` and `edge/viewer-response.js`. See `Papyrus/docs/site-hosting.md`. `package.json` pins `@anthusai/papyrus` to the same exact version as the repository root.
+`site.json` configures the Papyrus Amplify app-shell stack (the CMS app) for this publication. `package.json` pins `@anthusai/papyrus`, which supplies the template.
 
 ```bash
 npm ci
@@ -9,10 +9,8 @@ npx papyrus-infra synth --site site.json
 
 Synthesis only prints and writes `cdk.out/`. Deploying is a separate, reviewed step.
 
-## Domains and DNS
+## No reader app
 
-Aliases (`anth.us`, `www.anth.us`) and the ACM certificate belong to the edge stack, not to Amplify. `site.json` has no `hostedZoneId` and no domain settings on purpose: never add an Amplify domain association for these hosts. Edge changes are CloudFormation change sets that Ryan approves.
+anth.us is served from the S3 projection through the `papyrus-edge-anth-us` CloudFront stack (template in the Papyrus repo, `infra/edge/anth-us-s3.yaml`). `site.json` has no `reader`, so the stack creates no Amplify reader app. The 402 legacy redirects that used to be `reader.redirects` live in the redirect key-value store the projection writes.
 
-## Legacy reader settings in `site.json`
-
-The `reader` block (redirects, pre-build commands, build command, environment) describes the retired Amplify reader, which is kept only as a rollback origin until it is deleted. The live site's redirects are the key-value-store entries and edge function rules described above, not `reader.redirects`.
+`cms.stagingPreview` is the build the CMS `staging` branch runs to preview drafts. It was `reader.buildCommand` and `reader.baseDirectory` before the reader app was removed, and generates the same staging build spec.
