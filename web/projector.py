@@ -46,6 +46,7 @@ import anthus_pages as pages  # noqa: E402
 import anthus_urls as urls  # noqa: E402
 import site_css  # noqa: E402
 import site_env  # noqa: E402
+from solution_sites import is_external  # noqa: E402
 import build_via_papyrus as site_build  # noqa: E402
 from anthus_content import Collections, ContentNode, ImageIndex, _slugify, stage_nodes  # noqa: E402
 from papyrus_content.markus_renderer import build as markus_build  # noqa: E402
@@ -527,14 +528,19 @@ class AnthusProjector:
             rendered[output] = self._finished(href, html)
         return rendered
 
+    @staticmethod
+    def _lives_elsewhere(summary) -> bool:
+        """Platform items with their own site get no page here (redirect + link rewrite only)."""
+        return summary.section == "platform" and is_external(node_for(summary).slug)
+
     def item_page_paths(self, summary):
-        if summary.section not in PROJECTED_SECTIONS:
+        if summary.section not in PROJECTED_SECTIONS or self._lives_elsewhere(summary):
             return ()
         slug = markus_build.slugify(node_for(summary).slug)
         return (urls.page_output(f"{summary.section}/{slug}.html"),)
 
     def item_pages(self, item, site):
-        if item.summary.section not in PROJECTED_SECTIONS:
+        if item.summary.section not in PROJECTED_SECTIONS or self._lives_elsewhere(item.summary):
             return {}
         snapshot = self._snapshot(site)
         snapshot.activate()
