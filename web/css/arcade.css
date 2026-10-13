@@ -883,6 +883,18 @@ article .heading a.btn--ghost { color: var(--ink); }
 .product__name .sm--cyclotron { width: 2.8rem; height: auto; }
 .product__name .sm--papyrus { width: 1.2rem; height: auto; }
 .product__name .sm--chatticus, .product__name .sm--primus { width: 1.6rem; }
+/* Client logos: beside the client name on the case cards and the article title, same height as the solution marks. */
+.case__name { display: flex; align-items: center; gap: 0.6rem; }
+.case__name .sm, .heading__title .sm { color: var(--ink); height: 1.6rem; width: auto; flex: none; }
+.heading__title { display: flex; align-items: center; flex-wrap: wrap; column-gap: 1rem; }
+.heading__title .sm { height: 0.8em; }
+/* Call Criteria: its light blue, and a navy that turns light ink on the dark page. Venue Driver is a transparent PNG. */
+.sm--call-criteria { --cc-navy: #152f58; }
+@media (prefers-color-scheme: dark) { .sm--call-criteria { --cc-navy: var(--ink); } }
+.sm-cc-navy { color: var(--cc-navy); stroke: var(--cc-navy); }
+.sm-cc-blue path { stroke: #1db7ec; }
+.sm-cc-blue rect { fill: #1db7ec; }
+.sm--venue-driver { object-fit: contain; border: 0; border-radius: 0; background: none; box-shadow: none; padding: 0; width: auto; }
 
 /* Cyclotron: arrows ride the racetrack. At rest the logo pose; the animated loop pose matches it exactly. */
 .sm-cyc-live { display: none; }

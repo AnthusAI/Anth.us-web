@@ -296,7 +296,7 @@ def _case_card(client, href, pictogram, context, problem, did, outcome,
     return (
         '<li class="card notch case card--link">'
         f'<div class="card__px">{_px(pictogram)}</div>'
-        f'<h3><a href="{_esc(href)}">{escape(client)}</a></h3>'
+        f'<h3 class="case__name"><a href="{_esc(href)}">{escape(client)}</a>{solution_marks.mark(client)}</h3>'
         f'<p class="case__ctx">{escape(context)}</p>'
         f"<dl><div><dt>{labels[0]}</dt><dd>{escape(problem)}</dd></div>"
         f"<div><dt>{labels[1]}</dt><dd>{escape(did)}</dd></div>"
