@@ -1,0 +1,86 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: papyrus-edge-anth-us CloudFront distribution in front of the Anth.us S3 projection bucket
+Parameters:
+  CertificateArn:
+    Type: String
+  Aliases:
+    Type: CommaDelimitedList
+    Default: ''
+  SiteBucketDomainName:
+    Type: String
+  RedirectsKeyValueStoreArn:
+    Type: String
+Conditions:
+  HasAliases: !Not [!Equals [!Join ['', !Ref Aliases], '']]
+Resources:
+  ViewerRequestFunction:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub '${AWS::StackName}-viewer-request'
+      AutoPublish: true
+      FunctionConfig:
+        Comment: redirects (key-value store and patterns), index documents, static-hosting behaviour
+        Runtime: cloudfront-js-2.0
+        KeyValueStoreAssociations:
+          - KeyValueStoreARN: !Ref RedirectsKeyValueStoreArn
+      FunctionCode: |
+{{VIEWER_REQUEST}}
+  ViewerResponseFunction:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub '${AWS::StackName}-viewer-response'
+      AutoPublish: true
+      FunctionConfig:
+        Comment: cache-control and content-type values of the previous host
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+{{VIEWER_RESPONSE}}
+  SiteBucketOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub '${AWS::StackName}-site-bucket'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+  ReaderDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: anth.us reader (main)
+        Aliases: !If [HasAliases, !Ref Aliases, !Ref 'AWS::NoValue']
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        ViewerCertificate: !If
+          - HasAliases
+          - AcmCertificateArn: !Ref CertificateArn
+            SslSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          - CloudFrontDefaultCertificate: true
+        Origins:
+          - Id: site-bucket
+            DomainName: !Ref SiteBucketDomainName
+            OriginAccessControlId: !GetAtt SiteBucketOriginAccessControl.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+        DefaultCacheBehavior:
+          TargetOriginId: site-bucket
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt ViewerRequestFunction.FunctionARN
+            - EventType: viewer-response
+              FunctionARN: !GetAtt ViewerResponseFunction.FunctionARN
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 404
+            ResponsePagePath: /404.html
+          - ErrorCode: 403
+            ResponseCode: 404
+            ResponsePagePath: /404.html
+Outputs:
+  ReaderDistributionId: {Value: !Ref ReaderDistribution}
+  ReaderDomain: {Value: !GetAtt ReaderDistribution.DomainName}
