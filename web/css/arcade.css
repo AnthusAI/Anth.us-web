@@ -447,7 +447,18 @@ main { display: block; }
 .tile p { font-size: 0.97rem; }
 
 /* Article cards */
-.acard { padding: clamp(1.25rem, 2vw, 1.75rem); }
+.acard { padding: 0; gap: 0; }
+.acard__body { display: flex; flex-direction: column; gap: 0.9rem; padding: clamp(1.25rem, 2vw, 1.75rem); flex: 1; }
+.acard__vis { aspect-ratio: 16 / 10; width: 100%; overflow: hidden; background: var(--panel-2); border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: center; }
+.acard__vis img { width: 100%; height: 100%; max-width: none; object-fit: cover; display: block; }
+.acard__vis--px { background: var(--panel); padding: clamp(0.75rem, 1.6vw, 1.25rem); }
+.acard__vis--px .px { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; margin: 0; }
+.acard__vis--px .px__svg { width: 100%; height: 100%; }
+.acard__vis--px .px__cap { display: none; }
+.acard__vis--letter { background: var(--panel-2); }
+.acard__vis--letter span { font-family: var(--font-charted); font-size: clamp(5rem, 9vw, 8rem); line-height: 1; color: var(--pink); }
+.heading__px { max-width: 26rem; margin: 0 0 1.75rem; }
+.heading__px .px__cap { margin-top: 0.5rem; }
 .acard__meta { margin: 0; font-family: var(--font-mono); font-size: 0.8rem; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; }
 .acard h3 { font-size: var(--step-3); }
 .acard__ex { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
@@ -681,9 +692,7 @@ dl dd { margin: 0 0 0.75rem; color: var(--ink-2); }
 .grid--qa { grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); }
 .grid--thirds { grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); }
 .grid--mini { grid-template-columns: repeat(auto-fit, minmax(min(100%, 13.5rem), 1fr)); }
-.grid--list { grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); }
-@media (min-width: 110rem) { .grid--list { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
-@media (min-width: 140rem) { .grid--list { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.grid--list { grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr)); }
 .card--stage .stage__no { font-family: var(--font-charted); color: var(--pink); font-size: var(--step-3); line-height: 1; }
 
 .pills { display: flex; flex-wrap: wrap; gap: 0.4rem 0.5rem; margin: 0; padding: 0; list-style: none; }

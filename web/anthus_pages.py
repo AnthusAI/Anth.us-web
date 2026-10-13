@@ -111,7 +111,7 @@ def article_href(node: ContentNode) -> str:
 
 
 def _preview(node: ContentNode, images: ImageIndex) -> str | None:
-    """The page's social-share image (listings themselves show no images)."""
+    """The item's preview image path (listing visual and social-share image)."""
     raw = node.front_matter.get("preview_image")
     if not raw:
         return None
@@ -292,7 +292,7 @@ def homepage(
     blog: list[ContentNode] | None = None,
     platform: list[ContentNode] | None = None,
 ) -> str:
-    """The arcade homepage (HOME-COPY.md). No raster images, so `images` is unused."""
+    """The arcade homepage (HOME-COPY.md)."""
     out = [_hero(), _stats()]
 
     out.append(
@@ -356,8 +356,8 @@ def homepage(
     out.append(
         _section(
             "05", "Writing", "What we’re measuring.",
-            body='<ul class="grid">'
-            + "".join(_article_card(n) for n in articles[:6])
+            body='<ul class="grid grid--list">'
+            + "".join(_article_card(n, images) for n in articles[:6])
             + '</ul><p class="more"><a href="/blog/">All articles</a></p>'
             + (
                 '<div class="shorter"><h3>Shorter posts</h3><ul>'
@@ -471,15 +471,36 @@ def _prose(*paragraphs: str) -> str:
 _HIDDEN_TAGS = frozenset({"featured", "solutions", "engagement", "integrations"})
 
 
+def _card_visual(node: ContentNode, images: ImageIndex | None) -> str:
+    """The 16:10 visual slot of a listing card.
+
+    A `pictogram:` front-matter name wins (inline, animated, follows light/dark);
+    else the item's preview image; else a first-letter tile so cards still align.
+    """
+    name = anthus_dom.node_pictogram(node)
+    if name:
+        return f'<div class="acard__vis acard__vis--px">{arcade_pictograms.render(name)}</div>'
+    src = _preview(node, images) if images is not None else None
+    if src:
+        size = anthus_dom._dimensions(src)
+        dims = f' width="{size[0]}" height="{size[1]}"' if size else ""
+        return (
+            f'<div class="acard__vis"><img src="{_esc(src)}" alt="" loading="lazy" decoding="async"{dims}></div>'
+        )
+    letter = next((c for c in node.title if c.isalnum()), "A").upper()
+    return f'<div class="acard__vis acard__vis--letter" aria-hidden="true"><span>{escape(letter)}</span></div>'
+
+
 def _text_card(
     node: ContentNode,
+    images: ImageIndex | None = None,
     *,
     headline: bool = False,
     display_date: bool = False,
     link: bool = True,
     code: bool = True,
 ) -> str:
-    """The text-only listing card: mono date + tags, Jersey 25 title, clamped excerpt.
+    """The listing card: visual, mono date + tags, Jersey 25 title, clamped excerpt.
 
     `headline`: posts, whose excerpt is the headline (no separate excerpt).
     """
@@ -501,19 +522,19 @@ def _text_card(
     foot = '<span class="card__link" aria-hidden="true">Read</span>' if link else ""
     cls = "card--link" if link else "card--static"
     return (
-        f'<li class="card notch acard {cls}"><p class="acard__meta">{meta}</p>{heading}'
-        f"{excerpt}{extra}{foot}</li>"
+        f'<li class="card notch acard {cls}">{_card_visual(node, images)}<div class="acard__body">'
+        f'<p class="acard__meta">{meta}</p>{heading}{excerpt}{extra}{foot}</div></li>'
     )
 
 
-def _article_card(node: ContentNode) -> str:
-    return _text_card(node, code=False)
+def _article_card(node: ContentNode, images: ImageIndex | None = None) -> str:
+    return _text_card(node, images, code=False)
 
 
-def _card_grid(nodes: list[ContentNode], **kw) -> str:
+def _card_grid(nodes: list[ContentNode], images: ImageIndex | None = None, **kw) -> str:
     if not nodes:
         return ""
-    return '<ul class="grid grid--list">' + "".join(_text_card(n, **kw) for n in nodes) + "</ul>"
+    return '<ul class="grid grid--list">' + "".join(_text_card(n, images, **kw) for n in nodes) + "</ul>"
 
 
 # --------------------------------------------------------------------------
@@ -595,7 +616,7 @@ def collection_page(
             compact=True,
         ),
         '<section class="section section--tight"><div class="container">'
-        + _card_grid(shown, headline=shows_excerpt_as_headline, code=False)
+        + _card_grid(shown, images, headline=shows_excerpt_as_headline, code=False)
         + collection_nav(title, base, page, total)
         + "</div></section>",
     )
@@ -603,13 +624,13 @@ def collection_page(
 
 def articles_collection(articles: list[ContentNode], images: ImageIndex | None = None) -> dict[int, str]:
     total = collection_page_count(len(articles))
-    return {p: collection_page("Articles", "blog", articles, p) for p in range(1, total + 1)}
+    return {p: collection_page("Articles", "blog", articles, p, images) for p in range(1, total + 1)}
 
 
 def posts_collection(posts: list[ContentNode], images: ImageIndex | None = None) -> dict[int, str]:
     total = collection_page_count(len(posts))
     return {
-        p: collection_page("Posts", "posts", posts, p, shows_excerpt_as_headline=True)
+        p: collection_page("Posts", "posts", posts, p, images, shows_excerpt_as_headline=True)
         for p in range(1, total + 1)
     }
 
@@ -622,12 +643,12 @@ def collection_nodes(blog: list[ContentNode], tag: str) -> list[ContentNode]:
     return nodes
 
 
-def _single_page_collection(title: str, eyebrow: str, nodes: list[ContentNode], lead_html: str, base: str) -> str:
+def _single_page_collection(title: str, eyebrow: str, nodes: list[ContentNode], lead_html: str, base: str, images) -> str:
     assert collection_page_count(len(nodes)) == 1, f"{base} outgrew one page"
     return _page(
         _page_hero(eyebrow, title, lead_html, compact=True),
         '<section class="section section--tight"><div class="container">'
-        + _card_grid(nodes)
+        + _card_grid(nodes, images)
         + "</div></section>",
     )
 
@@ -635,7 +656,7 @@ def _single_page_collection(title: str, eyebrow: str, nodes: list[ContentNode], 
 def reading_page(blog: list[ContentNode], images: ImageIndex | None = None) -> str:
     return _single_page_collection(
         "Reading list", "WHAT WE READ", collection_nodes(blog, "reading"),
-        escape(COLLECTION_DESCRIPTIONS["Reading List"]), "reading",
+        escape(COLLECTION_DESCRIPTIONS["Reading List"]), "reading", images,
     )
 
 
@@ -649,11 +670,11 @@ def research_page(blog: list[ContentNode], images: ImageIndex | None = None) -> 
         "comes with the method and the numbers, not just the headline. If you’re here to align "
         'Jev or another decision model to your own data, start with the '
         '<a href="/decision-models/">guide to aligning decision models</a>.',
-        "research",
+        "research", images,
     )
 
 
-def tag_pages(tags: dict[str, list[ContentNode]]) -> dict[str, tuple[str, str]]:
+def tag_pages(tags: dict[str, list[ContentNode]], images: ImageIndex | None = None) -> dict[str, tuple[str, str]]:
     """Returns `{slug: (label, html)}`; `index` is the tag cloud.
 
     Production mounts these at `/blog/<tag>`, which shares a namespace with
@@ -684,7 +705,7 @@ def tag_pages(tags: dict[str, list[ContentNode]]) -> dict[str, tuple[str, str]]:
                     compact=True, cursor=False,
                 ),
                 '<section class="section section--tight"><div class="container">'
-                + _card_grid(ordered, code=False)
+                + _card_grid(ordered, images, code=False)
                 + "</div></section>",
             ),
         )
@@ -1115,7 +1136,7 @@ def ai_solutions_page(blog: list[ContentNode], images: ImageIndex | None = None)
             lead="The systems we built, ran, and kept improving in production. The proof is years of production RLHF for "
             "a call-center QA operation: a data flywheel learning from expert feedback across hundreds of scorecards "
             "and millions of interactions.",
-            body=_card_grid(by_date(engagements), display_date=True), band=True,
+            body=_card_grid(by_date(engagements), images, display_date=True), band=True,
         ),
         _section(
             "03", "How we work", "Under specs, tests, and a person who can say no",
@@ -1128,10 +1149,10 @@ def ai_solutions_page(blog: list[ContentNode], images: ImageIndex | None = None)
         _section(
             "04", "Projects and examples", "Smaller builds, with the code published",
             lead="Spinoffs and worked examples. The articles do the talking here.",
-            body=_card_grid(by_date(list(projects.values())), display_date=True), band=True,
+            body=_card_grid(by_date(list(projects.values())), images, display_date=True), band=True,
         ),
         _section("05", "Integrations", "What we connect to",
-                 body=_card_grid(by_date(integrations), display_date=True, link=False, code=False)),
+                 body=_card_grid(by_date(integrations), images, display_date=True, link=False, code=False)),
         _section(
             "06", "The process", "From use case to long-term operation",
             lead="Every AI application we build follows the same lifecycle.",
@@ -1239,8 +1260,8 @@ def ryan_page(solutions: list[ContentNode], images: ImageIndex | None = None) ->
         _section("01", "Experience", "Where I’ve worked", body=experience),
         _section("02", "Education", "Where I studied", body=education, band=True),
         _section("03", "Portfolio", "Systems and projects",
-                 body=_card_grid(featured, display_date=True) + _card_grid(plain, display_date=True, link=False, code=False)),
-        _section("04", "Integrations", "What we connect to", body=_card_grid(integrations, display_date=True, link=False, code=False), band=True),
+                 body=_card_grid(featured, images, display_date=True) + _card_grid(plain, images, display_date=True, link=False, code=False)),
+        _section("04", "Integrations", "What we connect to", body=_card_grid(integrations, images, display_date=True, link=False, code=False), band=True),
         _cta(),
     )
 
