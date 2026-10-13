@@ -82,6 +82,8 @@ const puppeteer = require(process.argv[2]);
     ]);
     await p.goto('file://' + html, {waitUntil: 'load', timeout: 30000});
     await p.evaluate(() => document.fonts.ready);
+    // Motion is SMIL: drop it (as assets/px-live.js does for reduced motion) to get the static pose.
+    await p.evaluate(() => document.querySelectorAll('animate, animateTransform, animateMotion, set').forEach(e => e.remove()));
     await new Promise(r => setTimeout(r, 400));
     await p.screenshot({path: png});
     await p.close();
