@@ -116,6 +116,23 @@ into `web/staging/` (`audit_staging`). Leave that check in: without it a
 leftover component would be escaped into visible angle brackets rather than
 failing anything.
 
+## S3 projection (PPY-f1df00)
+
+The CMS backend (`papyrus.config.ts`, `backend.publication`) projects published content into an S3 site
+bucket served by CloudFront: `web/projector.py` renders pages from the stored items, `web/projection.json`
+sets the image renditions made at upload (`assets/responsive/**`, the 1600 px copies under `assets/content/**`).
+The whole `web/` directory is bundled into the content-actions function as `site_static/`.
+
+* `web/site-state.json` (committed) holds the dimensions of every image; rewrite it with
+  `bin/make_site_state.py EXPORT CONTENT_ROOT web/site-state.json` when the set of images changes.
+* `web/legacy-redirect-rules.json` is the redirect list the previous host (Amplify) served, frozen. The exact
+  rules become key-value store entries; the pattern rules and the static-hosting behaviour (trailing slash,
+  `.html`, the 404 page) live in `infra/edge/viewer-request.js`, the header rewriting in
+  `infra/edge/viewer-response.js`. Both are tested with `node --test tests/edge/*.test.mjs`.
+* Parity gate: `bin/project_export_locally.py EXPORT OUT` writes what `papyrus ops content project --all`
+  writes; `tests/test_projector_incremental.py` (with `ANTHUS_PROJECTOR_EXPORT` and
+  `ANTHUS_PROJECTOR_REFERENCE`) compares it byte for byte with a reference build.
+
 ## Hosting
 
 Platform **`WEB`**, its own Amplify app, template
