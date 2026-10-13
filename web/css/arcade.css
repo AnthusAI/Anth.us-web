@@ -291,12 +291,13 @@ main { display: block; }
   color: var(--ink); text-decoration: none;
 }
 .site-logo:hover { color: var(--ink); }
-/* The tile IS the A of ANTHUS: a letter cell exactly as wide as the font's N ink (.463em)
-   and as tall as its cap height (.61em), sitting on the baseline, glyph pixels edge to edge.
-   Gap to the N = the font's own N-to-T gap (.1376em) minus the N's left bearing (.0488em). */
-.site-logo__mark { display: inline-block; vertical-align: baseline; margin-right: 0.0888em; line-height: 0; background: var(--logo-tile); }
-.site-logo__mark svg { display: block; width: 0.474em; height: 0.625em; fill: var(--logo-glyph); shape-rendering: crispEdges; }
-.site-logo__word { font: inherit; }
+/* One SVG wordmark (anthus_dom._LOGO_SVG), drawn in Jersey 25 font units: the tile IS the A
+   of ANTHUS and scales with the letters, so it always matches their cap height. Its height
+   is the font's cap height (750/1230 em) and it sits on the baseline. */
+.site-logo__svg { display: inline-block; vertical-align: baseline; height: 0.6098em; width: auto; overflow: visible; shape-rendering: crispEdges; }
+.site-logo__tile { fill: var(--logo-tile); }
+.site-logo__a { fill: var(--logo-glyph); }
+.site-logo__word { fill: currentColor; }
 
 .site-nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1.3rem; flex-wrap: nowrap; }
 .site-nav a {

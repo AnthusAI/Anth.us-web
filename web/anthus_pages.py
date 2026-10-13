@@ -946,7 +946,7 @@ _HELD_UP = (
 _OPS_FOOTNOTE = (
     "When a catastrophic failure struck an entire AWS data center, we relocated the entire system to a new one "
     "within hours. It was briefly down and back up before tickets needed scanning at the doors, so ticket "
-    "scanning at nightclubs proceeded without a hitch. Afterwards we added redundancy to improve high availability."
+    "scanning at nightclubs proceeded without a hitch."
 )
 
 _VALUES = (

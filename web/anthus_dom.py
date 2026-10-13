@@ -65,10 +65,14 @@ MENU_LINKS = (
 )
 CTA_LINK = ("Start a project", "/engage/")
 
-# The pixel "A" mark: 8x10 cells, drawn as rects. It is the A of ANTHUS, so its
-# rows span exactly the cap height of the Jersey 25 letters beside it (the SVG is
-# sized in em: .463em x .61em, the font's N ink width and cap height) and its
-# stems are two cells, about the font's stem width.
+# The wordmark is one SVG in Jersey 25 font units (1230 per em, cap height 750),
+# so the pixel "A" tile and the letters scale together and always line up. Set
+# as text beside an SVG, the A drifted a device pixel off the N at some sizes,
+# because browsers round a box and hint a glyph differently.
+#
+# The A: 8x10 cells over the N's ink width (570) and the cap height, on a tile.
+# NTHUS: Jersey 25 outlines (fontTools, rounded to integer units) laid out with
+# the header's .04em letter spacing; the tile-to-N gap is the font's own N-to-T gap.
 _LOGO_CELLS = (
     "..XXXX..",
     ".XX..XX.",
@@ -81,21 +85,30 @@ _LOGO_CELLS = (
     "XX....XX",
     "XX....XX",
 )
+_LOGO_CAP = 750
+_LOGO_A_WIDTH = 570
+_LOGO_WIDTH = 4025
+_LOGO_NTHUS = "M1159 450V0H1309V750H1129V720H1099V660H1069V600H1039V540H1009V480H979V420H949V360H919V300H889V750H739V0H919V30H949V90H979V150H1009V210H1039V270H1069V330H1099V390H1129V450ZM1928 0V150H1778V750H1628V150H1478V0ZM2457 300V0H2607V750H2457V450H2247V750H2097V0H2247V300ZM2956 570V600H3106V570H3136V0H3286V630H3256V690H3226V720H3166V750H2896V720H2836V690H2806V630H2776V0H2926V570ZM3635 570V600H3785V570H3815V480H3785V450H3575V420H3515V390H3485V330H3455V120H3485V60H3515V30H3575V0H3845V30H3905V60H3935V120H3965V210H3815V180H3785V150H3635V180H3605V270H3635V300H3845V330H3905V360H3935V420H3965V630H3935V690H3905V720H3845V750H3575V720H3515V690H3485V630H3455V510H3605V570Z"
 
 
-def _logo_rects() -> str:
+def _logo_a_path() -> str:
+    """The A's cells as one path (rects and paths snap to pixels differently)."""
+    cw, rh = _LOGO_A_WIDTH / 8, _LOGO_CAP / 10
     out = []
     for y, row in enumerate(_LOGO_CELLS):
         for match in re.finditer(r"X+", row):
             out.append(
-                f'<rect x="{match.start()}" y="{y}" width="{match.end() - match.start()}" height="1"/>'
+                f"M{match.start() * cw:g} {y * rh:g}h{(match.end() - match.start()) * cw:g}v{rh:g}"
+                f"h{-(match.end() - match.start()) * cw:g}z"
             )
     return "".join(out)
 
 
-_LOGO_MARK = (
-    '<span class="site-logo__mark"><svg viewBox="0 0 8 10" preserveAspectRatio="none" '
-    'aria-hidden="true" focusable="false">' + _logo_rects() + "</svg></span>"
+_LOGO_SVG = (
+    f'<svg class="site-logo__svg" viewBox="0 0 {_LOGO_WIDTH} {_LOGO_CAP}" aria-hidden="true" focusable="false">'
+    f'<rect class="site-logo__tile" width="{_LOGO_A_WIDTH}" height="{_LOGO_CAP}"/>'
+    f'<path class="site-logo__a" d="{_logo_a_path()}"/>'
+    f'<path class="site-logo__word" d="{_LOGO_NTHUS}"/></svg>'
 )
 
 
@@ -103,7 +116,7 @@ def _logo(*, current: bool = False) -> str:
     attrs = ' aria-current="page"' if current else ""
     return (
         f'<a class="site-logo" href="/"{attrs} aria-label="Anthus home">'
-        f'{_LOGO_MARK}<span class="site-logo__word" aria-hidden="true">NTHUS</span></a>'
+        f'{_LOGO_SVG}</a>'
     )
 
 
