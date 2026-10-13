@@ -376,9 +376,12 @@ def homepage(
             '<a href="/about/">That night is on the record.</a> Everything we ship now runs '
             "under specs, tests, staged rollout, and a person who can say no.</p>"
             "<p>We use AI to write code the same way we use it to classify calls: inside a "
-            "governor of constraints, feedback loops and human judgment.</p></div>"
+            "governor of constraints, feedback loops and human judgment.</p>"
+            "<p>Most of that work happens in the open. Our repositories on GitHub show it in "
+            "progress, issue by issue and commit by commit, at software-factory pace.</p></div>"
             f'<ol class="principles">{principles}</ol>'
-            '<p class="more"><a href="/blog/cybernetic-development/">How we govern AI-built systems</a></p>',
+            '<p class="more"><a href="/blog/cybernetic-development/">How we govern AI-built systems</a> '
+            f'<a href="{anthus_dom.GITHUB_ORG}" rel="noopener">Watch the work on GitHub</a></p>',
         )
     )
 
@@ -387,7 +390,8 @@ def homepage(
             "04", "Solutions", "Solutions we built from the work.",
             lead="Our in-house solutions, from a stack that grew out of real delivery work.",
             body=_products_grid() + _supporting_row()
-            + '<p class="more"><a href="/platform/">The whole platform</a></p>',
+            + '<p class="more"><a href="/platform/">The whole platform</a> '
+            f'<a href="{anthus_dom.GITHUB_ORG}" rel="noopener">Our repositories on GitHub</a></p>',
             band=True,
         )
     )
@@ -1418,8 +1422,8 @@ def platform_index(platform: list[ContentNode]) -> str:
         _section("01", "Solutions", "Our in-house solutions", body=_products_grid()),
         _section(
             "02", "Supporting technology", "What the solutions run on",
-            lead="Smaller tools we use and ship alongside them.",
-            body=supporting, band=True,
+            lead="Smaller tools we use and ship alongside them, all open source.",
+            body=supporting + f'<p class="more"><a href="{anthus_dom.GITHUB_ORG}" rel="noopener">All our repositories on GitHub</a></p>', band=True,
         ),
         _section(
             "03", "The rest of the platform", "Also in the platform",
