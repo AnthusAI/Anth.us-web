@@ -40,6 +40,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import arcade_pictograms
+import solution_marks
 from solution_sites import EXTERNAL_SITES
 import site_env  # PPY-f1f0a8: SITE_ENV guards
 
@@ -179,7 +180,14 @@ SUPPORTING = (
     ("Biblicus", "/platform/biblicus/", "Corpus analysis: extraction, retrieval and evidence-first knowledge workflows.", False),
     ("Auritus", "https://aurit.us",
      "Listen to any page: a drop-in embed that turns your content into speech with open models you choose.", True),
+    ("Limatus", "https://github.com/AnthusAI/Limatus",
+     "Finds where AI-written prose sounds generic, measured against your own house style, without rewriting it.", True),
+    ("Pudicus", "https://github.com/AnthusAI/Pudicus",
+     "A commit gate that stops agents and people from committing secrets, with a receipt the deploy can check.", True),
 )
+
+#: The GitHub organization: most of our work in progress is public there.
+GITHUB_ORG = "https://github.com/AnthusAI"
 
 #: Supporting technology that has its own page under /platform/.
 SUPPORTING_PAGES = frozenset({"Biblicus"})
@@ -245,7 +253,7 @@ def _footer_html() -> str:
     note = site_env.footer_note()
     products = "".join(
         '<li class="site-footer__product">'
-        f'<a class="site-footer__pname" href="{html.escape(url, quote=True)}" rel="noopener">{html.escape(name)}</a>'
+        f'<a class="site-footer__pname" href="{html.escape(url, quote=True)}" rel="noopener">{html.escape(name)}{solution_marks.mark(name)}</a>'
         f"<p>{html.escape(line)}</p>"
         + (f'<a class="site-footer__also" href="{page}">On anth.us</a>' if page else "")
         + "</li>"
@@ -265,7 +273,8 @@ def _footer_html() -> str:
         '<section class="site-footer__products" aria-labelledby="footer-products"><h2 id="footer-products">Solutions</h2>'
         f'<ul class="site-footer__plist">{products}</ul>'
         '<div class="site-footer__support"><h3>Supporting technology</h3>'
-        f'<ul>{supporting}<li><a href="/platform/">All technology &rarr;</a></li></ul></div></section>'
+        f'<ul>{supporting}<li><a href="/platform/">All technology &rarr;</a></li>'
+        f'<li><a href="{GITHUB_ORG}" rel="noopener">All our repositories on GitHub &rarr;</a></li></ul></div></section>'
         f'<nav class="site-footer__cols" aria-label="Footer">{columns}</nav>'
         + (f'<div class="site-footer__note">{note}</div>' if note else "")
         + "</div></footer>"
