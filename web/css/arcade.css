@@ -93,7 +93,12 @@
   }
 }
 
-html { font-size: 100%; -webkit-text-size-adjust: 100%; scroll-padding-top: calc(var(--header-h) + 1rem); }
+html {
+  font-size: 100%; -webkit-text-size-adjust: 100%; scroll-padding-top: calc(var(--header-h) + 1rem);
+  /* The canvas behind the page is fuchsia: browsers that tint their chrome from the page colour
+     pick it up, and so does the overscroll area. The page itself is the body's --bg. */
+  background: #dc5497;
+}
 @media (min-width: 96rem)  { html { font-size: 106.25%; } :root { --max: 92rem; } }
 @media (min-width: 120rem) { html { font-size: 112.5%; } }
 @media (min-width: 140rem) { :root { --max: 120rem; } }
@@ -105,6 +110,7 @@ html { font-size: 100%; -webkit-text-size-adjust: 100%; scroll-padding-top: calc
 
 body {
   margin: 0;
+  min-height: 100vh;
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-body);
