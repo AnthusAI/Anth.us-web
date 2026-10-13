@@ -42,7 +42,7 @@ NAMES: tuple[str, ...] = (
     "engagement-path",
     "verdict-meter",
     "leaderboard",
-    "timeline",
+    "eras",
     "lost-sprite",
     "chat-room",
     "page-audio",
@@ -263,7 +263,7 @@ _LG = {
     "layer": (["#######"] * 3, "b"),
     "play": (ARROW_R, "p"), "lines": (["#####", ".....", "####.", ".....", "###.."], "k"),
     "wave": (["..#....", "..#...#", "..#.#.#", "#.#.#.#", "#.#.#.#"], "b"),
-    "lambda": (LAMBDA, "b"),
+    "lambda": (LAMBDA, "b"), "token": (["#####"] * 5, "p"),
     "flag": (["#####", "####.", "###..", "##...", "#...."], "p"),
 }
 
@@ -738,26 +738,130 @@ def leaderboard() -> Fig:
     return f
 
 
-def timeline() -> Fig:
+def _cloud_rows():
+    """Pixel cloud outline (27 x 17): union of circles over a flat base, outline only."""
+    circles = [(9, 12, 5), (16, 8, 7), (24, 11, 6)]
+
+    def inside(x, y):
+        return (any((x - cx) ** 2 + (y - cy) ** 2 <= r * r for cx, cy, r in circles)
+                or (4 <= x <= 29 and 12 <= y <= 17))
+    rows = []
+    for y in range(1, 18):
+        row = ""
+        for x in range(4, 31):
+            edge = inside(x, y) and any(not inside(x + dx, y + dy)
+                                        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+            row += "#" if edge else "."
+        rows.append(row)
+    return rows
+
+
+_CLOUD = _cloud_rows()
+
+
+def _loop_pos(pts, n, off):
+    """n integer positions evenly spaced (by arc length) around the closed polyline ``pts``."""
+    segs = list(zip(pts, pts[1:] + pts[:1]))
+    lens = [abs(b[0] - a[0]) + abs(b[1] - a[1]) for a, b in segs]
+    total = sum(lens)
+    out = []
+    for i in range(n):
+        d = (total * (i / n + off)) % total
+        for (a, b), ln in zip(segs, lens):
+            if d < ln or ln == 0:
+                k = d / ln if ln else 0
+                out.append((round(a[0] + (b[0] - a[0]) * k), round(a[1] + (b[1] - a[1]) * k)))
+                break
+            d -= ln
+    return out, total
+
+
+def eras() -> Fig:
     f = Fig(
-        "timeline", "tl", 128, 80,
-        "Animated diagram of our history from 2007 to today. A progress bar with a tick for "
-        "every year fills from left to right. Three blocks rise from it, each taller than "
-        "the last, as experience builds up: 2007, 2009 and today.",
-        "Our business started in 2007. In 2009 we built a ticketing system for a Tiesto "
-        "world tour. The experience has built up since.",
-        [("block", "Milestone")],
-        L=8, t0=-7.0)
-    f.add(R(6, 44, 118, 4, "d"))
-    f.add(G("k", *[R(6 + round(117 * k / 19), 49, 1, 2) for k in range(20)]))
-    f.add(f.A(R(6, 44, 118, 4, "b"), org=(6, 44),
-              sc=[(0, 0, 1, 1), (6, 0, 1, 28), (82, 1, 1, 1)]))
-    f.add(R(21, 51, 1, 12, "k"))
-    for x, h, t, c in ((6, 8, 8, "b"), (18, 16, 14, "b"), (117, 28, 82, "p")):
-        f.add(f.A(R(x, 42 - h, 7, h, c), vis=(0, [(t, 1)])))
-    f.add(f.T(6, 60, "2007", fs=6), f.T(16, 72, "2009", fs=6),
-          f.T(64, 60, "EXPERIENCE BUILDS", anchor="middle"),
-          f.T(124, 60, "TODAY", fs=6, anchor="end", c="p"))
+        "eras", "er", 160, 88,
+        "Animated diagram of one revenue-critical system that the same team kept running "
+        "through four shifts in technology, left to right. First, on-premises: the system "
+        "runs in a server rack whose unit lights blink. Second, cloud: it runs in a cloud, "
+        "with small puffs rising from the rack into it. Third, serverless: it is a set of "
+        "small functions, each marked with a lambda sign, passing events around a ring. "
+        "Fourth, AI: a model and agents sit around a function, and a check mark shows each "
+        "decision. Small revenue tokens flow along a conveyor under all four stages without "
+        "a break. The first stage is dated 2007 and the last is today.",
+        "One system, four shifts: on-premises, cloud, serverless, and now AI. We kept it "
+        "running through each.",
+        [("token", "Revenue"), ("lambda", "Function"), ("robot", "Agent"),
+         ("check", "Decision")],
+        L=12, t0=-2.0, fs=5.5)
+
+    def stream(pts, n, offs, inner, show_static=True):
+        """Dots circulating a closed polyline: stepped translate SMIL, one clock."""
+        for off in offs:
+            pos, _ = _loop_pos(pts, n, off)
+            kt = [100 * i / n for i in range(n)]
+            vals = [(x, y) for x, y in pos]
+            a = f._smil("animateTransform", 'attributeName="transform" type="translate"',
+                        kt, vals)
+            tr = f' transform="translate({pos[0][0]} {pos[0][1]})"'
+            op = "" if show_static else ' opacity="0"'
+            f.add(f'<g{op}><g{tr}>{a}{inner}</g></g>')
+
+    # conveyor of revenue tokens under all four stages
+    f.add(G("d", R(2, 57, 150, 2)), bmp(ARROW_R, 153, 54, "k"))
+    # stage 1: ON-PREM, a rack with blinking unit lights
+    f.add(R(7, 4, 24, 46, "g"), box(7, 4, 24, 46, "k"), G("k", R(9, 50, 4, 2), R(25, 50, 4, 2)))
+    for i in range(4):
+        y = 8 + 10 * i
+        f.add(box(10, y, 18, 8, "k"), G("d", R(18, y + 2, 8, 1), R(18, y + 5, 8, 1)))
+        on = [((i * 9 + 25 * k) % 100) for k in range(4)]
+        tg = []
+        for p in sorted(on):
+            tg += [(p, 1), (min(p + 12, 99), 0)]
+        tg = sorted(set(tg))
+        f.add(f.A(R(12, y + 3, 3, 2, "p"), vis=(0, tg), show=True))
+    # rack -> cloud: puffs rising and drifting into the cloud
+    stream([(30, 14), (30, 2), (42, 2), (42, 24), (50, 24), (50, 24)], 24, (0, 0.5),
+           R(0, 0, 2, 2, "b"))
+    # stage 2: CLOUD with the system's blocks inside
+    f.add(bmp(_CLOUD, 47, 18, "k"))
+    for j in range(3):
+        x = 51 + 8 * j
+        f.add(R(x, 28, 5, 5, "g"), box(x, 28, 5, 5, "b"))
+        w = 33 * j
+        f.add(f.A(R(x, 28, 5, 5, "b"), vis=(0, [(w + 4, 1), (w + 30, 0)]), show=True))
+    # cloud -> functions, functions -> model
+    stream([(74, 26), (80, 26), (80, 14), (88, 14), (88, 14), (80, 14), (80, 26)], 20, (0, 0.5),
+           R(0, 0, 2, 2, "b"))
+    stream([(112, 12), (128, 12), (128, 12), (112, 12)], 12, (0, 0.5),
+           R(0, 0, 2, 2, "b"))
+    # stage 3: SERVERLESS, functions passing events around a ring
+    f.add(G("d", R(95, 12, 11, 3), R(110, 19, 3, 22), R(106, 38, 7, 3),
+            R(89, 38, 6, 3), R(89, 19, 3, 22)))
+    ring = [(96, 12), (108, 12), (108, 38), (96, 38), (89, 38), (89, 12)]
+    stream(ring, 28, (0, 1 / 3, 2 / 3), R(0, 0, 3, 3, "p"))
+    for k, (x, y) in enumerate(((84, 8), (106, 8), (95, 34))):
+        f.add(R(x, y, 11, 11, "g"), box(x, y, 11, 11, "b"), bmp(LAMBDA, x + 3, y + 3, "b"))
+        w = 33 * k
+        f.add(f.A(R(x, y, 11, 11, "b") + bmp(LAMBDA, x + 3, y + 3, "g"),
+                  vis=(0, [(w + 2, 1), (w + 24, 0)]), show=False))
+    # stage 4: AI, a model and agents around a function, with a decision
+    f.add(R(128, 6, 24, 11, "g"), box(128, 6, 24, 11, "k"), f.T(140, 14.5, "MODEL", anchor="middle"))
+    f.add(bmp(ARROW_D, 138, 18, "k"))
+    f.add(R(136, 22, 9, 9, "g"), box(136, 22, 9, 9, "b"), bmp(LAMBDA, 138, 23, "b"))
+    for x in (125, 149):
+        look = {"C": ROBOT_C, "L": ROBOT_L, "R": ROBOT_R}
+        f.add(f.A(bmp(look["C"], x, 23, "b"), vis=(1, [(20, 0), (40, 1), (60, 0), (80, 1)])))
+        f.add(f.A(bmp(look["L"], x, 23, "b"), vis=(0, [(20, 1), (40, 0)]), show=False))
+        f.add(f.A(bmp(look["R"], x, 23, "b"), vis=(0, [(60, 1), (80, 0)]), show=False))
+    f.add(bmp(ARROW_D, 138, 32, "k"))
+    f.add(R(136, 37, 9, 9, "g"), box(136, 37, 9, 9, "d"))
+    f.add(f.A(box(136, 37, 9, 9, "k") + bmp(CHECK, 138, 40, "b"),
+              vis=(0, [(p, v) for q in (10, 35, 60, 85) for p, v in ((q, 1), (q + 12, 0))]),
+              show=True))
+    # revenue tokens: never stop
+    stream([(3, 54), (149, 54)], 37, (0, 1 / 3, 2 / 3), R(0, 0, 5, 5, "p"))
+    f.add(f.T(19, 70, "ON-PREM", anchor="middle"), f.T(60, 70, "CLOUD", anchor="middle"),
+          f.T(100, 70, "SERVERLESS", anchor="middle"), f.T(140, 70, "AI", anchor="middle"))
+    f.add(f.T(19, 82, "2007", anchor="middle"), f.T(140, 82, "TODAY", anchor="middle", c="p"))
     return f
 
 
@@ -1006,7 +1110,7 @@ _BUILDERS = {
     "hero-loop": hero_loop, "knowledge-base": knowledge_base, "self-aligning": self_aligning,
     "agent-harness": agent_harness, "confidence-gate": confidence_gate, "scorecard": scorecard,
     "relocate": relocate, "platform-stack": platform_stack, "engagement-path": engagement_path,
-    "verdict-meter": verdict_meter, "leaderboard": leaderboard, "timeline": timeline,
+    "verdict-meter": verdict_meter, "leaderboard": leaderboard, "eras": eras,
     "lost-sprite": lost_sprite, "chat-room": chat_room, "page-audio": page_audio, "venue-system": venue_system, "newsroom": newsroom,
 }
 
