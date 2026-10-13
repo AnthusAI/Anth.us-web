@@ -65,17 +65,37 @@ MENU_LINKS = (
 )
 CTA_LINK = ("Start a project", "/engage/")
 
-# The pixel "A" mark: 6x6 cells, drawn as rects (DESIGN.md section 5).
-_LOGO_CELLS = ("..XX..", ".X..X.", "X....X", "XXXXXX", "X....X", "X....X")
+# The pixel "A" mark: 8x10 cells, drawn as rects. It is the A of ANTHUS, so its
+# rows span exactly the cap height of the Jersey 25 letters beside it (the SVG is
+# sized in em: .463em x .61em, the font's N ink width and cap height) and its
+# stems are two cells, about the font's stem width.
+_LOGO_CELLS = (
+    "..XXXX..",
+    ".XX..XX.",
+    ".XX..XX.",
+    "XX....XX",
+    "XX....XX",
+    "XXXXXXXX",
+    "XXXXXXXX",
+    "XX....XX",
+    "XX....XX",
+    "XX....XX",
+)
+
+
+def _logo_rects() -> str:
+    out = []
+    for y, row in enumerate(_LOGO_CELLS):
+        for match in re.finditer(r"X+", row):
+            out.append(
+                f'<rect x="{match.start()}" y="{y}" width="{match.end() - match.start()}" height="1"/>'
+            )
+    return "".join(out)
+
+
 _LOGO_MARK = (
-    '<span class="site-logo__mark"><svg viewBox="0 0 6 6" aria-hidden="true" focusable="false">'
-    + "".join(
-        f'<rect x="{x}" y="{y}" width="1" height="1"/>'
-        for y, row in enumerate(_LOGO_CELLS)
-        for x, cell in enumerate(row)
-        if cell == "X"
-    )
-    + "</svg></span>"
+    '<span class="site-logo__mark"><svg viewBox="0 0 8 10" preserveAspectRatio="none" '
+    'aria-hidden="true" focusable="false">' + _logo_rects() + "</svg></span>"
 )
 
 

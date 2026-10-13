@@ -31,7 +31,6 @@
   /* Logo tile: light tile + ink A on light backgrounds; pink tile + white A in dark mode and the footer. */
   --logo-tile: #f9c9e1;
   --logo-glyph: var(--ink);
-  --logo-edge: var(--pink);
 
   --footer-bg: #150f20;
   --footer-ink: #f3eef8;
@@ -91,7 +90,6 @@
     --blue: #3fb2f7;
     --logo-tile: var(--pink);
     --logo-glyph: #ffffff;
-    --logo-edge: transparent;
   }
 }
 
@@ -252,7 +250,6 @@ main { display: block; }
 
 /* "ANTHUS AI SOLUTIONS" lockup: wordmark (Jersey 25, ink) + link (Jersey 10, pink). */
 .site-brand { display: flex; align-items: baseline; gap: 0.5rem; flex: none; }
-.site-brand .site-logo { align-self: center; }
 .site-lockup {
   font-family: var(--font-label); font-size: 2rem; line-height: 1; letter-spacing: 0.06em;
   text-transform: uppercase; color: var(--pink); text-decoration: none; padding-top: 0.15rem;
@@ -263,9 +260,8 @@ main { display: block; }
 @media (prefers-color-scheme: dark) { .site-lockup { color: var(--pink-hot); } }
 .site-nav__lockup-copy { display: none; }
 @media (max-width: 29.99rem) {
-  .site-logo__word { font-size: 1.6rem; }
+  .site-brand .site-logo { font-size: 1.6rem; }
   .site-lockup { font-size: 1.6rem; }
-  .site-logo__mark { width: 1.45rem; height: 1.45rem; padding: 0.25rem; }
   .site-brand { gap: 0.35rem; }
   .site-menu-toggle__label { display: none; }
 }
@@ -290,16 +286,17 @@ main { display: block; }
 }
 
 .site-logo {
-  display: inline-flex; align-items: flex-end; gap: 0.08em;
-  color: var(--ink); text-decoration: none; flex: none;
+  display: inline-block; white-space: nowrap; flex: none;
+  font-family: var(--font-display); font-size: 2rem; line-height: 1; letter-spacing: 0.04em;
+  color: var(--ink); text-decoration: none;
 }
 .site-logo:hover { color: var(--ink); }
-.site-logo__mark {
-  display: block; width: 1.75rem; height: 1.75rem; padding: 0.3rem;
-  background: var(--logo-tile); box-shadow: inset 0 0 0 1px var(--logo-edge); clip-path: var(--clip-4);
-}
-.site-logo__mark svg { display: block; width: 100%; height: 100%; fill: var(--logo-glyph); shape-rendering: crispEdges; }
-.site-logo__word { font-family: var(--font-display); font-size: 2rem; line-height: 1; letter-spacing: 0.04em; margin-bottom: -0.1rem; }
+/* The tile IS the A of ANTHUS: a letter cell exactly as wide as the font's N ink (.463em)
+   and as tall as its cap height (.61em), sitting on the baseline, glyph pixels edge to edge.
+   Gap to the N = the font's own N-to-T gap (.1376em) minus the N's left bearing (.0488em). */
+.site-logo__mark { display: inline-block; vertical-align: baseline; margin-right: 0.0888em; line-height: 0; background: var(--logo-tile); }
+.site-logo__mark svg { display: block; width: 0.463em; height: 0.61em; fill: var(--logo-glyph); shape-rendering: crispEdges; }
+.site-logo__word { font: inherit; }
 
 .site-nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1.3rem; flex-wrap: nowrap; }
 .site-nav a {
@@ -484,7 +481,7 @@ main { display: block; }
 .site-footer a:hover { color: var(--pink-hot); text-decoration: underline; text-underline-offset: 4px; }
 .site-footer__inner { padding-block: clamp(3rem, 5vw, 5rem) 2rem; }
 .site-footer__brand { margin-bottom: 2.5rem; max-width: 36rem; }
-.site-footer__brand .site-logo { color: var(--footer-ink); margin-bottom: 1rem; --logo-tile: #ff57b4; --logo-glyph: #ffffff; --logo-edge: transparent; }
+.site-footer__brand .site-logo { color: var(--footer-ink); margin-bottom: 1rem; --logo-tile: #ff57b4; --logo-glyph: #ffffff; }
 .site-footer__brand p { color: var(--footer-ink-2); margin: 0; }
 .site-footer__cols { display: grid; gap: 2rem 2.5rem; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); }
 .site-footer h2 { font-family: var(--font-label); font-size: 1.25rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--footer-ink-2); margin: 0 0 0.9rem; line-height: 1; }
