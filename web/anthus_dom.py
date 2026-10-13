@@ -35,7 +35,6 @@ so they never disturb emphasis or table parsing.
 from __future__ import annotations
 
 import html
-import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -83,7 +82,7 @@ def _logo(*, current: bool = False) -> str:
     attrs = ' aria-current="page"' if current else ""
     return (
         f'<a class="site-logo" href="/"{attrs} aria-label="Anthus home">'
-        f'{_LOGO_MARK}<span class="site-logo__word">ANTHUS</span></a>'
+        f'{_LOGO_MARK}<span class="site-logo__word" aria-hidden="true">NTHUS</span></a>'
     )
 
 
@@ -106,7 +105,7 @@ FOOTER_COLUMNS = (
     (
         "Work",
         (
-            ("Solutions", "/ai-solutions/", False),
+            ("AI Solutions", "/ai-solutions/", False),
             ("Decision Models", "/decision-models/", False),
             ("Benchmarks", "/benchmarks/", False),
         ),
@@ -250,6 +249,10 @@ def route_for(active_href: str) -> str:
     return "/" + href
 
 
+#: A generated page that lays out its own full-bleed sections starts with this.
+BARE_MARKER = "<!--bare-->"
+
+
 def render_masthead(route: str) -> str:
     return _header_html(route)
 
@@ -257,10 +260,16 @@ def render_masthead(route: str) -> str:
 def render_envelope(*, fragment: str, route: str, scripts: str) -> str:
     """Everything between ``<body>`` and ``</body>``.
 
-    The homepage composes its own full-bleed sections; every other page is
-    wrapped in the standard content container.
+    The homepage and every generated page compose their own full-bleed
+    sections (they start with ``BARE_MARKER``); article and platform-product
+    bodies are wrapped in the standard content container.
     """
-    body = fragment if route == "/" else f'<div class="container page">{fragment}</div>'
+    if fragment.startswith(BARE_MARKER):
+        body = fragment[len(BARE_MARKER):]
+    elif route == "/":
+        body = fragment
+    else:
+        body = f'<div class="container page">{fragment}</div>'
     return (
         '<a class="skip-link" href="#main">Skip to content</a>\n'
         + _header_html(route)
@@ -269,50 +278,6 @@ def render_envelope(*, fragment: str, route: str, scripts: str) -> str:
         + "\n"
         + scripts
     )
-
-
-# --------------------------------------------------------------------------
-# CSS Modules
-# --------------------------------------------------------------------------
-
-_HASHES = POD_ROOT / "css" / "css-module-hashes.json"
-
-
-class _CssModules(dict):
-    """`index.module.css` / `platform.module.css` class names, as Gatsby hashes them.
-
-    Gatsby's css-loader renames every local class to
-    `<file>-module--<localName>--<hash>`. The hash is derived inside webpack and
-    is not reproducible outside it, so the mapping is committed once in
-    `web/css/css-module-hashes.json` -- read here *and* by
-    `bin/build-theme-css.py`, which rewrites the stylesheet with the same
-    values. One source of truth means a class can never exist in the markup
-    and not in the CSS.
-
-    Lookups are `modules["index:listItem"]`. A missing key raises rather than
-    returning a blank class, because a silently classless element is exactly
-    the kind of invisible layout regression this whole module exists to avoid.
-    """
-
-    def __missing__(self, key: str) -> str:
-        raise KeyError(
-            f"No CSS-module class {key!r}. Known keys come from {_HASHES.name}; "
-            "regenerate it with bin/build-theme-css.py --extract-hashes."
-        )
-
-
-_MODULES: _CssModules | None = None
-
-
-def css_modules() -> _CssModules:
-    global _MODULES
-    if _MODULES is None:
-        raw = json.loads(_HASHES.read_text(encoding="utf-8"))
-        _MODULES = _CssModules(
-            {key: f"{key.split(':')[0]}-module--{key.split(':')[1]}--{value}"
-             for key, value in raw.items()}
-        )
-    return _MODULES
 
 
 # --------------------------------------------------------------------------
@@ -563,7 +528,7 @@ DROP_PREFIXES = ("markus-", "papyrus-")
 
 @dataclass(frozen=True)
 class ArticleHeading:
-    """`Anth.us/src/templates/blog-post.jsx`'s `.heading` block."""
+    """The article header: eyebrow (date, tags), title, dek, byline."""
 
     title: str
     date: str = ""
@@ -571,11 +536,22 @@ class ArticleHeading:
     assistants_html: str = ""
     repository: str = ""
     draft: bool = False
+    tags: tuple[str, ...] = ()
+    dek: str = ""
 
     def html(self) -> str:
-        parts = [f"<h1>{html.escape(self.title)}</h1>"]
+        parts = []
+        meta = ""
         if self.date:
-            parts.append(f'<div class="date">{html.escape(self.date)}</div>')
+            meta += f"<time>{html.escape(self.date)}</time>"
+        for tag in self.tags:
+            slug = (tag or "").strip().lower().replace(" ", "-")
+            meta += f'<a class="pill" href="/tags/{html.escape(slug, quote=True)}/">#{html.escape(tag)}</a>'
+        if meta:
+            parts.append(f'<p class="heading__meta">{meta}</p>')
+        parts.append(f"<h1>{html.escape(self.title)}</h1>")
+        if self.dek:
+            parts.append(f'<p class="heading__dek">{html.escape(self.dek)}</p>')
         if self.authors_html:
             parts.append(f'<div class="authors">{self.authors_html}</div>')
         if self.assistants_html:
@@ -589,16 +565,12 @@ class ArticleHeading:
             )
         heading = '<div class="heading">' + "".join(parts) + "</div>"
         if self.draft:
-            # Production renders a diagonal watermark over the whole article
-            # for `state: draft`; `.draft-overlay` in layout.scss does the
-            # work and must be the article's first child.
+            # `.draft-overlay` must be the article's first child.
             heading = (
                 '<div class="draft-overlay"><h1 class="draft-overlay-text">DRAFT'
                 "</h1></div>" + heading
             )
         return heading
-
-
 
 
 def assert_no_markus_classes(html_text: str, where: str) -> None:
@@ -644,19 +616,21 @@ def _joined(entries: list[str], css: str) -> str:
     return "".join(out)
 
 
-#: `src/components/engage-cta.jsx`, rendered; last child of `<article>` for
-#: posts tagged `client-acquisition`.
+#: Closing call to action on posts tagged `client-acquisition`.
 ENGAGE_CTA_HTML = (
-    '<div class="engage-cta-module--box--92c7c">'
-    '<h2 class="engage-cta-module--heading--f8246">We do this for clients, at scale</h2>'
-    '<p class="engage-cta-module--text--60ac0">Anthus has run this kind of loop in '
-    "production for years: reviewers correct the model and say why, the explanation "
-    "becomes policy, and the system gets more trustworthy month over month across "
+    '<aside class="engage-box notch"><h2>We do this for clients, at scale</h2>'
+    "<p>Anthus has run this kind of loop in production for years: reviewers correct the model and say why, "
+    "the explanation becomes policy, and the system gets more trustworthy month over month across "
     "hundreds of scorecards and millions of interactions. Bring us the judgment task "
     "and we&#x27;ll run it on Primus with your reviewers in the loop, and hand you a "
     "scorecard you can inspect after the first month.</p>"
-    '<a class="button" href="/engage/">See how an engagement works</a></div>'
+    '<a class="btn" href="/engage/"><span>See how an engagement works &rarr;</span></a></aside>'
 )
+
+
+def _dek(node) -> str:
+    text = node.excerpt_text.strip()
+    return text if 0 < len(text) <= 320 else ""
 
 
 def article_heading(node) -> ArticleHeading:
@@ -688,4 +662,6 @@ def article_heading(node) -> ArticleHeading:
         assistants_html=assistants_html,
         repository=str(front.get("repository") or ""),
         draft=not node.published,
+        tags=tuple(t for t in node.tags if t != "featured"),
+        dek=_dek(node),
     )

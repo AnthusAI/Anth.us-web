@@ -74,7 +74,6 @@ from papyrus_content.markus_renderer.transforms import (  # noqa: E402
 )
 
 import anthus_dom as dom  # noqa: E402
-import anthus_page_html  # noqa: E402
 import anthus_pages as pages  # noqa: E402
 import anthus_urls as urls  # noqa: E402
 import site_css  # noqa: E402
@@ -400,7 +399,7 @@ def _page_title(plain: str) -> str:
 
 def _generated(href: str, title: str, fragment: str, *, meta_key: str | None = None) -> None:
     GENERATED[href] = (title, fragment)
-    meta = anthus_page_html.PAGE_META.get(meta_key) if meta_key else None
+    meta = pages.PAGE_META.get(meta_key) if meta_key else None
     if meta:
         _register_meta(href, meta["description"], None)
 
@@ -436,7 +435,7 @@ def register_article_metadata(collections: Collections, images: ImageIndex) -> N
 
 
 def generate_pages(collections: Collections, images: ImageIndex) -> None:
-    meta = anthus_page_html.PAGE_META
+    meta = pages.PAGE_META
     _generated(
         "index.html",
         "Home",
@@ -463,13 +462,13 @@ def generate_pages(collections: Collections, images: ImageIndex) -> None:
     _generated(
         "ai-solutions.html",
         _page_title(meta["/ai-solutions/"]["title"]),
-        pages.ai_solutions_page(collections.blog, images),
+        pages.ai_solutions_page(collections.blog),
         meta_key="/ai-solutions/",
     )
     _generated(
         "ryan.html",
         _page_title(meta["/ryan/"]["title"]),
-        pages.ryan_page(collections.solutions, images),
+        pages.ryan_page(collections.solutions),
         meta_key="/ryan/",
     )
     _generated(
@@ -496,13 +495,13 @@ def generate_pages(collections: Collections, images: ImageIndex) -> None:
     _generated(
         "reading.html",
         _page_title(meta["/reading/"]["title"]),
-        pages.reading_page(collections.blog, images),
+        pages.reading_page(collections.blog),
         meta_key="/reading/",
     )
     _generated(
         "research.html",
         _page_title(meta["/research/"]["title"]),
-        pages.research_page(collections.blog, images),
+        pages.research_page(collections.blog),
         meta_key="/research/",
     )
 
