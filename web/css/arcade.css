@@ -259,7 +259,8 @@ main { display: block; }
 .site-brand__svg { display: block; height: 0.7317em; width: auto; overflow: visible; shape-rendering: crispEdges; }
 .site-brand__home .site-logo__word { fill: var(--ink); }
 .site-brand__lockup { fill: var(--pink); }
-.site-brand__hit { fill: transparent; }
+.site-brand__hit { fill: transparent; } /* the whole word (and gap) is clickable, not just the letters */
+.site-footer__brand .site-logo__svg { pointer-events: none; } /* clicks fall through to the link box */
 .site-brand__rule { fill: currentColor; opacity: 0; }
 .site-brand__lockup:hover { fill: var(--pink-hot); }
 .site-brand__lockup:hover .site-brand__rule { opacity: 1; fill: var(--pink-hot); }
