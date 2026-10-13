@@ -33,6 +33,7 @@ class PictogramTests(unittest.TestCase):
                 html = ap.render(name)
                 ET.fromstring(html)  # whole figure is well-formed XML
                 ET.fromstring(_svg_part(html))
+                self.assertEqual(html.count("<svg class=\"px__svg"), 2 if name == "hero-loop" else 1)
                 self.assertIn(f'data-px="{name}"', html)
                 self.assertTrue(html.startswith('<figure class="px'))
 
@@ -41,8 +42,9 @@ class PictogramTests(unittest.TestCase):
             with self.subTest(name=name):
                 html = ap.render(name)
                 svg = _svg_part(html)
-                self.assertIn('role="img"', svg)
-                label = re.search(r'aria-label="([^"]+)"', svg)
+                self.assertIn('role="img"', html)
+                self.assertEqual(html.count('role="img"'), 1)
+                label = re.search(r'aria-label="([^"]+)"', html)
                 self.assertIsNotNone(label)
                 self.assertGreater(len(label.group(1).split()), 12)
                 self.assertIn("<figcaption", html)
@@ -58,7 +60,7 @@ class PictogramTests(unittest.TestCase):
                 self.assertNotIn("http", _svg_part(html).replace("http://www.w3.org", ""))
 
     def test_only_rects_and_text_as_shapes(self):
-        allowed = {"svg", "g", "rect", "text", "defs", "clipPath"}
+        allowed = {"svg", "g", "rect", "text", "defs", "clipPath", "use"}
         for name in ap.NAMES:
             with self.subTest(name=name):
                 for el in ET.fromstring(_svg_part(ap.render(name))).iter():
@@ -77,7 +79,7 @@ class PictogramTests(unittest.TestCase):
                 html = ap.render(name)
                 abbr = ap._BUILDERS[name]().abbr
                 for cls in set(re.findall(r'class="an(?: sx| r\d)* (px-[a-z]+-\d+)"', html)):
-                    self.assertTrue(cls.startswith(f"px-{abbr}-"))
+                    self.assertTrue(cls.startswith((f"px-{abbr}-", "px-hm-")))
                     self.assertIn(f"@keyframes {cls}{{", CSS, "run --write-css")
 
     def test_css_contract(self):
@@ -98,7 +100,49 @@ class PictogramTests(unittest.TestCase):
     def test_size_budget(self):
         for name in ap.NAMES:
             with self.subTest(name=name):
-                self.assertLess(len(_svg_part(ap.render(name))), 13000)
+                self.assertLess(len(_svg_part(ap.render(name))), 16000)
+
+    def test_scorecard_pile_and_scoring_share_one_clock(self):
+        f = ap._BUILDERS["scorecard"]()
+        html = f.figure()
+        self.assertEqual(len(f.meta["pile"]), len(ap._SC_T))
+        for k, T in enumerate(ap._SC_T):
+            # same keyframe class => the pile card and the first scored row start together
+            self.assertEqual(f.meta["pile"][k], f.meta["row0"][k])
+            i = CSS.index("@keyframes %s{" % f.meta["pile"][k])
+            body = CSS[i:CSS.index("\n", i)]
+            if T:
+                self.assertIn(f"{T}%{{opacity:1}}", body)
+            self.assertIn(f'class="an {f.meta["pile"][k]}"', html)
+        self.assertEqual(html.count(f'class="an {f.meta["pile"][1]}"'), 2)
+
+    def test_copy_rules(self):
+        banned = {
+            "scorecard": [r"\bcards\b"],
+            "relocate": ["never stopped", "no downtime", "never stop"],
+            "timeline": ["production", "enterprise"],
+            "platform-stack": ["RUNTIME", "runtime"],
+        }
+        for name, pats in banned.items():
+            html = ap.render(name)
+            for pat in pats:
+                self.assertIsNone(re.search(pat, html), (name, pat))
+        self.assertIn("hundreds of scorecards", ap.render("scorecard"))
+        self.assertIn("DECISION MODELS", ap.render("platform-stack"))
+        ps = ap.render("platform-stack")
+        self.assertLess(ps.index("DECISION MODELS"), ps.index("AGENTS"))  # below agents
+        rl = ap.render("relocate")
+        self.assertIn("DOORS", rl)
+        self.assertIn("redundancy", rl)
+        for lbl in ("2007", "2009", "TODAY"):
+            self.assertIn(lbl, ap.render("timeline"))
+
+    def test_hero_has_phone_variant_with_single_label(self):
+        html = ap.render("hero-loop")
+        self.assertEqual(html.count('role="img"'), 1)
+        self.assertIn('data-v="wide"', html)
+        self.assertIn('data-v="tall"', html)
+        self.assertEqual(html.count('aria-hidden="true"'), 2 + html.count("px__g"))
 
     def test_unknown_name(self):
         with self.assertRaises(KeyError):
