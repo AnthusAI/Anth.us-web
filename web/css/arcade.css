@@ -430,6 +430,7 @@ main { display: block; }
 .more { margin: 2.25rem 0 0; }
 .more a { font-family: var(--font-label); font-size: 1.3rem; letter-spacing: 0.08em; text-transform: uppercase; text-decoration: none; color: var(--pink-deep); }
 .more a::after { content: " \2192"; }
+.more a + a { margin-left: 2rem; }
 .more a:hover { color: var(--pink); text-decoration: underline; text-underline-offset: 5px; text-decoration-thickness: 2px; }
 
 /* Principles */
