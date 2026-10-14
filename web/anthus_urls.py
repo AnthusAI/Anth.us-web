@@ -618,7 +618,15 @@ def legacy_rules(
     # 2b. Folded items: every URL shape they ever had goes to the page that absorbed them.
     #     Before the generic pattern, or an exact rule would be shadowed by it.
     folded_sources: set[str] = set()
-    for name, target in sorted(urls.folded_by_name.items()):
+    # The mapping itself is the source of truth: once a folded item is unpublished in
+    # the CMS there is no node to learn its names from, but its old URLs still need
+    # their redirects. Seed every slug (and its title-cased spelling) from FOLDED_INTO.
+    folded_names = dict(urls.folded_by_name)
+    for slug, target in FOLDED_INTO.items():
+        for name in (slug, slug.title()):
+            folded_names.setdefault(name, target)
+            folded_names.setdefault(name.lower(), target)
+    for name, target in sorted(folded_names.items()):
         shapes = [("articles", name), ("blog", name), ("solutions", name), (name,)]
         if "/" in name:
             shapes = [tuple(name.split("/")), ("articles", name.rsplit("/", 1)[-1]),
