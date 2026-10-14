@@ -612,26 +612,46 @@ tr.etc { color: var(--ink-2); }
 
 /* Figures and images (Markus pipeline emits gatsby-plugin-image wrappers). */
 figure { margin: 2rem 0; }
-figure.center-full-image, .center-full-image { text-align: center; }
 figcaption, .image-caption {
   font-size: 0.88rem; line-height: 1.45; color: var(--ink-2);
-  margin: 0.6rem auto 0; max-width: 62ch; text-align: left;
+  margin: 0.6rem 0 0; max-width: 62ch; text-align: left;
 }
-.center-full-image figcaption { text-align: center; }
-.image-caption { margin-top: 0.5rem; margin-bottom: 1.5rem; }
+.image-caption { margin-bottom: 1.5rem; }
 
+/* ---- Image placement (see web/BUILD-NOTES.md, "Image placement") -------------------------
+   Everything is measured against the TEXT column (--col, the 68ch the paragraphs use), not
+   the wider article box, so a centred picture is centred on the text above and below it. */
+.page article { --col: 68ch; }
 .gatsby-image-wrapper { position: relative; overflow: hidden; max-width: 100%; background: var(--panel); }
 .gatsby-image-wrapper-constrained { display: inline-block; vertical-align: top; }
 .gatsby-image-wrapper img { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; margin: 0; padding: 0; object-fit: cover; }
 .gatsby-image-wrapper > div > img[role="presentation"] { position: static; width: auto; height: auto; max-width: 100%; display: block; }
 .gatsby-image-wrapper [data-main-image] { opacity: 1; }
 .gatsby-image-wrapper [data-placeholder-image] { opacity: 0 !important; }
-.gatsby-image-wrapper.full, .gatsby-image-wrapper.centered { display: block; margin: 0 auto; }
-.gatsby-image-wrapper.centered { width: min(100%, 44rem); }
-.gatsby-image-wrapper.right, .gatsby-image-wrapper.right-aligned { float: right; width: 38%; margin: 0.25rem 0 1rem 1.75rem; }
-@media (max-width: 40rem) { .gatsby-image-wrapper.right, .gatsby-image-wrapper.right-aligned { float: none; width: 100%; margin: 0 0 1rem; } }
-.center-small-image { text-align: center; max-width: 60%; margin-inline: auto; }
-.center-medium-image { text-align: center; max-width: 80%; margin-inline: auto; }
+.img { margin: 1.75rem 0; --txt: min(100%, var(--col)); }
+.img .gatsby-image-wrapper { display: block; margin-inline: auto; }
+.img figcaption, .img .image-caption { max-width: 100%; }
+/* full: exactly the text column, both edges aligned with the paragraphs */
+.img--full { width: var(--txt); }
+/* small: centred in the text column, 60% of it */
+.img--small { width: calc(var(--txt) * 0.6); margin-left: calc(var(--txt) * 0.2); }
+/* medium: centred in the text column, up to 44rem (or the wrapper's own --img-max) */
+.img--medium {
+  --w: min(var(--txt), var(--img-max, 44rem));
+  width: var(--w); margin-left: calc((var(--txt) - var(--w)) / 2);
+}
+/* inset-right: floated, 40% of the text column, right edge on the text column; text wraps */
+.img--inset-right {
+  float: right; width: calc(var(--txt) * 0.4);
+  margin: 0.25rem max(0px, calc(100% - var(--col))) 1rem 1.75rem;
+}
+.page article > h2 { clear: both; }
+.page article::after { content: ""; display: block; clear: both; }
+@media (max-width: 40rem) {
+  .img--small, .img--medium, .img--inset-right { float: none; width: 100%; margin: 1.5rem 0; }
+  .img--small { width: 80%; margin-inline: auto; }
+}
+/* Legacy layout class names stay on the picture wrapper but carry no layout of their own. */
 .gatsby-image-wrapper.logo { display: none; }
 article img { border: 1px solid var(--line); }
 .page article > p > img { display: block; }
