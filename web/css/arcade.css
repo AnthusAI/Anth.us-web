@@ -631,8 +631,8 @@ figcaption, .image-caption {
 .img { margin: 1.75rem 0; --txt: min(100%, var(--col)); }
 .img .gatsby-image-wrapper { display: block; margin-inline: auto; }
 .img figcaption, .img .image-caption { max-width: 100%; }
-/* full: the whole article width, left edge on the text column */
-.img--full { width: 100%; }
+/* full: exactly the text column, both edges aligned with the paragraphs */
+.img--full { width: var(--txt); }
 /* small: centred in the text column, 60% of it */
 .img--small { width: calc(var(--txt) * 0.6); margin-left: calc(var(--txt) * 0.2); }
 /* medium: centred in the text column, up to 44rem (or the wrapper's own --img-max) */
