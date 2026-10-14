@@ -269,7 +269,9 @@ def _footer_html() -> str:
     return (
         '<footer class="site-footer"><div class="container site-footer__inner">'
         '<div class="site-footer__brand">'
-        + _logo()
+        + '<div class="site-brand site-brand--footer">'
+        + _brand(home_current=False, lockup_href=MENU_LINKS[0][1], lockup_label=MENU_LINKS[0][0], lockup_current=False)
+        + "</div>"
         + "<p>Anthus builds AI-native systems with durable procedures, operational "
         "guardrails, and reusable platform components.</p></div>"
         '<section class="site-footer__products" aria-labelledby="footer-products"><h2 id="footer-products">Solutions</h2>'

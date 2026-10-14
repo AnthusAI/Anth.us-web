@@ -63,7 +63,7 @@ import re
 from dataclasses import dataclass, field
 from urllib.parse import quote, unquote
 
-from solution_sites import EXTERNAL_SITES
+from solution_sites import EXTERNAL_SITES, FOLDED_INTO
 
 #: ``directory`` emits ``/articles/<slug>/``; ``html`` emits
 #: ``/articles/<slug>.html``. This is the only place the shape is decided.
@@ -229,6 +229,8 @@ class SiteUrls:
     tag_by_name: dict[str, str] = field(default_factory=dict)
     #: lowercased name or creator path -> site, for things that live on their own site.
     external_by_name: dict[str, str] = field(default_factory=dict)
+    #: every spelling (slug, authored, creator path; lowercased and as authored) of a folded item -> target page.
+    folded_by_name: dict[str, str] = field(default_factory=dict)
     #: number of ``/posts/`` pages, so ``/posts/7/`` is not invented.
     posts_pages: int = 1
 
@@ -243,6 +245,8 @@ class SiteUrls:
             urls._add_platform(node)
         for node in getattr(collections, "external_platform", []):
             urls._add_external(node)
+        for node in getattr(collections, "folded", []):
+            urls._add_folded(node)
         for tag in collections.tags:
             urls.tag_by_name.setdefault(tag.strip().lower(), tag_slug(tag))
             urls.tag_names.setdefault(tag.strip(), tag_slug(tag))
@@ -297,6 +301,33 @@ class SiteUrls:
         if path is not None:
             self.external_by_name[path] = site
             self.external_by_name[path.lower()] = site
+
+    def _add_folded(self, node) -> None:
+        target = FOLDED_INTO[node.slug.lower()]
+        legacy = node.front_matter.get("redirect_from") or []
+        if isinstance(legacy, str):
+            legacy = [legacy]
+        names = [node.slug, node.authored_slug, slugify(node.authored_slug), *[str(o).strip() for o in legacy]]
+        path = _creator_path(node)
+        if path is not None:
+            names.append(path)
+        for name in names:
+            if name:
+                self.folded_by_name[name] = target
+                self.folded_by_name[name.lower()] = target
+
+    def folded_for(self, path: str) -> str | None:
+        """The page a folded item's old path now points at (`/articles/x/`, `/blog/x/`, `/solutions/x/`, `/x/`)."""
+        segments = [s for s in unquote(path or "").strip("/").split("/") if s]
+        if segments and segments[-1].endswith(".html"):
+            segments[-1] = segments[-1][: -len(".html")]
+            if segments[-1] == "index":
+                segments = segments[:-1]
+        if len(segments) == 2 and segments[0].lower() in ("articles", "blog", "solutions"):
+            return self.folded_by_name.get(segments[1].lower())
+        if len(segments) == 1:
+            return self.folded_by_name.get(segments[0].lower())
+        return None
 
     def external_for(self, path: str) -> str | None:
         """The site a site-absolute path points at when that thing has its own site."""
@@ -583,6 +614,20 @@ def legacy_rules(
             continue
         group = "blog tag" if href.startswith("tags/") else "blog alias"
         out.add(group, _source("blog", name), canonical(href), index_twin=True)
+
+    # 2b. Folded items: every URL shape they ever had goes to the page that absorbed them.
+    #     Before the generic pattern, or an exact rule would be shadowed by it.
+    folded_sources: set[str] = set()
+    for name, target in sorted(urls.folded_by_name.items()):
+        shapes = [("articles", name), ("blog", name), ("solutions", name), (name,)]
+        if "/" in name:
+            shapes = [tuple(name.split("/")), ("articles", name.rsplit("/", 1)[-1]),
+                      ("blog", name.rsplit("/", 1)[-1])]
+        for segments in shapes:
+            source = _source(*segments)
+            if source not in folded_sources and source != target:
+                folded_sources.add(source)
+                out.add("folded into another page", source, target, index_twin=True)
 
     # 3. The generic article rule. One pattern for the whole corpus, so a new
     #    article needs no new rule as long as its slug is already normalized.

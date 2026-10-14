@@ -46,7 +46,7 @@ import anthus_pages as pages  # noqa: E402
 import anthus_urls as urls  # noqa: E402
 import site_css  # noqa: E402
 import site_env  # noqa: E402
-from solution_sites import is_external  # noqa: E402
+from solution_sites import is_external, is_folded  # noqa: E402
 import build_via_papyrus as site_build  # noqa: E402
 from anthus_content import Collections, ContentNode, ImageIndex, _slugify, stage_nodes  # noqa: E402
 from papyrus_content.markus_renderer import build as markus_build  # noqa: E402
@@ -351,7 +351,7 @@ class Snapshot:
         entries = []
         for summary in self.items:
             node = self.nodes_by_item.get(summary.item_id)
-            if node is None or not (node.published or node.is_platform):
+            if node is None or not (node.published or node.is_platform) or is_folded(node.slug):
                 continue
             href = f"{summary.section}/{markus_build.slugify(node.slug)}.html"
             parsed = node.date
@@ -534,8 +534,11 @@ class AnthusProjector:
 
     @staticmethod
     def _lives_elsewhere(summary) -> bool:
-        """Platform items with their own site get no page here (redirect + link rewrite only)."""
-        return summary.section == "platform" and is_external(node_for(summary).slug)
+        """Items with their own site, or folded into another page, get no page here (redirect + link rewrite only)."""
+        slug = node_for(summary).slug
+        if summary.section == "platform":
+            return is_external(slug)
+        return is_folded(slug)
 
     def item_page_paths(self, summary):
         if summary.section not in PROJECTED_SECTIONS or self._lives_elsewhere(summary):
