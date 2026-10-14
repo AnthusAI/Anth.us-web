@@ -552,12 +552,44 @@ def _sizer(width: int, height: int) -> str:
     )
 
 
+#: Placement looks (web/BUILD-NOTES.md, "Image placement"): every authored layout name and
+#: legacy wrapper maps onto one of these, so old content keeps working.
+#:   small        centred in the text column, 60% of it
+#:   medium       centred in the text column, up to 44rem (or the wrapper's own max width)
+#:   full         the full article width, left edge on the text column
+#:   inset-right  floated right, 40% of the text column, text wraps; full width on phones
+PLACEMENT_BY_LAYOUT = {
+    "full": "full",
+    "center-small-image": "small",
+    "centered": "medium",
+    "center-full-image": "medium",
+    "right": "inset-right",
+    "right-aligned": "inset-right",
+}
+#: Legacy wrapper key -> (placement it forces or None, element, its own max width).
+WRAPPER_PLACEMENT = {
+    "p-cfi": (None, "div", None),
+    "div-cfi": (None, "div", None),
+    "figure-cfi": (None, "figure", None),
+    "div-csi": ("small", "div", None),
+    "float-260": ("inset-right", "div", None),
+    "float-300": ("inset-right", "div", None),
+    "box-420": ("medium", "div", "420px"),
+    "box-26rem": ("medium", "div", "26rem"),
+}
+
+
+def placement_of(layout: str, wrapper: str) -> str:
+    forced = WRAPPER_PLACEMENT.get(wrapper, (None,))[0] if wrapper else None
+    return forced or PLACEMENT_BY_LAYOUT.get(layout, "medium")
+
+
 def anthus_image_wrap(wrap) -> str:
     """`ImagePipeline.wrap`: Papyrus renditions inside gatsby-plugin-image's DOM.
 
-    Production CSS absolutely positions ``.gatsby-image-wrapper img`` and takes
-    the box height from the sizer ``div`` (a transparent SVG of the source's
-    aspect ratio), so that element is load-bearing.
+    The picture sits in `.gatsby-image-wrapper` (the sizer `div` holds the aspect ratio and
+    the real image fills it). That is wrapped in one element, `.img.img--<placement>`, which
+    owns where the picture goes; the CSS in arcade.css positions it against the text column.
     """
     # No authored layout: gatsby-plugin-image adds no extra class (Papyrus's
     # own default layout name, `inline`, is not a production class).
@@ -583,17 +615,15 @@ def anthus_image_wrap(wrap) -> str:
         f"{sizer}{placeholder}{wrap.inner}<noscript>{wrap.inner}</noscript></div>"
     )
     caption = (wrap.request.caption or "").strip()
-    if wrapper:
-        opening, closing = IMAGE_WRAPPERS[wrapper]
-        if caption:
-            markup += (
-                f'<figcaption class="image-caption"><p>{html.escape(caption)}</p>'
-                "</figcaption>"
-            )
-        return opening + markup + closing
+    place = placement_of(layout, wrapper)
+    _forced, tag, max_width = WRAPPER_PLACEMENT.get(wrapper, (None, "div", None))
+    style = f' style="--img-max:{max_width}"' if max_width else ""
     if caption:
-        markup += f'<p class="image-caption">{html.escape(caption)}</p>'
-    return markup
+        if wrapper or tag == "figure":
+            markup += f'<figcaption class="image-caption"><p>{html.escape(caption)}</p></figcaption>'
+        else:
+            markup += f'<p class="image-caption">{html.escape(caption)}</p>'
+    return f'<{tag} class="img img--{place}"{style}>{markup}</{tag}>'
 
 
 def hero_image_html(*, src: str, alt: str, class_name: str) -> str:
