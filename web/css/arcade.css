@@ -246,7 +246,7 @@ main { display: block; }
   .section__grid { grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: clamp(3rem, 5vw, 6rem); }
   .section__head { position: sticky; top: calc(var(--header-h) + 2rem); align-self: start; }
   .section__grid--stack { grid-template-columns: minmax(0, 1fr); gap: clamp(2rem, 3vw, 3rem); }
-  .section__grid--stack .section__head { position: static; max-width: 56rem; }
+  .section__grid--stack .section__head { position: static; }
 }
 .platform__art { margin: 2rem 0 1.75rem; }
 
