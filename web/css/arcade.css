@@ -865,6 +865,9 @@ article .heading a.btn--ghost { color: var(--ink); }
 @media (max-width: 40rem) { .opsnote { flex-direction: column; align-items: flex-start; } }
 
 .shorter--flat { margin-top: 0; max-width: 56rem; }
+.shorter--cols { max-width: none; }
+.shorter--cols li { flex-direction: column; gap: 0.2rem; }
+@media (min-width: 64rem) { .shorter--cols ul { columns: 2; column-gap: 3rem; } .shorter--cols li { break-inside: avoid; } }
 
 /* Draft review (shown by assets/drafts.js on ?drafts) */
 .drafts-review[hidden] { display: none; }
