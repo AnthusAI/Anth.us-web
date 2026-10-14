@@ -866,6 +866,14 @@ article .heading a.btn--ghost { color: var(--ink); }
 
 .shorter--flat { margin-top: 0; max-width: 56rem; }
 .shorter--cols { max-width: none; }
+/* Small post cards: a thumbnail, the date and the title; much lighter than the article cards. */
+.mini-grid { list-style: none; margin: 0 0 1.5rem; padding: 0; display: grid; gap: 1.25rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 40rem) { .mini-grid { grid-template-columns: minmax(0, 1fr); } }
+.mini a { display: flex; flex-direction: column; gap: 0.35rem; color: var(--ink); text-decoration: none; }
+.mini .acard__vis { border: 1px solid var(--line); background: var(--panel); margin: 0 0 0.4rem; }
+.mini time { font-family: var(--font-mono); font-size: 0.8rem; color: var(--ink-2); }
+.mini span { font-weight: 500; line-height: 1.35; }
+.mini a:hover span { color: var(--pink-deep); text-decoration: underline; }
 .shorter--cols li { flex-direction: column; gap: 0.2rem; }
 @media (min-width: 64rem) { .shorter--cols ul { columns: 2; column-gap: 3rem; } .shorter--cols li { break-inside: avoid; } }
 

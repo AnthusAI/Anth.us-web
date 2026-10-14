@@ -454,17 +454,24 @@ def homepage(
         '<div class="btn-row">' + _btn("Tell us the problem", "/engage/") + "</div></div></section>"
     )
 
-    # Recent posts last: a compact dated list, lighter than the article cards above.
+    # Recent posts last, lighter than the article cards above: the newest few as small
+    # image cards, the rest as a compact dated list.
+    thumbs = "".join(
+        f'<li class="mini"><a href="{_esc(blog_href(n))}">{_card_visual(n, images)}'
+        f'<time>{escape(n.display_date)}</time><span>{escape(n.title)}</span></a></li>'
+        for n in posts[:3]
+    )
     posts_items = "".join(
         f'<li><time>{escape(n.display_date)}</time><a href="{_esc(blog_href(n))}">{escape(n.title)}</a></li>'
-        for n in posts[:10]
+        for n in posts[3:10]
     )
-    if posts_items:
+    if thumbs:
         out.append(
             _section(
-                "06" if SHOW_HOW_WE_WORK else "05", "Posts", "Recent posts.",
-                body='<div class="shorter shorter--flat shorter--cols"><ul>' + posts_items + "</ul>"
-                '<p class="more"><a href="/posts/">All posts</a></p></div>',
+                "06" if SHOW_HOW_WE_WORK else "05", "News", "Recent posts.",
+                body=f'<ul class="mini-grid">{thumbs}</ul>'
+                + (f'<div class="shorter shorter--flat shorter--cols"><ul>{posts_items}</ul></div>' if posts_items else "")
+                + '<p class="more"><a href="/posts/">All posts</a></p>',
             )
         )
     return "".join(out)
