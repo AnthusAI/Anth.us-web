@@ -387,7 +387,7 @@ def homepage(
 
     out.append(
         _section(
-            "02", "Proof", "Systems that ran for years, not weeks.",
+            "02", "Proof", "Systems that run for years, not weeks.",
             body='<ul class="grid grid--2">'
             + "".join(_case_card(*c) for c in _CASES)
             + '</ul><p class="more"><a href="/ai-solutions/">All engagements</a></p>',
