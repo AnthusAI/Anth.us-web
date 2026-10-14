@@ -32,6 +32,7 @@ export default defineSite({
       staticDir: "web",
       edgeDistributionArn: "arn:aws:cloudfront::712236451410:distribution/E3UMOOJRMY7FK7",
       cache: { htmlSMaxAgeSeconds: 60 },
+      reprojectOnDeploy: true,
     },
     stagingBuild: { enabled: true },
     features: {
