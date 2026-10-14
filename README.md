@@ -160,17 +160,16 @@ page into its own directory; see the comment above `_absolutize`.
 
 ## Deployment
 
-* The CMS app (Amplify) builds from `main`. A backend deploy bundles `web/` (the
-  projector, `web/projection.json`, static files) into the `content-actions`
-  Lambda, which projects published items into the site bucket.
-* After a change to the projector, the theme or the static files, run
-  `papyrus ops content project --all` (operations runbook:
-  `Papyrus/docs/site-hosting.md`). Normal edits need nothing: Save is live.
+* The CMS app (Amplify) builds from `main`, and merging to `main` is the deploy.
+  A backend deploy bundles `web/` (the projector, `web/projection.json`, static
+  files) into the `content-actions` Lambda and, with
+  `publication.reprojectOnDeploy: true`, renders the whole site inside AWS and
+  checks it for drift. Normal edits need nothing: Save is live.
 * The public edge is the CloudFormation stack `papyrus-edge-anth-us`
   (`infra/edge/anth-us-s3.template.yaml`). Changes go through a change set
   with Ryan's approval.
 * Rollback: restore the previous item version in the newsroom for content; for
-  code, redeploy the previous version and run `project --all`; for the edge,
+  code, revert the PR on `main`; for the edge,
   update the stack with the previous template.
 
 See [AGENTS.md](AGENTS.md) for the facts agents need (what not to touch).
