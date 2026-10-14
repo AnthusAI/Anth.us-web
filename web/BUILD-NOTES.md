@@ -111,7 +111,7 @@ the paragraphs), so a centred picture is centred on the text above and below it.
 | --- | --- | --- |
 | `center-small-image` | **small**: centred, 60% of the text column | used by 48 images |
 | `centered`, `center-full-image` | **medium**: centred, up to 44rem (never wider than the column) | 32 + 6 |
-| `full` | **full**: the whole article width, left edge on the text column | 112 |
+| `full` | **full**: exactly the text column width, aligned with the paragraphs on both edges | 112 |
 | `right`, `right-aligned` | **inset right**: floated right, 40% of the text column, right edge on the text column, text wraps; full width, stacked, on phones | 20 + 2 |
 | (none) | medium | |
 
