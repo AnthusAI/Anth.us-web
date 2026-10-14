@@ -364,6 +364,12 @@ def _supporting_row() -> str:
     return f'<p class="supporting"><strong>Supporting technology</strong> {links}</p>'
 
 
+#: The "How we work" section ("AI-built, and checked harder because of it.") is hidden until
+#: it's rewritten around our tools for cognitive debt (Pudicus, Kanbus right-now and standup
+#: reports, DataParade); see the website board epic.
+SHOW_HOW_WE_WORK = False
+
+
 def homepage(
     *,
     articles: list[ContentNode],
@@ -400,7 +406,8 @@ def homepage(
         f"<li><span>{i:02d}</span><strong>{escape(name)}</strong><p>{escape(text)}</p></li>"
         for i, (name, text) in enumerate(_PRINCIPLES, 1)
     )
-    out.append(
+    if SHOW_HOW_WE_WORK:
+      out.append(
         _section(
             "03", "How we work", "AI-built, and checked harder because of it.",
             body='<div class="prose-block">'
@@ -417,16 +424,16 @@ def homepage(
             '<p class="more"><a href="/blog/cybernetic-development/">How we govern AI-built systems</a> '
             f'<a href="{anthus_dom.GITHUB_ORG}" rel="noopener">Watch the work on GitHub</a></p>',
         )
-    )
+      )
 
     out.append(
         _section(
-            "04", "Solutions", "Solutions we built from the work.",
+            "04" if SHOW_HOW_WE_WORK else "03", "Solutions", "Solutions we built from the work.",
             lead="Our in-house solutions, from a stack that grew out of real delivery work.",
             body=_products_grid() + _supporting_row()
             + '<p class="more"><a href="/platform/">The whole platform</a> '
             f'<a href="{anthus_dom.GITHUB_ORG}" rel="noopener">Our repositories on GitHub</a></p>',
-            band=True,
+            band=SHOW_HOW_WE_WORK,
         )
     )
 
@@ -436,7 +443,7 @@ def homepage(
     )
     out.append(
         _section(
-            "05", "Writing", "What we’re measuring.",
+            "05" if SHOW_HOW_WE_WORK else "04", "Writing", "What we’re measuring.",
             body='<ul class="grid grid--list">'
             + "".join(_article_card(n, images) for n in articles[:6])
             + '</ul><p class="more"><a href="/blog/">All articles</a></p>'
