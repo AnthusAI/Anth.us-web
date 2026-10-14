@@ -76,3 +76,14 @@ class FoldedPages(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FoldedRedirectsWithoutNodesTest(unittest.TestCase):
+    """Unpublished folded items have no node, yet their old URLs must still redirect."""
+
+    def test_rules_come_from_the_mapping(self):
+        import anthus_urls
+        from solution_sites import FOLDED_INTO
+        source = open(anthus_urls.__file__, encoding="utf-8").read()
+        self.assertIn("for slug, target in FOLDED_INTO.items()", source)
+        self.assertIn("vault", FOLDED_INTO)
