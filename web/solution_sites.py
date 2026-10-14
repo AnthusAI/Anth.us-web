@@ -17,5 +17,22 @@ EXTERNAL_SITES: dict[str, str] = {
 }
 
 
+#: Pages folded into another page: slug -> the page that now carries them (all were
+#: aspects of Venue Driver, with no body of their own). Like EXTERNAL_SITES they get no
+#: page, drop out of every listing, the sitemap and the search data, every URL shape
+#: they ever had 301s to the target, and links to them are rewritten to it.
+FOLDED_INTO: dict[str, str] = {
+    slug: "/articles/venue-driver/"
+    for slug in (
+        "ticket-driver", "ticket-driver-copilot", "store-driver", "checkout-driver", "menu-driver",
+        "paytronix", "salesforce", "salesforce-marketing-cloud", "marketo", "vault", "ticketing-analysis",
+    )
+}
+
+
+def is_folded(slug: str) -> bool:
+    return (slug or "").strip().lower() in FOLDED_INTO
+
+
 def is_external(slug: str) -> bool:
     return (slug or "").strip().lower() in EXTERNAL_SITES

@@ -37,7 +37,7 @@ from datetime import datetime
 from pathlib import Path
 
 import anthus_dom
-from solution_sites import is_external
+from solution_sites import is_external, is_folded
 from papyrus_content.markus_renderer.transforms import block_sentinel
 from anthus_mdx import (
     ConversionReport,
@@ -436,6 +436,8 @@ class Collections:
     external_platform: list[ContentNode] = field(default_factory=list)
     #: `state: draft` items (not platform): served and noindexed, listed only in the hidden review sections.
     drafts: list[ContentNode] = field(default_factory=list)
+    #: items folded into another page (`solution_sites.FOLDED_INTO`): no page, redirects and link rewrites only.
+    folded: list[ContentNode] = field(default_factory=list)
 
     @classmethod
     def from_nodes(cls, nodes: list[ContentNode]) -> "Collections":
@@ -445,7 +447,9 @@ class Collections:
         every_platform = [n for n in by_date if n.is_platform]
         platform = [n for n in every_platform if not is_external(n.slug)]
         external_platform = [n for n in every_platform if is_external(n.slug)]
-        blog = [n for n in by_date if not n.is_platform]
+        every_blog = [n for n in by_date if not n.is_platform]
+        folded = [n for n in every_blog if is_folded(n.slug)]
+        blog = [n for n in every_blog if not is_folded(n.slug)]
         # blog.jsx: published, tags nin [solutions, posts], not platform.
         articles = [
             n
@@ -470,7 +474,7 @@ class Collections:
             )
         )
         return cls(
-            all_nodes=by_date,
+            all_nodes=[n for n in by_date if not is_folded(n.slug)],
             platform=platform,
             blog=blog,
             articles=articles,
@@ -479,6 +483,7 @@ class Collections:
             tags=tags,
             external_platform=external_platform,
             drafts=drafts,
+            folded=folded,
         )
 
 
