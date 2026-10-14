@@ -100,3 +100,42 @@ changing a pictogram, regenerate and commit them:
 
 (Needs Node with puppeteer, default `~/Projects/Pilobol.us/node_modules/puppeteer`,
 and Chrome; override with `PUPPETEER_DIR` / `PUPPETEER_EXECUTABLE_PATH`.)
+
+## Image placement (articles and posts)
+
+A picture goes exactly where the author puts the `::image{}` directive; its `layout`
+decides the look. Everything is measured against the **text column** (68ch, the width of
+the paragraphs), so a centred picture is centred on the text above and below it.
+
+| `layout=` | Look | Notes |
+| --- | --- | --- |
+| `center-small-image` | **small**: centred, 60% of the text column | used by 48 images |
+| `centered`, `center-full-image` | **medium**: centred, up to 44rem (never wider than the column) | 32 + 6 |
+| `full` | **full**: the whole article width, left edge on the text column | 112 |
+| `right`, `right-aligned` | **inset right**: floated right, 40% of the text column, right edge on the text column, text wraps; full width, stacked, on phones | 20 + 2 |
+| (none) | medium | |
+
+Legacy wrappers still work and map onto the same looks: `<div class="center-small-image">`
+and `box-*` styled divs are small/medium, `float:right` styled divs are inset right;
+`<p|div|figure class="center-full-image">` around an image only add a `figcaption` and keep the
+layout's own look. There is no inset-left (no content uses it).
+
+Authoring examples (the directive's position in the text is the placement in the page):
+
+```
+::image{src="images/x.png" layout="center-small-image" alt="..."}   <- small, centred
+
+::image{src="images/x.png" layout="full" alt="..." caption="..."}   <- full width
+
+First paragraph of the article, with the image floated beside it.
+
+::image{src="images/x.png" layout="right" alt="..."}                <- inset right, wraps the
+                                                                       paragraphs that follow
+Second paragraph...
+```
+
+"After the first paragraph" is simply writing the directive after that paragraph; an inset-right
+picture placed before a paragraph floats beside that paragraph and the ones after it.
+A heading (`##`) clears the float, so an inset never spills past its section.
+The markup is `.img.img--small|medium|full|inset-right` (from `anthus_dom.anthus_image_wrap`,
+mapping in `PLACEMENT_BY_LAYOUT` / `WRAPPER_PLACEMENT`); the CSS is in `web/css/arcade.css`.
