@@ -437,23 +437,12 @@ def homepage(
         )
     )
 
-    posts_items = "".join(
-        f'<li><time>{escape(n.display_date)}</time><a href="{_esc(blog_href(n))}">{escape(n.title)}</a></li>'
-        for n in posts[:4]
-    )
     out.append(
         _section(
-            "05" if SHOW_HOW_WE_WORK else "04", "Writing", "What we’re measuring.",
+            "05" if SHOW_HOW_WE_WORK else "04", "Articles", "Latest from the lab.",
             body='<ul class="grid grid--list">'
             + "".join(_article_card(n, images) for n in articles[:6])
-            + '</ul><p class="more"><a href="/blog/">All articles</a></p>'
-            + (
-                '<div class="shorter"><h3>Shorter posts</h3><ul>'
-                + posts_items
-                + '</ul><p class="more"><a href="/posts/">All posts</a></p></div>'
-                if posts_items
-                else ""
-            ),
+            + '</ul><p class="more"><a href="/blog/">All articles</a></p>',
         )
     )
 
@@ -464,6 +453,20 @@ def homepage(
         "the first month, and it’s often the most useful part.</p></div>"
         '<div class="btn-row">' + _btn("Tell us the problem", "/engage/") + "</div></div></section>"
     )
+
+    # Recent posts last: a compact dated list, lighter than the article cards above.
+    posts_items = "".join(
+        f'<li><time>{escape(n.display_date)}</time><a href="{_esc(blog_href(n))}">{escape(n.title)}</a></li>'
+        for n in posts[:10]
+    )
+    if posts_items:
+        out.append(
+            _section(
+                "06" if SHOW_HOW_WE_WORK else "05", "Posts", "Recent posts.",
+                body='<div class="shorter shorter--flat shorter--cols"><ul>' + posts_items + "</ul>"
+                '<p class="more"><a href="/posts/">All posts</a></p></div>',
+            )
+        )
     return "".join(out)
 
 
