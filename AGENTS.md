@@ -141,11 +141,15 @@ Production is the S3 projection described above. Facts for agents:
 
 * **Backend and deploys.** The CMS app builds from `main` (Amplify app
   `<siteId>-cms`, template `Papyrus/infra/amplify-app-shell`, config in
-  `infra/site.json` and `papyrus.config.ts`). A backend deploy bundles
-  `web/` into the `content-actions` Lambda. After a change to the projector,
-  the theme or the static files, run `papyrus ops content project --all`
-  (`Papyrus/docs/site-hosting.md`, "Operations runbook"); until then pages keep
-  the old chrome.
+  `infra/site.json` and `papyrus.config.ts`). Merging to `main` is the deploy:
+  the branch builds automatically, the backend deploy bundles `web/` into the
+  `content-actions` Lambda, and `publication.reprojectOnDeploy: true` makes the
+  deploy render every page inside AWS (`deploy-render` task, synchronous) and
+  run a dry-run drift check. A render that fails fails the build; drift (orphan
+  or stale pages) is reported in the Lambda log and the `Papyrus/Projection`
+  `DeployRenderDrift` alarm, and nothing is deleted. Nobody runs `project --all`
+  or a header script by hand (`Papyrus/docs/site-hosting.md`, "Merge is
+  deploy").
 * **Redirects, 404 and headers** live at the edge, not in Amplify app config:
   the exact redirects are CloudFront key-value-store entries written by
   `project --all`; the pattern rules, the `/x/` and `.html` behaviour and the
@@ -154,11 +158,12 @@ Production is the S3 projection described above. Facts for agents:
   The edge template is `infra/edge/anth-us-s3.template.yaml`
   (`bin/render_edge_template.py`).
 * **Missing pages** return HTTP 404 with the `404.html` body (CloudFront maps S3
-  403 and 404 to `/404.html` with status 404). `bin/check-404.py <base-url>`
-  verifies it. A path without a trailing slash or ending in `.html` first gets
+  403 and 404 to `/404.html` with status 404). The page writer stores
+  `404.html` as `text/html` with no `Cache-Control`, so no follow-up step is
+  needed. `bin/check-404.py <base-url>` verifies it. A path without a trailing slash or ending in `.html` first gets
   a 301 to the directory-style URL.
 * **Rollback.** Content: restore the previous item version in the newsroom and
-  save. Site code: redeploy the previous code, then `project --all`. Edge:
+  save. Site code: revert the PR on `main` (the deploy re-renders the site). Edge:
   update the edge stack with the previous template.
 * `customHttp.yml` and `bin/deploy-amplify.sh`, `bin/apply_custom_rules.py` are
   from the Amplify reader and do not affect the live site.
