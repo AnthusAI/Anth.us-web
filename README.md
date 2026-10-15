@@ -206,3 +206,5 @@ Tracked honestly rather than quietly.
   Gatsby site, replaced by this one
 * [`AnthusAI/anthus-site-content`](https://github.com/AnthusAI/anthus-site-content)
   — the shared content repo
+
+<!-- merge-is-deploy verification (no-op) -->
