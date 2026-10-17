@@ -36,6 +36,7 @@ from html import escape
 from urllib.parse import quote
 
 import anthus_dom
+import inquiry_form
 import solution_marks
 import arcade_pictograms
 from anthus_content import ContentNode, ImageIndex
@@ -1656,7 +1657,7 @@ def engage_page() -> str:
             ),
             band=True,
         ),
-        _section("05", "Tell us", "Four things that help us reply", body=checklist, section_id="tell-us"),
+        _section("05", "Tell us", "Four things that help us reply", body=inquiry_form.render() + checklist, section_id="tell-us"),
         _cta(
             "Bring us the problem.",
             "Tell us the problem, even if it’s half-formed, and we’ll scope the first month together. Anything you "
