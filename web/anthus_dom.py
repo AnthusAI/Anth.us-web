@@ -202,13 +202,7 @@ FOOTER_COLUMNS = (
         (
             ("About", "/about/", False),
             ("Ryan Porter", "/ryan/", False),
-            ("Start a project", "/engage/", False),
-            (
-                "Contact",
-                "https://docs.google.com/forms/d/e/"
-                "1FAIpQLSdWlt4KpwPSBHzg3o8fikHcfrzxo5rCcV-0-zDt815NZ1tcyg/viewform?usp=sf_link",
-                True,
-            ),
+            ("Contact", "/engage/", False),
         ),
     ),
     (
@@ -234,7 +228,6 @@ FOOTER_COLUMNS = (
         (
             ("GitHub", "https://github.com/AnthusAI", True),
             ("LinkedIn", "https://www.linkedin.com/in/ryanalynporter/", True),
-            ("Discord", "https://discord.gg/uStyWraJ2M", True),
         ),
     ),
 )
