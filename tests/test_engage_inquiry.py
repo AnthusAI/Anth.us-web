@@ -21,6 +21,7 @@ class InquiryTests(unittest.TestCase):
         }):
             page = anthus_pages.engage_page()
         self.assertIn('id="engage-inquiry"', page)
+        self.assertIn('method="post"', page)
         self.assertIn('Approved notice.', page)
         self.assertIn('docs.google.com/forms/', page)
         self.assertIn('/engage-inquiry.js', page)
