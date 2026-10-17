@@ -1,3 +1,22 @@
+> **Production ownership verified 2026-10-17:** use this repository’s `main`
+> for current anth.us website changes. The GitHub default `develop` branch
+> contains older staging-era instructions; those are superseded by this notice.
+> Public delivery is S3 projection via CloudFront `DISTRIBUTION_ID`.
+> Merge-driven CMS/backend deployment: Amplify `AMPLIFY_APP_ID` (`anth-us-cms`),
+> AWS profile `papyrus-production`, account `000000000000`, region `us-east-1`.
+> `AnthusAI/Anth.us` (Gatsby) is superseded. Never send website fixes there.
+> Do not promote unrelated historical develop changes as part of a website fix.
+> Use AWS CLI/API only; no AWS console browser.
+>
+> **Engagement intake is pending upstream approval.** `web/inquiry-config.json`
+> ships disabled, retaining the Google Form. Once Prospectus real-contact intake
+> is approved, a scoped PR must supply its HTTPS endpoint, approved notice text
+> and notice version together. This file is bundled with `web/` into the S3
+> projector Lambda; `GATSBY_PROSPECTUS_INTAKE_URL` and Next build variables do
+> not configure that runtime. No Prospectus settings, privacy, retention or grants
+> are activated by this work. Track kanbus-e28f and kanbus-0d24 in the historical
+> Gatsby site-operations board until the intake handoff is complete.
+
 # Anth.us-Papyrus
 
 > ## This repository is the live anth.us site
