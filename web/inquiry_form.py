@@ -21,7 +21,8 @@ def render():
             or parsed.fragment or not config.get('notice_version') or not config.get('privacy_notice')):
         return ''
     return (
-        '<form id="engage-inquiry" class="prose" data-endpoint="' + escape(endpoint, quote=True)
+        '<form id="engage-inquiry" method="post" action="' + escape(endpoint, quote=True)
+        + '" class="prose" data-endpoint="' + escape(endpoint, quote=True)
         + '" data-notice-version="' + escape(config['notice_version'], quote=True) + '">'
         '<label>Name <input name="name" required maxlength="150" autocomplete="name"></label><br>'
         '<label>Email <input name="email" type="email" required maxlength="254" autocomplete="email"></label><br>'
