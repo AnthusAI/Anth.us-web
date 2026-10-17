@@ -224,7 +224,7 @@ _PRINCIPLES = (
 _STATS = (
     ("$250M", "Processed in production"),
     ("180B", "Tokens of production LLM work"),
-    ("~100%", "Uptime"),
+    ("1", "AWS data-center outage in 16 years, recovered without losing revenue"),
     ("2007", "Building production systems since"),
 )
 
@@ -272,6 +272,24 @@ def _hero() -> str:
         + '</div></div><div class="hero__art">'
         + _px("hero-loop")
         + "</div></div></section>"
+    )
+
+
+_PROOF_STRIP_ITEMS = (
+    ("Call Criteria", "/blog/call-criteria/"),
+    ("Tao Group Hospitality", "/blog/venue-driver/"),
+    ("Hakkasan Group", "/blog/venue-driver/"),
+    ("In production since 2007", "/ai-solutions/"),
+)
+
+
+def _proof_strip() -> str:
+    cells = "".join(
+        f'<li><a href="{_esc(href)}">{escape(label)}</a></li>' for label, href in _PROOF_STRIP_ITEMS
+    )
+    return (
+        '<div class="proof-strip-wrap"><div class="container">'
+        f'<ul class="proof-strip" aria-label="Proof of work">{cells}</ul></div></div>'
     )
 
 
@@ -380,7 +398,7 @@ def homepage(
     platform: list[ContentNode] | None = None,
 ) -> str:
     """The arcade homepage (HOME-COPY.md)."""
-    out = [_hero(), _stats()]
+    out = [_hero(), _proof_strip(), _stats()]
 
     out.append(
         _section(
@@ -606,6 +624,7 @@ def _text_card(
     *,
     headline: bool = False,
     display_date: bool = False,
+    month_year_date: bool = False,
     link: bool = True,
     code: bool = True,
     eager: bool = False,
@@ -616,7 +635,12 @@ def _text_card(
     `headline`: posts, whose excerpt is the headline (no separate excerpt).
     """
     tags = [t for t in node.tags if t not in _HIDDEN_TAGS][:2]
-    date = node.display_date if display_date else _short_date(node)
+    if month_year_date:
+        date = node.month_year_date
+    elif display_date:
+        date = node.display_date
+    else:
+        date = _short_date(node)
     meta = f"<time>{escape(date)}</time>" + "".join(f"<span>#{escape(t)}</span>" for t in tags)
     if draft:
         meta = '<span class="pill pill--draft">DRAFT</span>' + meta
@@ -1038,9 +1062,6 @@ _HELD_UP = (
     ("What it integrated",
      "Tao Group’s in-house loyalty system, Madison Square Garden Entertainment’s ITSM (ServiceNow), and a bespoke "
      "data warehouse and business intelligence system."),
-    ("Never breached",
-     'The hackers never got us, despite being a <a href="https://twitter.com/RyanAlynPorter/status/890982980721790976">'
-     "prime target</a>."),
     ("Everything else",
      "Massive DDoS attacks, primary database server failures, silent failures in third-party systems, and "
      "everything else you could imagine. We always kept the revenue flowing."),
@@ -1066,9 +1087,6 @@ _VALUES = (
     ("Infrastructure as code",
      "DevOps for infrastructure, MLOps and LLMOps for the models. Every part of a production system, including "
      "training runs and evaluations, should be created by code so it’s reproducible, not clicked together by hand."),
-    ("Commodify AI models",
-     "Treat models as replaceable, not magic black boxes. In a world with no moats, "
-     '<a href="/blog/a-world-with-no-moats/">don’t invest too much in any given castle.</a>'),
     ("Optimize resource usage",
      "Balance efficiency with cost-effectiveness. When intelligence is cheap, the goal shifts from conserving "
      "compute to conserving context and cognitive load."),
@@ -1084,7 +1102,6 @@ _FACTS = (
     ("Track record", "Team together for over a decade; revenue-critical platforms in continuous operation since 2007; "
                      "a call-center QA classifier lab run on Primus for years, across hundreds of scorecards and millions of interactions"),
     ("Platform", '<a href="/platform/primus/">Primus</a>, an MLOps platform'),
-    ("Spinoff", "Anthus Microelectronics (B0rd LED-matrix desk display)"),
     ("Contact", '<a href="/ryan/">anth.us/ryan</a>'),
 )
 
@@ -1147,15 +1164,6 @@ def about_page() -> str:
         "approach: clear intent, layered safeguards, and production feedback loops that continuously harden the system. "
         "Delegating the work turned out to be easy; observing it is the whole job.</p>",
         extra=_links([("Read Cybernetic Development", "/blog/cybernetic-development/")]),
-    ) + _card(
-        "Spinoff: Anthus Microelectronics",
-        "<p>Running AI agents all day moved the bottleneck from writing code to monitoring and steering the agents. "
-        "Sitting at a terminal all day is not the answer, so we built desk displays: handbuilt microelectronics running "
-        "a custom, AI-assisted OS. The first product is <strong>B0rd</strong>, a standalone LED-matrix display for "
-        "glanceable information (launch countdowns, agent status, notifications, an idle clock) that matching units "
-        "keep in sync without pairing or a hub.</p>",
-        extra=_links([("B0rd solution page", "/blog/b0rd/"), ("b0rd.info", "https://b0rd.info"),
-                      ("Etsy shop", "https://www.etsy.com/shop/AnthusMicronics")]),
     ) + "</ul>"
     who = '<ul class="grid grid--thirds">' + "".join(
         _card(t, f"<p>{b}</p>") for t, b in (
@@ -1274,7 +1282,7 @@ def ai_solutions_page(blog: list[ContentNode], images: ImageIndex | None = None)
     ) + "</ol>"
     chips = _chips([(n.title, "") for n in by_date(integrations)])
     read_list = '<div class="shorter shorter--flat"><ul>' + "".join(
-        f'<li><time>{escape(n.display_date)}</time><a href="{_esc(blog_href(n))}">{escape(n.title)}</a></li>'
+        f'<li><time>{escape(n.month_year_date)}</time><a href="{_esc(blog_href(n))}">{escape(n.title)}</a></li>'
         for n in reading
     ) + '</ul><p class="more"><a href="/blog/">All articles</a></p></div>'
     return _page(
@@ -1297,7 +1305,7 @@ def ai_solutions_page(blog: list[ContentNode], images: ImageIndex | None = None)
             lead="The systems we built, ran, and kept improving in production. The proof is years of production RLHF for "
             "a call-center QA operation: a data flywheel learning from expert feedback across hundreds of scorecards "
             "and millions of interactions.",
-            body=_card_grid(by_date(engagements), images, display_date=True)
+            body=_card_grid(by_date(engagements), images, month_year_date=True)
             + (f'<h3 class="subhead">Integrations we have built</h3>{chips}' if integrations else ""),
             band=True,
         ),
@@ -1639,7 +1647,7 @@ def engage_page() -> str:
         ),
         _section("01", "Two ways in", "Open source, or built and run with you", body=tiers, stack=True),
         _section(
-            "02", "Where we start", "Three examples",
+            "02", "Where we start", "Example engagements",
             lead="These are shapes engagements often take. They aren’t a menu. Most real problems don’t fit one box, "
             "and we take on AI solutions work of any kind.",
             body=examples, stack=True, band=True,

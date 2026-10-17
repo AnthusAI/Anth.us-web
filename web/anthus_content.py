@@ -137,6 +137,11 @@ class ContentNode:
         return parsed.strftime("%B %-d, %Y") if parsed != datetime.min else self.date_raw
 
     @property
+    def month_year_date(self) -> str:
+        parsed = self.date
+        return parsed.strftime("%B %Y") if parsed != datetime.min else self.date_raw
+
+    @property
     def author_names(self) -> list[str]:
         """Plain-text author names (the authored values may carry markup)."""
         return [

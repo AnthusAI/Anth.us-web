@@ -389,6 +389,17 @@ main { display: block; }
 .stats__l { display: block; font-family: var(--font-label); font-size: 1.2rem; letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.15; color: var(--ink-2); }
 .stats-wrap { padding-bottom: calc(var(--section-space) * 0.4); }
 
+/* ------------------------------------------------------------- proof strip */
+
+.proof-strip-wrap { padding-bottom: calc(var(--section-space) * 0.25); }
+.proof-strip {
+  display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; align-items: center;
+  margin: 0; padding: 0; list-style: none;
+  font-family: var(--font-label); font-size: 1.2rem; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.proof-strip a { color: var(--ink-2); text-decoration: none; border-bottom: 1px solid var(--line); }
+.proof-strip a:hover, .proof-strip a:focus-visible { color: var(--pink); border-bottom-color: var(--pink); }
+
 /* ------------------------------------------------------------------ cards */
 
 .grid { display: grid; gap: clamp(1rem, 2vw, 1.75rem); list-style: none; margin: 0; padding: 0; grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr)); }
