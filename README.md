@@ -192,7 +192,7 @@ Tracked honestly rather than quietly.
 | **Two RAG sequence diagrams** (`ai-agent-RAG-sequence-diagram.png`, `ai-agent-RAG-with-no-RAG.png`) have no matching file in the content repo; `how-ai-agents-know-things` renders "No image found for:" on the live site today. The codemod removed the two dead references rather than carry them over. | Pre-existing content bug. Fixed by restoring the two files and re-adding two `::image{}` lines. |
 | **HTML table spans.** `colspan`/`rowspan` have no GFM equivalent; those cells flatten into their first column. | Needs the tables re-authored, or a Markus table directive. |
 | **Tag case collisions.** The corpus tags both `AI` and `ai`; Gatsby gives them separate pages, this build merges them (Papyrus only accepts lowercase collection slugs). | Intentional; arguably a content fix. |
-| **`anthus-footer`** is a React package (`github:AnthusAI/anthus-footer`) a static build cannot mount. Its canonical link set is reproduced as markup in `build_via_papyrus.py`. | Will drift if the package changes. |
+| **`anthus-footer`** is a React package (`github:AnthusAI/anthus-footer`). This footer is hand-built in `web/anthus_dom.py` instead, and follows the package's contact rule by hand: Contact goes to `/engage/`, with GitHub and LinkedIn beside it. | Will drift if the package changes. |
 | **No analytics.** The Gatsby site loads `gatsby-plugin-google-gtag` (`G-31SC26SDGX`). Guarded (review) builds omit it so a review copy cannot pollute production analytics; the production build includes it. | Intentional. |
 
 ## Related
