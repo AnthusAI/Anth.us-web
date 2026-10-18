@@ -1607,7 +1607,7 @@ def engage_page() -> str:
         "Open source",
         "<p>The code is public on GitHub. Run it yourself.</p>"
         "<p>Cyclotron, Chatticus, Papyrus and Primus are open source, and so are the technologies under them: "
-        "Kanbus, Tactus, Biblicus and Auritus. Each solution has its own site with the repository and a quickstart.</p>",
+        "Kanbus, Tactus, Biblicus, Auritus and Markus. Each solution has its own site with the repository and a quickstart.</p>",
         extra=_links([("Cyclotron", "https://cyclotron.anth.us/"), ("Primus", "https://primus.anth.us"),
                       ("Papyrus", "https://p.apyr.us"), ("All the solutions", "/ai-solutions/")]),
     ) + _card(

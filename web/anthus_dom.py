@@ -186,6 +186,8 @@ SUPPORTING = (
      "Finds where AI-written prose sounds generic, measured against your own house style, without rewriting it.", True),
     ("Pudicus", "https://github.com/AnthusAI/Pudicus",
      "A commit gate that stops agents and people from committing secrets, with a receipt the deploy can check.", True),
+    ("Markus", "https://markus.anth.us/",
+     "GitHub-flavored Markdown with a small vocabulary for layout intent: typed directives rendered by Papyrus.", True),
 )
 
 #: The GitHub organization: most of our work in progress is public there.
