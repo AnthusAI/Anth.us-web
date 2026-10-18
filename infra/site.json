@@ -1,7 +1,7 @@
 {
   "siteId": "anth-us",
   "stackName": "amplify-app-shell-anth-us-cms",
-  "repository": "https://github.com/AnthusAI/Anth.us-Papyrus",
+  "repository": "https://github.com/AnthusAI/Anth.us-web",
   "brand": "anth-us",
   "frontend": "markus-static",
   "papyrusVersion": "1.13.0",
@@ -25,7 +25,7 @@
   },
   "github": {
     "owner": "AnthusAI",
-    "repo": "Anth.us-Papyrus",
+    "repo": "Anth.us-web",
     "branches": [
       "main"
     ]
