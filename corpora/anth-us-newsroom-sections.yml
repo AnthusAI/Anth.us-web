@@ -1,0 +1,45 @@
+schemaVersion: 1
+sections:
+  - id: articles
+    title: "Articles"
+    shortTitle: "Field Notes"
+    type: canonical
+    editorialMission: "Explain how to build and operate AI systems that stay aligned with the people they serve, from agent harnesses and evaluation loops to decision models, with real production experience behind every claim."
+    editorialPolicy: "Publish practitioner writing grounded in systems Anthus has built or measured. Prefer worked examples, numbers and failure stories over commentary. Mark illustrative figures as illustrative. Cite sources for every external claim and keep opinion separate from evidence."
+    assignmentGuidance: "Start from a concrete system, experiment or decision. State what was tried, what happened and what a reader can reuse. End with what to check in their own setup."
+    killCriteria: "Reject generic AI commentary, vendor comparison without measurements, and pieces that restate headlines without a new example or result."
+    enabled: true
+    sortOrder: 1
+
+  - id: platform
+    title: "Platform"
+    shortTitle: "How It Works"
+    type: canonical
+    editorialMission: "Describe the Anthus platform and its building blocks accurately: models, tools, evaluation, guardrails and the human in the loop, written so a technical buyer can judge fit."
+    editorialPolicy: "Describe what exists today and how to use it. Do not promise unshipped features. Keep each page short, concrete and consistent with the product's own terms, and link to the proof in the Articles desk where one exists."
+    assignmentGuidance: "Pair each capability with its constraints and a working example. Check names, limits and behavior against the product before publishing."
+    killCriteria: "Reject marketing claims without a mechanism, and any description that has drifted from how the product actually behaves."
+    enabled: true
+    sortOrder: 2
+
+  - id: solutions
+    title: "Solutions"
+    shortTitle: "Customer Work"
+    type: canonical
+    editorialMission: "Show how Anthus solutions work in real operations: the problem, the approach, the measured result and what it took to run it."
+    editorialPolicy: "Lead with the customer's problem and the measured outcome. Name what was automated and where a person stays in the loop. Use only figures the customer has approved, and say when a result comes from a pilot."
+    assignmentGuidance: "Interview the team that ran the system. Collect before and after numbers, the failure cases and the operating cost. Confirm approvals before drafting."
+    killCriteria: "Reject case studies without a measured result or without customer approval of the figures."
+    enabled: true
+    sortOrder: 3
+
+  - id: research
+    title: "Research"
+    shortTitle: "Open Questions"
+    type: floating
+    editorialMission: "Report on emerging evidence and open questions in AI decision-making and evaluation that bear on how Anthus builds, as a rotating desk opened when a topic needs sustained coverage."
+    editorialPolicy: "Separate what studies show from what is conjecture. Prefer primary sources and replications. State sample sizes and limits. Revisit conclusions when new evidence arrives."
+    assignmentGuidance: "Pick one question, gather the primary sources first and record what each does and does not support before drafting."
+    killCriteria: "Reject summaries of other people's summaries and claims the cited source does not support."
+    enabled: true
+    sortOrder: 4
