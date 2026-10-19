@@ -1,0 +1,20 @@
+{
+  "id": "anthus-web-34ca26b0-860f-4edc-a950-ad0f03fbe481",
+  "title": "anth.us: fix anth-us-cms Amplify build and go live with shared footer",
+  "description": "# anth.us: fix the anth-us-cms Amplify build (handoff, 2026-10-19)\n\nGOAL: get https://anth.us live from AnthusAI/Anth.us-web main with the shared footer (Footer Products = Cyclotron, Chatticus, Papyrus, Auritus; a Markus homepage section; Beta/Coming soon labels).\n\nAPP: anth-us-cms, app-id d7s858igkyct5, profile papyrus-production (account 712236451410), us-east-1, WEB_COMPUTE, branch main.\n\nDONE / FINDINGS\n- Jobs 28, 29, 30 FAILED (last success: job 27 on 2026-10-17). Job 30 BUILD step log (get-job ... steps[0].logUrl): \"!!! Unable to assume specified IAM Role. Please ensure the selected IAM Role has sufficient permissions and the Trust Relationship is configured correctly.\" DEPLOY/VERIFY were cancelled; the step statusReason is null, the log has the message.\n- app.iamServiceRoleArn = arn:aws:iam::712236451410:role/amplify-app-shell-anth-us-AmplifyServiceRole1EB3E93-hqtBvIBIaMCA. Its trust policy allows amplify.amazonaws.com sts:AssumeRole, so it looks correct. Sister app p-apyr-us-cms (ds6yswxui41yi) has the same role setup and builds fine. Root cause is NOT confirmed.\n- app.repository is still https://github.com/anthusai/anth.us-papyrus (stale; repo is now AnthusAI/Anth.us-web). p-apyr-us-cms points at https://github.com/anthusai/p.apyr.us. Likeliest cause: the stale repository link / GitHub app connection; the role error may be the symptom.\n\nBLOCKED: the auto-mode permission check denied\n  aws amplify update-app --app-id d7s858igkyct5 --repository https://github.com/AnthusAI/Anth.us-web --access-token \"$(gh auth token)\"\n(gh is logged in as endymion). Either approve that call, or Ryan clicks Reconnect repository in the Amplify console.\n\nREMAINING STEPS (AWS_PROFILE=papyrus-production AWS_REGION=us-east-1)\n1. Run the update-app above (or the console reconnect).\n2. aws amplify start-job --app-id d7s858igkyct5 --branch-name main --job-type RELEASE\n3. Poll get-job; if it still fails with the IAM message, compare the role and its policies with p-apyr-us-cms, and check the Amplify service-role link in the console.\n4. After success, verify the live anth.us footer and homepage items listed in GOAL. anth.us is the one live site: be careful. Remember merge is not deploy; the CMS RELEASE build is the deploy.",
+  "type": "task",
+  "status": "open",
+  "priority": 2,
+  "assignee": null,
+  "creator": null,
+  "parent": null,
+  "labels": [],
+  "dependencies": [],
+  "comments": [],
+  "created_at": "2026-10-19T16:39:58.697609Z",
+  "updated_at": "2026-10-19T16:39:58.697631Z",
+  "closed_at": null,
+  "right_now_summary": "The Amplify repository link needs updating before anth.us can deploy with the shared footer.",
+  "right_now_updated_at": "2026-10-19T16:40:00.158317Z",
+  "custom": {}
+}
