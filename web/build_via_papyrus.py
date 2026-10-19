@@ -192,7 +192,7 @@ def _render_body(ctx: PageContext, parts: BodyParts) -> str:
 ANTHUS_CHROME = SiteChrome(
     site_name=pages.SITE_TITLE,
     tagline=None,
-    scripts=("assets/site-nav.js", "assets/px-live.js", "assets/drafts.js"),
+    scripts=("assets/site-nav.js", "assets/conversion-events.js", "assets/px-live.js", "assets/drafts.js"),
     lang="en",
     # Production's <body> has no class. An empty value renders `class=""`
     # through Papyrus's shell; `_finish_page` removes the empty attribute.
@@ -638,7 +638,7 @@ def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
                 target = dest / path.relative_to(SITE_ASSETS)
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(path, target)
-    for script in ("site-nav.js", "px-live.js", "drafts.js"):
+    for script in ("site-nav.js", "conversion-events.js", "px-live.js", "drafts.js"):
         if (POD_ROOT / "assets" / script).is_file():
             shutil.copy2(POD_ROOT / "assets" / script, staging_assets / script)
 

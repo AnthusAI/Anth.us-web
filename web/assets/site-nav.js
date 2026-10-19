@@ -30,18 +30,34 @@
 })();
 
 /* Intent from the click: a link to the Engage page carries the page it was clicked on
- * (`/engage/?from=<page>`), and the Engage page passes it to the contact form. A link may already
- * name a solution (`?solution=<name>`). */
+ * (`/engage/?from=<page>`) and the part of the page it sits in (`cta=<location>`), and the Engage page
+ * passes both to the contact form and to the lead event. A link may already name a solution
+ * (`?solution=<name>`). */
 (function () {
   "use strict";
   if (/^\/engage\//.test(location.pathname)) return;
+  var locationSelectors = [
+    [".site-header", "header"],
+    [".site-footer", "footer"],
+    [".hero", "hero"],
+    [".cta-band", "band"],
+    [".engage-box", "article"],
+    [".card", "solution-card"]
+  ];
+  function ctaLocationFor(anchor) {
+    for (var i = 0; i < locationSelectors.length; i++) {
+      if (anchor.closest(locationSelectors[i][0])) return locationSelectors[i][1];
+    }
+    var section = anchor.closest("section[id]");
+    return section ? section.id.toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 40) || "page" : "page";
+  }
   var links = document.querySelectorAll('a[href]');
   for (var i = 0; i < links.length; i++) {
     var a = links[i];
     if (a.origin !== location.origin || !/^\/engage(\/|\/index\.html|\.html)?$/.test(a.pathname)) continue;
-    if (a.search.indexOf("from=") !== -1) continue;
     var u = new URL(a.href);
-    u.searchParams.set("from", location.pathname);
+    if (a.search.indexOf("from=") === -1) u.searchParams.set("from", location.pathname);
+    if (!u.searchParams.has("cta")) u.searchParams.set("cta", ctaLocationFor(a));
     a.href = u.toString();
   }
 })();

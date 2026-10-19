@@ -76,7 +76,7 @@ LEGACY_REDIRECT_RULES_PATH = MODULE_DIRECTORY / "legacy-redirect-rules.json"
 SNAPSHOTS_KEPT = 4
 PROJECTION_SETTINGS_PATH = MODULE_DIRECTORY / "projection.json"
 SITE_THEME_KEY = "css/site-theme.css"
-CHROME_SCRIPT_NAMES = ("site-nav.js", "px-live.js", "drafts.js")
+CHROME_SCRIPT_NAMES = ("site-nav.js", "conversion-events.js", "px-live.js", "drafts.js")
 SITE_IMAGES_DIRECTORY = MODULE_DIRECTORY / "assets" / "site"
 STATIC_ROOT_DIRECTORY = MODULE_DIRECTORY / "static-root"
 _HREF_RE = re.compile(r"""\bhref=(["'])(.*?)\1""", re.S)
