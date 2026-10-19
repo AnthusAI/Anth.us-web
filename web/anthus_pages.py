@@ -45,22 +45,14 @@ from anthus_urls import FEATURED_COUNT, GRID_SIZE, collection_page_count, tag_sl
 
 BARE = anthus_dom.BARE_MARKER
 
-_FORM_URL = (
-    "https://docs.google.com/forms/d/e/"
-    "1FAIpQLSdWlt4KpwPSBHzg3o8fikHcfrzxo5rCcV-0-zDt815NZ1tcyg/viewform"
-)
-#: The Contact form's "How could we help you?" question (entry.923803174) is its one
-#: free-text field, so the four qualification questions travel as a prefilled template
-#: in it. The Engage page script fills in the source page and solution from the link.
-FORM_ENTRY = "entry.923803174"
+#: The inquiry form's one free-text field is prefilled with these four qualification prompts, so each
+#: inquiry answers them. The Engage page script fills in the source page and solution from the link.
 FORM_TEMPLATE = (
     "Solution or problem: \n"
     "Rough volume or scale: \n"
     "Do you have an AWS account (yes/no): \n"
     "Timeline: \n"
 )
-
-CONTACT_URL = f"{_FORM_URL}?usp=pp_url&{FORM_ENTRY}=" + quote(FORM_TEMPLATE)
 
 #: One sentence, everywhere ownership is stated.
 OWNERSHIP = (
@@ -1663,7 +1655,7 @@ def engage_page() -> str:
         "<li><strong>Rough volume or scale.</strong> Decisions a month, documents, users, whatever fits.</li>"
         "<li><strong>Do you have an AWS account?</strong> Yes or no. We work in yours.</li>"
         "<li><strong>Timeline.</strong> When you need something real in front of your team.</li></ol>"
-        f'<div class="btn-row">{_btn("Open the contact form", CONTACT_URL).replace("<a ", "<a data-contact ", 1)}</div></div>'
+        "</div>"
     )
     return _page(
         _page_hero(
@@ -1699,8 +1691,8 @@ def engage_page() -> str:
             "Bring us the problem.",
             "Tell us the problem, even if it’s half-formed, and we’ll scope the first month together. Anything you "
             "send goes through a short contact form.",
-            label="Open the contact form", href=CONTACT_URL,
-        ).replace("<a ", "<a data-contact ", 1) + _ENGAGE_SCRIPT,
+            label="Open the contact form", href="#tell-us",
+        ) + _ENGAGE_SCRIPT,
     )
 
 
@@ -1709,19 +1701,16 @@ def engage_page() -> str:
 #: the four qualification prompts, the solution, and the source page, so each enquiry says what brought it in.
 _ENGAGE_SCRIPT = """<script>
 (function () {
+  var box = document.querySelector('#engage-inquiry textarea[name="message"]');
+  if (!box || box.value) return;
   var q = new URLSearchParams(location.search);
   var from = (q.get('from') || '').slice(0, 120), solution = (q.get('solution') || '').slice(0, 60);
-  if (!from && !solution) return;
   var text = decodeURIComponent(%s).replace('Solution or problem: ', 'Solution or problem: ' + solution);
   if (from) text += '(Came from: ' + from + ')';
-  document.querySelectorAll('a[data-contact]').forEach(function (a) {
-    var u = new URL(a.href);
-    u.searchParams.set(%s, text);
-    a.href = u.toString();
-  });
+  box.value = text;
 })();
 </script>"""
-_ENGAGE_SCRIPT = _ENGAGE_SCRIPT % (repr(quote(FORM_TEMPLATE)).replace("'", '"'), repr(FORM_ENTRY).replace("'", '"'))
+_ENGAGE_SCRIPT = _ENGAGE_SCRIPT % repr(quote(FORM_TEMPLATE)).replace("'", '"')
 
 
 # --------------------------------------------------------------------------
