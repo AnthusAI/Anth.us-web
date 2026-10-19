@@ -2,6 +2,6 @@
   "endpoint": "https://icc3xlwlxe.execute-api.us-east-1.amazonaws.com/intake/demo",
   "notice_version": "contact-v1",
   "privacy_notice": "Your details are used only to reply to you and to keep a record of our conversation. They are never sold or added to a mailing list, and they are kept until you ask us to delete them.",
-  "notice_approved": false,
+  "notice_approved": true,
   "fallback_email": null
 }
