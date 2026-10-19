@@ -37,6 +37,7 @@ from urllib.parse import quote
 
 import anthus_dom
 import inquiry_form
+import product_availability_labels
 import solution_marks
 import arcade_pictograms
 from anthus_content import ContentNode, ImageIndex
@@ -362,7 +363,7 @@ def _product_card(name: str, url: str, line: str, pictogram: str, page: str | No
         also += f'<a href="/engage/?solution={quote(name)}">Work with us on {escape(name)}</a>'
     return (
         f'<li class="card notch product card--static{" product--desc" if desc else ""}">'
-        f'<div class="card__px">{_px(pictogram)}</div><h3 class="product__name">{escape(name)}{solution_marks.mark(name)}</h3>'
+        f'<div class="card__px">{_px(pictogram)}</div><h3 class="product__name">{escape(name)}{solution_marks.mark(name)}{product_availability_labels.availability_chip_markup(name)}</h3>'
         f'<p>{escape(line)}</p>{desc}'
         f'<div class="card__links"><a href="{_esc(url)}" rel="noopener">Visit {escape(name)}</a>{also}</div></li>'
     )
@@ -377,7 +378,7 @@ def _products_grid(*, describe: bool = False) -> str:
 def _supporting_row() -> str:
     noopener = ' rel="noopener"'
     links = " ".join(
-        f'<a href="{_esc(href)}"{noopener if ext else ""}>{escape(name)}</a>'
+        f'<a href="{_esc(href)}"{noopener if ext else ""}>{escape(name)}</a>{product_availability_labels.availability_chip_markup(name)}'
         for name, href, _line, ext in anthus_dom.SUPPORTING
     )
     return f'<p class="supporting"><strong>Supporting technology</strong> {links}</p>'
@@ -557,9 +558,13 @@ def _links(items: list[tuple[str, str]]) -> str:
     ) + "</div>"
 
 
-def _card(title: str, body_html: str, *, href: str = "", extra: str = "", cls: str = "") -> str:
+def _card(title: str, body_html: str, *, href: str = "", extra: str = "", cls: str = "", title_badge_html: str = "") -> str:
     """A plain notched card; with `href` the whole card is the click target."""
-    head = f'<h3><a href="{_esc(href)}">{escape(title)}</a></h3>' if href else f"<h3>{escape(title)}</h3>"
+    head = (
+        f'<h3><a href="{_esc(href)}">{escape(title)}</a>{title_badge_html}</h3>'
+        if href
+        else f"<h3>{escape(title)}{title_badge_html}</h3>"
+    )
     return (
         f'<li class="card notch {cls}{" card--link" if href else " card--static"}">'
         f"{head}{body_html}{extra}</li>"
@@ -1268,6 +1273,7 @@ def ai_solutions_page(blog: list[ContentNode], images: ImageIndex | None = None)
     supporting = '<ul class="grid grid--thirds">' + "".join(
         _card(
             name, f"<p>{escape(line)}</p>",
+            title_badge_html=product_availability_labels.availability_chip_markup(name),
             extra=_links(
                 ([("Visit " + name, href)] if ext else [])
                 + ([("On anth.us", f"/platform/{name.lower()}/")] if name in anthus_dom.SUPPORTING_PAGES else [])
@@ -1463,7 +1469,7 @@ def _platform_card(node: ContentNode) -> str:
 def _platform_line(node: ContentNode) -> str:
     """Compact entry for the least prominent tier on /platform/: name and one line."""
     return (
-        f'<li><a href="{_esc(platform_href(node))}">{escape(node.title)}</a> '
+        f'<li><a href="{_esc(platform_href(node))}">{escape(node.title)}</a>{product_availability_labels.availability_chip_markup(node.title)} '
         f"{escape(_fm(node, 'excerpt'))}</li>"
     )
 
@@ -1495,6 +1501,7 @@ def platform_index(platform: list[ContentNode]) -> str:
     supporting = '<ul class="grid grid--thirds">' + "".join(
         _card(
             name, f"<p>{escape(line)}</p>",
+            title_badge_html=product_availability_labels.availability_chip_markup(name),
             extra=_links(
                 ([("Visit " + name, href)] if ext else []) + ([("On anth.us", f"/platform/{name.lower()}/")] if name in anthus_dom.SUPPORTING_PAGES else [])
             ),
@@ -1550,7 +1557,7 @@ def platform_product_head(node: ContentNode) -> str:
         '<div class="heading ppage-head">'
         '<a class="backlink" href="/platform/">The Anthus Platform</a>'
         '<p class="eyebrow">PART OF THE ANTHUS PLATFORM</p>'
-        f"<h1>{escape(node.title)}</h1>{_pills(node)}"
+        f"<h1>{escape(node.title)}{product_availability_labels.availability_chip_markup(node.title)}</h1>{_pills(node)}"
         f'<p class="lead">{escape(_fm(node, "excerpt"))}</p>'
         f'<div class="btn-row">{visit}'
         f'<a class="btn btn--ghost" href="/ai-solutions/"><span>See how it fits our solutions work &rarr;</span></a></div></div>'
