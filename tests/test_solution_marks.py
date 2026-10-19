@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "web"))
 import solution_marks  # noqa: E402
 
 NAMES = ("Cyclotron", "Chatticus", "Papyrus", "Primus")
+FOOTER_NAMES = ("Cyclotron", "Chatticus", "Papyrus")
 
 
 @pytest.mark.parametrize("name", NAMES)
@@ -30,9 +31,14 @@ def test_unknown_name_is_empty():
     assert solution_marks.mark("Nope") == ""
 
 
+def test_auritus_has_no_mark_and_renders_empty():
+    assert solution_marks.mark("Auritus") == ""
+    assert solution_marks.mark("Auritus", label=True) == ""
+
+
 def test_footer_carries_each_mark():
     import anthus_dom
-    for name in NAMES:
+    for name in FOOTER_NAMES:
         assert f'sm--{name.lower()}' in anthus_dom.FOOTER_HTML
 
 

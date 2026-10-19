@@ -170,9 +170,9 @@ PRODUCTS = (
     ("Papyrus", "https://p.apyr.us",
      "An automated newsroom: agents watch your beat, research and draft, and your editors decide what publishes.",
      "newsroom", None),
-    ("Primus", EXTERNAL_SITES["primus"],
-     "The classifier lab: evaluate, deploy and improve AI with reviewer feedback.",
-     "verdict-meter", None),
+    ("Auritus", "https://aurit.us",
+     "Listen to any page: a drop-in embed that turns your content into speech with open models you choose.",
+     "page-audio", None),
 )
 
 #: Supporting technology: (name, href, one-liner, external).
@@ -180,12 +180,14 @@ SUPPORTING = (
     ("Kanbus", EXTERNAL_SITES["kanbus"], "Issue tracking in your repository, where agents can participate.", True),
     ("Tactus", EXTERNAL_SITES["tactus"], "A programming language for reliable, tool-using AI agents.", True),
     ("Biblicus", "/platform/biblicus/", "Corpus analysis: extraction, retrieval and evidence-first knowledge workflows.", False),
-    ("Auritus", "https://aurit.us",
-     "Listen to any page: a drop-in embed that turns your content into speech with open models you choose.", True),
+    ("Primus", EXTERNAL_SITES["primus"],
+     "The classifier lab: evaluate, deploy and improve AI with reviewer feedback.", True),
     ("Limatus", "https://github.com/AnthusAI/Limatus",
      "Finds where AI-written prose sounds generic, measured against your own house style, without rewriting it.", True),
     ("Pudicus", "https://github.com/AnthusAI/Pudicus",
      "A commit gate that stops agents and people from committing secrets, with a receipt the deploy can check.", True),
+    ("Markus", "https://markus.anth.us/",
+     "GitHub-flavored Markdown with a small vocabulary for layout intent: typed directives rendered by Papyrus.", True),
 )
 
 #: The GitHub organization: most of our work in progress is public there.
