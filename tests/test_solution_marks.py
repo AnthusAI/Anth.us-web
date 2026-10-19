@@ -31,9 +31,16 @@ def test_unknown_name_is_empty():
     assert solution_marks.mark("Nope") == ""
 
 
-def test_auritus_has_no_mark_and_renders_empty():
-    assert solution_marks.mark("Auritus") == ""
-    assert solution_marks.mark("Auritus", label=True) == ""
+def test_auritus_mark_is_the_decorative_announcer_image():
+    mark = solution_marks.mark("Auritus")
+    assert 'sm--auritus' in mark and 'aria-hidden="true"' in mark and 'alt=""' in mark
+    assert (Path(__file__).resolve().parents[1] / "web" / mark.split('src="/')[1].split('"')[0]).exists()
+    assert 'alt="Auritus logo"' in solution_marks.mark("Auritus", label=True)
+
+
+def test_footer_carries_the_auritus_mark():
+    import anthus_dom
+    assert "sm--auritus" in anthus_dom.FOOTER_HTML
 
 
 def test_footer_carries_each_mark():

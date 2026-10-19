@@ -945,6 +945,11 @@ article .heading a.btn--ghost { color: var(--ink); }
 .sm-cc-navy { color: var(--cc-navy); stroke: var(--cc-navy); }
 .sm-cc-blue path { stroke: #1db7ec; }
 .sm-cc-blue rect { fill: #1db7ec; }
+.sm--auritus { object-fit: contain; border: 0; border-radius: 0; background: none; box-shadow: none; padding: 0; width: auto; }
+/* Auritus: the megaphone engraving is dark ink on white. In the footer (a dark band) it is inverted and screened onto the band; on the light page it is multiplied onto the page. */
+.site-footer .sm--auritus { filter: invert(1); mix-blend-mode: screen; }
+.product__name .sm--auritus { mix-blend-mode: multiply; }
+@media (prefers-color-scheme: dark) { .product__name .sm--auritus { filter: invert(1); mix-blend-mode: screen; } }
 .sm--venue-driver { object-fit: contain; border: 0; border-radius: 0; background: none; box-shadow: none; padding: 0; width: auto; }
 
 /* Cyclotron: arrows ride the racetrack. At rest the logo pose; the animated loop pose matches it exactly. */
