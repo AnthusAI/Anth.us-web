@@ -9,7 +9,6 @@
   button.disabled = false;
 
   const fallbackEmail = form.dataset.fallbackEmail || '';
-  // `lead` ends mid-sentence: with a fallback address it continues ", or email <address>."
   const uncertainOutcomeLead = 'We couldn’t confirm your note. Try again without changing it';
   const outcomes = {
     network: {lead: uncertainOutcomeLead, keepId: true},
