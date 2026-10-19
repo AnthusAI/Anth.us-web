@@ -10,11 +10,19 @@
   "parent": null,
   "labels": [],
   "dependencies": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "b6038ba0-1edf-46d7-a606-d8013f20a1d9",
+      "author": "home",
+      "text": "Done criteria (from the Anthus Organization coordinator, 2026-10-19): this is done only when live https://anth.us shows (1) the new shared footer with Auritus under Products and Markus under Open source, (2) the Markus homepage section, and (3) the Beta/Coming soon labels from #55.",
+      "created_at": "2026-10-19T17:11:42.663298Z",
+      "comment_type": "default"
+    }
+  ],
   "created_at": "2026-10-19T16:39:58.697609Z",
-  "updated_at": "2026-10-19T16:39:58.697631Z",
+  "updated_at": "2026-10-19T17:11:42.663315Z",
   "closed_at": null,
-  "right_now_summary": "The Amplify repository link needs updating before anth.us can deploy with the shared footer.",
-  "right_now_updated_at": "2026-10-19T16:40:00.158317Z",
+  "right_now_summary": "Reconnect the Amplify repository, rebuild the CMS, and verify anth.us shows the shared footer and homepage updates.",
+  "right_now_updated_at": "2026-10-19T17:11:44.105129Z",
   "custom": {}
 }
