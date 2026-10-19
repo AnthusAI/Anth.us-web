@@ -72,3 +72,4 @@ next-env.d.ts
 /app/newsroom/forum/\[threadId\]/page.tsx
 /app/newsroom/insights/\[threadId\]/page.tsx
 /app/newsroom/sections/\[sectionId\]/page.tsx
+project/.overlay/

@@ -1,0 +1,20 @@
+{
+  "id": "anthus-web-404c9eb5-5355-4b34-8d38-9f11d9424342",
+  "title": "Search Console verification for anth.us and subdomains",
+  "description": "SEARCH CONSOLE verification (thread \"Search Console DNS verification\", 2026-10-18).\nVERIFIED by Ryan: chatticus, cyclotron, hard-decisions. OPEN: anth.us, biased-decisions.anth.us, primus.anth.us, p.apyr.us (re-check), pilobol.us.\nFACTS: anth.us and apyr.us are delegated to Route 53 zones in papyrus-production (712236451410); anth.us zone Z04979341DPRV5BDQNZMG. TXT tokens were added there (anth.us keeps the OpenAI TXT value plus the Google token RNx6_2...). biased-decisions.anth.us serves token rKlyMW... Public resolvers (8.8.8.8, 1.1.1.1) show all tokens.\nTODO: Ryan clicks Verify again for anth.us and biased-decisions.anth.us. If anth.us still fails, Search Console's domain-property token differs: paste the exact current token and add it as an extra TXT value on the anth.us apex in zone Z04979341DPRV5BDQNZMG (keep existing values). primus.anth.us has a CNAME to CloudFront so cannot hold a TXT; verifying anth.us as a DOMAIN property covers it. Also check whether Search Console shows anth.us as indexed (marketing review asked).",
+  "type": "task",
+  "status": "open",
+  "priority": 2,
+  "assignee": null,
+  "creator": null,
+  "parent": null,
+  "labels": [],
+  "dependencies": [],
+  "comments": [],
+  "created_at": "2026-10-19T16:39:56.968141Z",
+  "updated_at": "2026-10-19T16:39:56.968180Z",
+  "closed_at": null,
+  "right_now_summary": "Ryan needs to retry verification for anth.us and biased-decisions.anth.us, then check anth.us indexing.",
+  "right_now_updated_at": "2026-10-19T16:39:58.680280Z",
+  "custom": {}
+}
