@@ -1,10 +1,3 @@
-/* Progressive enhancement for the Prospectus contact intake form.
- *
- * Request: POST <endpoint> as application/json with submission_id (a UUID used as the
- * idempotency/receipt key), name, email, company, message, website (honeypot),
- * notice_version ("contact-v1"), marketing_opt_in (false), page_path and campaign.
- * Success is HTTP 202 with {receipt, message}. Retries after an uncertain outcome
- * reuse the same submission_id as long as the content is unchanged. */
 (() => {
   const form = document.getElementById('engage-inquiry');
   if (!form || !globalThis.crypto?.randomUUID) return;
@@ -15,15 +8,15 @@
   let sending = false;
   button.disabled = false;
 
-  const RETRY = 'We couldn’t confirm your note. Try again without changing it.';
+  const uncertainOutcomeMessage = 'We couldn’t confirm your note. Try again without changing it.';
   const outcomes = {
-    network: {text: RETRY, keepId: true},
-    server: {text: RETRY, keepId: true},
+    network: {text: uncertainOutcomeMessage, keepId: true},
+    server: {text: uncertainOutcomeMessage, keepId: true},
     rate: {text: 'Too many requests right now. Wait a minute, then try again without changing your note.', keepId: true},
     conflict: {text: 'We couldn’t file this note automatically. Reload the page and send it again.', keepId: false},
     unavailable: {text: 'The form is not accepting notes from this page right now. Please try again later.', keepId: true},
   };
-  function classify(status) {
+  function failureKindForStatus(status) {
     if (status === 429) return 'rate';
     if (status === 409) return 'conflict';
     if (status === 403 || status === 404 || status === 415) return 'unavailable';
@@ -32,7 +25,7 @@
   async function readJson(response) {
     try { return await response.json(); } catch { return {}; }
   }
-  function fail(kind, detail) {
+  function showFailure(kind, detail) {
     const outcome = outcomes[kind];
     if (!outcome.keepId) pending = null;
     error.textContent = detail || outcome.text;
@@ -68,7 +61,7 @@
           signal: AbortSignal.timeout(20000),
         });
       } catch {
-        fail('network');
+        showFailure('network');
         return;
       }
       const result = await readJson(response);
@@ -77,9 +70,9 @@
         form.querySelectorAll('input, textarea, button').forEach(field => { field.disabled = true; });
         pending = null;
       } else if (response.status === 400 && typeof result.message === 'string' && result.message) {
-        fail('server', result.message + ' Please correct it and send again.');
+        showFailure('server', result.message + ' Please correct it and send again.');
       } else {
-        fail(response.ok ? 'server' : classify(response.status));
+        showFailure(response.ok ? 'server' : failureKindForStatus(response.status));
       }
     } finally {
       sending = false;
