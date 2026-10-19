@@ -7,7 +7,7 @@
   "priority": 3,
   "assignee": null,
   "creator": null,
-  "parent": "anthus-web-745ebe1e-3e63-4454-9a03-7f389f33dc01",
+  "parent": "anthus-web-539a152a-08c6-4dc3-98ac-16b0101ea8e6",
   "labels": [],
   "dependencies": [
     {
@@ -21,7 +21,7 @@
   ],
   "comments": [],
   "created_at": "2026-10-19T21:05:22.148234Z",
-  "updated_at": "2026-10-19T21:05:32.477460Z",
+  "updated_at": "2026-10-19T21:06:17.393561Z",
   "closed_at": null,
   "agent": {
     "platform": "claude-code",

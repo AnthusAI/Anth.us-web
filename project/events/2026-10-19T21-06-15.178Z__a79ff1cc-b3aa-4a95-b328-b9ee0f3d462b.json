@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "event_id": "a79ff1cc-b3aa-4a95-b328-b9ee0f3d462b",
+  "issue_id": "anthus-web-539a152a-08c6-4dc3-98ac-16b0101ea8e6",
+  "event_type": "issue_created",
+  "occurred_at": "2026-10-19T21:06:15.178Z",
+  "actor_id": "home",
+  "payload": {
+    "title": "Conversion tracking and consent for anth.us",
+    "description": "As the owner of anth.us, I want lead and CTA conversions measured in GA4 with a consent banner that matches the privacy policy, so that I can see which pages and solutions produce leads and can later run Google Ads and LinkedIn campaigns lawfully for global visitors.\n\nContext (verified 2026-10-19): anth.us loads GA4 G-31SC26SDGX via the Papyrus page template. AnthusAI/Anth.us-web#82 (merged, 50c07d2) added generate_lead (fires only on a confirmed 202 receipt from the engage form; params form_id, lead_source = '<from>#<cta>' or 'direct', optional solution; no PII) and cta_click (cta_text, cta_location, link_url path-only, beacon transport) via web/assets/conversion-events.js, with site-nav.js adding from and cta params to /engage/ links. AnthusAI/Papyrus#366 (PPY-0ac4a9, CI green, not merged or released) adds opt-in Consent Mode v2 with an approved banner. AnthusAI/Anth.us-web#77 (draft) adds the /privacy/ page, which describes the banner as live, so the two must ship together. No paid ads yet; Google Ads and possibly LinkedIn planned later; visitors are global.\n\nScope: the eight child issues. The Ads and LinkedIn items stay blocked until those campaigns start.",
+    "issue_type": "epic",
+    "status": "open",
+    "priority": 2,
+    "assignee": null,
+    "parent": null,
+    "labels": [],
+    "agent": {
+      "platform": "claude-code",
+      "model": "claude-sonnet-5-5",
+      "name": "ga-issues"
+    }
+  }
+}

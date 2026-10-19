@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "event_id": "f68e2756-ec54-4022-b512-e1cf882414f8",
+  "issue_id": "anthus-web-0a7a76c9-89cc-4fe0-af60-af7d645c2971",
+  "event_type": "field_updated",
+  "occurred_at": "2026-10-19T21:06:17.373Z",
+  "actor_id": "home",
+  "payload": {
+    "changes": {
+      "parent": {
+        "from": "anthus-web-745ebe1e-3e63-4454-9a03-7f389f33dc01",
+        "to": "anthus-web-539a152a-08c6-4dc3-98ac-16b0101ea8e6"
+      }
+    }
+  }
+}
