@@ -1,0 +1,25 @@
+{
+  "id": "anthus-web-2aeaaa72-4151-4369-b60e-e325353d2cf5",
+  "title": "Verify conversion events live in GA4 DebugView",
+  "description": "As Ryan, I want the new events verified against the live site so that I know the numbers are trustworthy before relying on them.\n\nSteps (with Ryan watching): open anth.us with ?debug_mode=1 (or Tag Assistant) and GA4 Admin > DebugView. Click a cta_click CTA in each location: header, footer, hero, band, article, solution-card. Then submit one labelled test lead through /engage/.\n\nNote: the test lead creates a CRM contact in Prospectus; archive it afterwards.\n\nAcceptance criteria:\nScenario: CTA clicks\n  Given DebugView is open for the live site\n  When a CTA is clicked in each of header, footer, hero, band, article and solution-card\n  Then one cta_click appears per click with the matching cta_location, cta_text and a path-only link_url\nScenario: Lead event\n  Given a labelled test lead is submitted from an /engage/ link carrying from and cta\n  When the engage form receives a 202 receipt\n  Then exactly one generate_lead appears with form_id, lead_source '<from>#<cta>' and no personal data\nScenario: Cleanup\n  Given the test lead created a CRM contact\n  When verification finishes\n  Then the test contact is archived\n\nDependencies: none (can run before the key event and dimensions issues).",
+  "type": "task",
+  "status": "open",
+  "priority": 2,
+  "assignee": null,
+  "creator": null,
+  "parent": "anthus-web-539a152a-08c6-4dc3-98ac-16b0101ea8e6",
+  "labels": [],
+  "dependencies": [],
+  "comments": [],
+  "created_at": "2026-10-19T21:05:22.034840Z",
+  "updated_at": "2026-10-19T21:06:17.305316Z",
+  "closed_at": null,
+  "agent": {
+    "platform": "claude-code",
+    "model": "claude-sonnet-5-5",
+    "name": "ga-issues"
+  },
+  "right_now_summary": null,
+  "right_now_updated_at": null,
+  "custom": {}
+}

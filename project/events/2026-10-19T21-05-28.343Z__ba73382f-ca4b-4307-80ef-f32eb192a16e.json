@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "event_id": "ba73382f-ca4b-4307-80ef-f32eb192a16e",
+  "issue_id": "anthus-web-43f7974c-97c4-4b53-907f-42467bbec6af",
+  "event_type": "dependency_added",
+  "occurred_at": "2026-10-19T21:05:28.343Z",
+  "actor_id": "home",
+  "payload": {
+    "dependency_type": "relates-to",
+    "target_id": "anthus-web-0a7a76c9-89cc-4fe0-af60-af7d645c2971"
+  }
+}

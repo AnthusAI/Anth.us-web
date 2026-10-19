@@ -1,0 +1,34 @@
+{
+  "id": "anthus-web-244eecf8-ba24-4371-a84f-2e608525208b",
+  "title": "Google Ads conversions for anth.us",
+  "description": "As the site owner, I want Google Ads campaigns to optimise on real leads, once ads begin.\n\nBlocked until Google Ads campaigns start.\n\nSteps: link GA4 to Google Ads; import generate_lead as the primary conversion; confirm Consent Mode signals (ad_storage, ad_user_data, ad_personalization) reach Ads; update the privacy policy to cover ad cookies before any ad tag loads.\n\nAcceptance criteria:\nScenario: Linked\n  Given GA4 and Google Ads are linked\n  Then generate_lead is imported and set as the primary conversion\nScenario: Consent respected\n  Given a visitor has not accepted\n  Then ad signals stay denied and no ad cookies are set\nScenario: Policy first\n  Given the privacy policy mentions Google Ads\n  Then it was published before any ad tag loaded\n\nDependencies: blocked-by key-event issue and consent banner issue.",
+  "type": "task",
+  "status": "blocked",
+  "priority": 3,
+  "assignee": null,
+  "creator": null,
+  "parent": "anthus-web-539a152a-08c6-4dc3-98ac-16b0101ea8e6",
+  "labels": [],
+  "dependencies": [
+    {
+      "target": "anthus-web-a16ff04b-29f5-40fc-a649-20f88ff0056c",
+      "type": "blocked-by"
+    },
+    {
+      "target": "anthus-web-43f7974c-97c4-4b53-907f-42467bbec6af",
+      "type": "blocked-by"
+    }
+  ],
+  "comments": [],
+  "created_at": "2026-10-19T21:05:22.148234Z",
+  "updated_at": "2026-10-19T21:06:17.393561Z",
+  "closed_at": null,
+  "agent": {
+    "platform": "claude-code",
+    "model": "claude-sonnet-5-5",
+    "name": "ga-issues"
+  },
+  "right_now_summary": null,
+  "right_now_updated_at": null,
+  "custom": {}
+}

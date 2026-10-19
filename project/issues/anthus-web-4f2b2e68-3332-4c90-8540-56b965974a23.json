@@ -1,0 +1,30 @@
+{
+  "id": "anthus-web-4f2b2e68-3332-4c90-8540-56b965974a23",
+  "title": "LinkedIn Insight tag behind consent",
+  "description": "As the site owner, I want LinkedIn conversion tracking only if LinkedIn ads start, and only after consent.\n\nBlocked until LinkedIn ads start.\n\nLinkedIn Insight has no Consent Mode integration, so the tag must load only after the visitor presses Accept. Update the privacy policy first.\n\nAcceptance criteria:\nScenario: No tag before consent\n  Given a visitor has not accepted\n  Then no LinkedIn request is made and no LinkedIn cookie is set\nScenario: Tag after Accept\n  Given a visitor presses Accept\n  Then the Insight tag loads\nScenario: Policy first\n  Given the privacy policy mentions LinkedIn\n  Then it was published before the tag was added\n\nDependencies: blocked-by consent banner issue.",
+  "type": "task",
+  "status": "blocked",
+  "priority": 4,
+  "assignee": null,
+  "creator": null,
+  "parent": "anthus-web-539a152a-08c6-4dc3-98ac-16b0101ea8e6",
+  "labels": [],
+  "dependencies": [
+    {
+      "target": "anthus-web-43f7974c-97c4-4b53-907f-42467bbec6af",
+      "type": "blocked-by"
+    }
+  ],
+  "comments": [],
+  "created_at": "2026-10-19T21:05:22.178271Z",
+  "updated_at": "2026-10-19T21:06:17.414409Z",
+  "closed_at": null,
+  "agent": {
+    "platform": "claude-code",
+    "model": "claude-sonnet-5-5",
+    "name": "ga-issues"
+  },
+  "right_now_summary": null,
+  "right_now_updated_at": null,
+  "custom": {}
+}

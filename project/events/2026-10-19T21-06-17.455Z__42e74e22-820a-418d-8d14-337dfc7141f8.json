@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "event_id": "42e74e22-820a-418d-8d14-337dfc7141f8",
+  "issue_id": "anthus-web-745ebe1e-3e63-4454-9a03-7f389f33dc01",
+  "event_type": "issue_deleted",
+  "occurred_at": "2026-10-19T21:06:17.455Z",
+  "actor_id": "home",
+  "payload": {
+    "title": "Created by mistake (superseded epic)",
+    "issue_type": "epic",
+    "status": "open"
+  }
+}

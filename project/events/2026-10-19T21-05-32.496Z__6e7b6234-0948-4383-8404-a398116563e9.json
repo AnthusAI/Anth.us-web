@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "event_id": "6e7b6234-0948-4383-8404-a398116563e9",
+  "issue_id": "anthus-web-4f2b2e68-3332-4c90-8540-56b965974a23",
+  "event_type": "state_transition",
+  "occurred_at": "2026-10-19T21:05:32.496Z",
+  "actor_id": "home",
+  "payload": {
+    "from_status": "open",
+    "to_status": "in_progress"
+  }
+}
