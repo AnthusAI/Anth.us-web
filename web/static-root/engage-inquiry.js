@@ -6,6 +6,7 @@
   const receipt = form.querySelector('[data-receipt]');
   let pending = null;
   let sending = false;
+  const reportedReceipts = new Set();
   button.disabled = false;
 
   const fallbackEmail = form.dataset.fallbackEmail || '';
@@ -22,6 +23,29 @@
     if (status === 409) return 'conflict';
     if (status === 403 || status === 404 || status === 415) return 'unavailable';
     return 'server';
+  }
+  const sourcePathPattern = /^[\w\/.-]{1,100}$/;
+  const sourceLocationPattern = /^[a-z0-9_-]{1,40}$/;
+  const solutionNamePattern = /^[\w .-]{1,60}$/;
+  function leadAttributionFromLocation() {
+    const query = new URLSearchParams(location.search);
+    const fromPage = query.get('from') || '';
+    const callToActionLocation = query.get('cta') || '';
+    const solution = query.get('solution') || '';
+    const pageSource = sourcePathPattern.test(fromPage) ? fromPage : '';
+    const locationSource = sourceLocationPattern.test(callToActionLocation) ? callToActionLocation : '';
+    const leadSource = pageSource || locationSource
+      ? (pageSource || 'direct') + (locationSource ? '#' + locationSource : '')
+      : 'direct';
+    const attribution = {form_id: 'engage-inquiry', lead_source: leadSource};
+    if (solutionNamePattern.test(solution)) attribution.solution = solution;
+    return attribution;
+  }
+  function reportLeadOnce(receiptId) {
+    if (reportedReceipts.has(receiptId)) return;
+    reportedReceipts.add(receiptId);
+    if (typeof globalThis.gtag !== 'function') return;
+    try { globalThis.gtag('event', 'generate_lead', leadAttributionFromLocation()); } catch {}
   }
   async function readJson(response) {
     try { return await response.json(); } catch { return {}; }
@@ -81,6 +105,7 @@
         form.querySelectorAll('input, textarea, button').forEach(field => { field.disabled = true; });
         pending = null;
         form.dataset.state = 'sent';
+        reportLeadOnce(result.receipt.trim());
       } else if (response.status === 400 && typeof result.message === 'string' && result.message) {
         showFailure('server', result.message + ' Please correct it and send again.');
       } else {
