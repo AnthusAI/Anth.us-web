@@ -1,0 +1,25 @@
+{
+  "id": "anthus-web-74154c80-c5c4-4951-baaa-ce5a3b51c842",
+  "title": "Register GA4 custom dimensions for lead and CTA parameters",
+  "description": "As Ryan, I want lead_source, solution, cta_location and cta_text registered as event-scoped custom dimensions so that I can break leads and CTA clicks down by source, solution and placement.\n\nSteps (Ryan): GA4 Admin > Data display > Custom definitions > Create custom dimension, scope Event, one per parameter name (lead_source, solution, cta_location, cta_text), using the exact parameter names.\n\nAcceptance criteria:\nScenario: Dimensions registered\n  Given the four custom dimensions are created with event scope\n  When Ryan opens Admin > Custom definitions\n  Then lead_source, solution, cta_location and cta_text are listed\nScenario: Usable in analysis\n  Given events with those parameters have arrived after registration\n  When Ryan builds a report or Exploration\n  Then each dimension is available and shows values\n\nNote: dimensions only populate for events received after registration. Dependencies: none to start; best done before the live verification so test events populate them.",
+  "type": "task",
+  "status": "open",
+  "priority": 2,
+  "assignee": null,
+  "creator": null,
+  "parent": "anthus-web-745ebe1e-3e63-4454-9a03-7f389f33dc01",
+  "labels": [],
+  "dependencies": [],
+  "comments": [],
+  "created_at": "2026-10-19T21:05:22.012057Z",
+  "updated_at": "2026-10-19T21:05:22.012085Z",
+  "closed_at": null,
+  "agent": {
+    "platform": "claude-code",
+    "model": "claude-sonnet-5-5",
+    "name": "ga-issues"
+  },
+  "right_now_summary": null,
+  "right_now_updated_at": null,
+  "custom": {}
+}

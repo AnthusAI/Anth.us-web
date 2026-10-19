@@ -1,0 +1,30 @@
+{
+  "id": "anthus-web-a16ff04b-29f5-40fc-a649-20f88ff0056c",
+  "title": "Mark generate_lead as a GA4 key event",
+  "description": "As Ryan, I want generate_lead flagged as a key event in GA4 so that real leads are counted as conversions in reports.\n\nSteps (Ryan): GA4 property for G-31SC26SDGX, Admin > Data display > Events, toggle 'Mark as key event' for generate_lead (the event must have been received at least once; the verification issue produces it).\n\nAcceptance criteria:\nScenario: Key event configured\n  Given generate_lead has been received by GA4\n  When Ryan opens Admin > Data display > Events\n  Then generate_lead is shown with the key event toggle on\nScenario: First real lead counted\n  Given generate_lead is a key event\n  When the first real lead submits the engage form and receives a 202 receipt\n  Then GA4 reports show one key event count for generate_lead\n\nDependencies: the live verification issue (the event must exist in GA4 first).",
+  "type": "task",
+  "status": "open",
+  "priority": 2,
+  "assignee": null,
+  "creator": null,
+  "parent": "anthus-web-745ebe1e-3e63-4454-9a03-7f389f33dc01",
+  "labels": [],
+  "dependencies": [
+    {
+      "target": "anthus-web-2aeaaa72-4151-4369-b60e-e325353d2cf5",
+      "type": "blocked-by"
+    }
+  ],
+  "comments": [],
+  "created_at": "2026-10-19T21:05:21.988662Z",
+  "updated_at": "2026-10-19T21:05:28.209867Z",
+  "closed_at": null,
+  "agent": {
+    "platform": "claude-code",
+    "model": "claude-sonnet-5-5",
+    "name": "ga-issues"
+  },
+  "right_now_summary": null,
+  "right_now_updated_at": null,
+  "custom": {}
+}

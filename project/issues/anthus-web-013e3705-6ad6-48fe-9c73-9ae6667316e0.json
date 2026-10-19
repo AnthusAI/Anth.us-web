@@ -1,0 +1,25 @@
+{
+  "id": "anthus-web-013e3705-6ad6-48fe-9c73-9ae6667316e0",
+  "title": "Restrict the solution parameter to an allow-list of solution names",
+  "description": "As the site owner, I want the generate_lead solution parameter limited to real solution names so that GA4 data cannot be polluted by arbitrary query-string values.\n\nChange: in web/static-root/engage-inquiry.js replace the free pattern for solution with an allow-list of Cyclotron, Chatticus, Papyrus, Primus, Auritus, plus any other solutions listed on /ai-solutions/ (confirm the list from that page). Values not on the list are omitted from the event, not sent. Add tests.\n\nAcceptance criteria:\nScenario: Known solution\n  Given the engage page is opened with solution=Cyclotron\n  When the lead is confirmed with a 202 receipt\n  Then generate_lead includes solution=Cyclotron\nScenario: Unknown solution\n  Given the engage page is opened with solution=anything-else\n  When the lead is confirmed\n  Then generate_lead omits the solution parameter\nScenario: List matches the site\n  Given the solutions on /ai-solutions/\n  When the allow-list is compared with them\n  Then every listed solution is allowed and no others are\nTests cover case handling and unknown values.\n\nDependencies: none.",
+  "type": "task",
+  "status": "open",
+  "priority": 3,
+  "assignee": null,
+  "creator": null,
+  "parent": "anthus-web-745ebe1e-3e63-4454-9a03-7f389f33dc01",
+  "labels": [],
+  "dependencies": [],
+  "comments": [],
+  "created_at": "2026-10-19T21:05:22.061180Z",
+  "updated_at": "2026-10-19T21:05:22.061212Z",
+  "closed_at": null,
+  "agent": {
+    "platform": "claude-code",
+    "model": "claude-sonnet-5-5",
+    "name": "ga-issues"
+  },
+  "right_now_summary": null,
+  "right_now_updated_at": null,
+  "custom": {}
+}

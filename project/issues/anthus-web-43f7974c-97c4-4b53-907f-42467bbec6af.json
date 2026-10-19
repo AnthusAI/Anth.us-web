@@ -1,0 +1,30 @@
+{
+  "id": "anthus-web-43f7974c-97c4-4b53-907f-42467bbec6af",
+  "title": "Ship the consent banner on anth.us",
+  "description": "As a visitor, I want a clear cookie choice, and as the site owner I want the privacy page and the banner to go live together, so that the published policy is accurate and consent is respected.\n\nSteps: merge and release AnthusAI/Papyrus#366 (PPY-0ac4a9); bump the Papyrus pin here; enable chrome.consent_mode with privacy_policy_url '/privacy/'; add the footer 'Cookie settings' link; publish Anth.us-web#77 (/privacy/) in the same release, since it describes the banner as live.\n\nAcceptance criteria:\nScenario: Strict regions\n  Given a visitor in the EEA, UK or Switzerland\n  When the page loads and no choice has been made\n  Then nothing is stored or sent, as shown in the Tag Assistant consent view\nScenario: Other regions\n  Given a visitor outside those regions\n  When the page loads\n  Then analytics runs and ad signals stay denied until Accept\nScenario: Changing the choice\n  Given a visitor has chosen\n  When they use the footer 'Cookie settings' link\n  Then they can change the choice\nScenario: Policy accuracy\n  Given the release is live\n  Then /privacy/ and the banner are both live and consistent\n\nDependencies: Papyrus#366 merged and released; Anth.us-web#77 ready to publish.",
+  "type": "task",
+  "status": "open",
+  "priority": 1,
+  "assignee": null,
+  "creator": null,
+  "parent": "anthus-web-745ebe1e-3e63-4454-9a03-7f389f33dc01",
+  "labels": [],
+  "dependencies": [
+    {
+      "target": "anthus-web-0a7a76c9-89cc-4fe0-af60-af7d645c2971",
+      "type": "relates-to"
+    }
+  ],
+  "comments": [],
+  "created_at": "2026-10-19T21:05:22.087570Z",
+  "updated_at": "2026-10-19T21:05:28.343053Z",
+  "closed_at": null,
+  "agent": {
+    "platform": "claude-code",
+    "model": "claude-sonnet-5-5",
+    "name": "ga-issues"
+  },
+  "right_now_summary": null,
+  "right_now_updated_at": null,
+  "custom": {}
+}
