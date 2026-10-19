@@ -45,9 +45,9 @@ class InquiryTests(unittest.TestCase):
         self.assertIn('mailto:hello@example.test', page)
         self.assertIn('href="#tell-us"', page)
 
-    def test_shipped_config_is_closed_until_endpoint_and_notice_are_confirmed(self):
+    def test_shipped_config_targets_production_intake_and_stays_closed_until_notice_is_approved(self):
         shipped = json.loads((Path(inquiry_form.__file__).with_name('inquiry-config.json')).read_text())
-        self.assertIsNone(shipped['endpoint'])
+        self.assertEqual(shipped['endpoint'], 'https://icc3xlwlxe.execute-api.us-east-1.amazonaws.com/intake/demo')
         self.assertIs(shipped['notice_approved'], False)
         self.assertEqual(shipped['notice_version'], 'contact-v1')
         self.assertEqual(inquiry_form.render(), inquiry_form.render_unavailable(shipped))
