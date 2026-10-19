@@ -375,24 +375,23 @@ def _supporting_row() -> str:
     return f'<p class="supporting"><strong>Supporting technology</strong> {links}</p>'
 
 
-MARKUS_FEATURE_PARAGRAPHS = (
-    "Markus is Markdown for documents, with a small vocabulary of typed layout directives: "
-    "pull quotes, peer cards, side-by-side views. You write the intent; it renders accessible "
-    "HTML and responsive CSS.",
-    "It powers the Papyrus newsroom and its own docs site, and it is open source.",
+PRIMUS_PROOF_PARAGRAPHS = (
+    "Primus is the MLOps platform behind Call Criteria's in-house classifier lab: one scorecard after another, "
+    "evaluated, deployed and improved with reviewer feedback, running in their own AWS account.",
+    "We built it, then operated it for them for years. It is open source.",
 )
 
 
-def _markus_feature(section_number: str) -> str:
-    paragraphs = "".join(f"<p>{escape(text)}</p>" for text in MARKUS_FEATURE_PARAGRAPHS)
-    link = (
-        '<div class="btn-row"><a class="btn" href="https://markus.anth.us/" rel="noopener">'
-        "<span>See Markus &rarr;</span></a></div>"
+def _primus_proof(section_number: str) -> str:
+    paragraphs = "".join(f"<p>{escape(text)}</p>" for text in PRIMUS_PROOF_PARAGRAPHS)
+    links = (
+        '<div class="btn-row"><a class="btn" href="/articles/call-criteria/"><span>Read the Call Criteria story &rarr;</span></a>'
+        '<a class="btn" href="https://primus.anth.us" rel="noopener"><span>See Primus &rarr;</span></a></div>'
     )
     return _section(
-        section_number, "Open source", "Markdown with layout intent.",
-        body=f'<div class="prose-block">{paragraphs}</div>{link}',
-        section_id="markus",
+        section_number, "In production", "Built and run for years.",
+        body=f'<div class="prose-block">{paragraphs}</div>{links}',
+        section_id="primus-proof",
     )
 
 
@@ -469,7 +468,7 @@ def homepage(
         )
     )
 
-    out.append(_markus_feature("05" if SHOW_HOW_WE_WORK else "04"))
+    out.append(_primus_proof("05" if SHOW_HOW_WE_WORK else "04"))
 
     out.append(
         _section(
