@@ -50,12 +50,13 @@ class InquiryTests(unittest.TestCase):
         self.assertEqual(shipped['endpoint'], 'https://icc3xlwlxe.execute-api.us-east-1.amazonaws.com/intake/demo')
         self.assertIs(shipped['notice_approved'], True)
         self.assertEqual(shipped['notice_version'], 'contact-v1')
-        self.assertIsNone(shipped['fallback_email'])
+        self.assertEqual(shipped['fallback_email'], 'info@anth.us')
         page = inquiry_form.render()
         self.assertIn('id="engage-inquiry"', page)
         self.assertIn('data-endpoint="' + shipped['endpoint'] + '"', page)
         self.assertIn(shipped['privacy_notice'], page)
-        self.assertNotIn('mailto:', page)
+        self.assertIn('data-fallback-email="info@anth.us"', page)
+        self.assertIn('mailto:info@anth.us', page)
 
     def test_unconfigured_state_hides_the_form_and_says_so(self):
         page = engage({})
@@ -97,6 +98,35 @@ class InquiryTests(unittest.TestCase):
         self.assertIn('maxlength="150"', html)
         self.assertIn('maxlength="3000"', html)
         self.assertIn('maxlength="254"', html)
+
+    def test_guidance_comes_before_the_form_and_agrees_with_the_prefill(self):
+        page = engage(READY)
+        guide, form = page.index('inquiry-guide'), page.index('id="engage-inquiry"')
+        self.assertLess(guide, form)
+        self.assertNotIn('The form has one open question', page)
+        self.assertIn('Four things that help us reply', page)
+        self.assertIn('I don’t know yet', page)
+        for needle in ('Which solution or problem?', 'Rough volume or scale', 'Do you have an AWS account', 'Timeline'):
+            self.assertIn(needle, page[guide:form])
+        self.assertEqual(len(anthus_pages.FORM_TEMPLATE.strip().splitlines()), 4)
+
+    def test_honeypot_stays_hidden_and_out_of_tab_order(self):
+        page = engage(READY)
+        trap = page[page.index('inquiry__trap'):]
+        trap = trap[:trap.index('</div>')]
+        self.assertIn('hidden', trap.split('>')[0])
+        self.assertIn('aria-hidden="true"', trap)
+        self.assertIn('tabindex="-1"', trap)
+        self.assertIn('autocomplete="off"', trap)
+        css = (Path(inquiry_form.__file__).parent / 'css' / 'arcade.css').read_text()
+        self.assertIn('.inquiry [hidden]', css)
+        self.assertIn('display: none !important', css)
+
+    def test_every_field_has_a_label_bound_by_id(self):
+        page = engage(READY)
+        for name in ('name', 'email', 'company', 'message'):
+            self.assertIn(f'<label for="inquiry-{name}"', page)
+            self.assertIn(f'id="inquiry-{name}"', page)
 
 
 if __name__ == '__main__':

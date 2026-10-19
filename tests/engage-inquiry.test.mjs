@@ -4,23 +4,24 @@ import vm from 'node:vm';
 import fs from 'node:fs';
 const source = fs.readFileSync(new URL('../web/static-root/engage-inquiry.js', import.meta.url), 'utf8');
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-function setup(responses) {
-  const button = {disabled: true}, error = {}, receipt = {};
+function setup(responses, fallbackEmail) {
+  const button = {disabled: true}, receipt = {};
+  const error = {parts: [], append(...nodes) { this.parts.push(...nodes); }};
   const fields = {name:'Test Person',email:'person@example.test',company:'',message:'A synthetic pilot',website:''};
   const elements = [button, {}, {}];
   let submit;
-  const form = {dataset:{endpoint:'https://intake.example.test/intake/demo',noticeVersion:'contact-v1'},
+  const form = {dataset:{endpoint:'https://intake.example.test/intake/demo',noticeVersion:'contact-v1',...(fallbackEmail ? {fallbackEmail} : {})},
     querySelector(s) { return s === 'button' ? button : s === '[data-error]' ? error : receipt; },
     querySelectorAll() { return elements; }, addEventListener(_, handler) {submit=handler;}};
   const calls = [];
   let ids = 0;
-  const context = {document:{getElementById(){return form;}},
+  const context = {document:{getElementById(){return form;}, createElement(tag){return {tag};}},
     crypto:{randomUUID(){return `00000000-0000-4000-8000-${String(++ids).padStart(12,'0')}`;}},
     location:{search:'?utm_source=site&utm_campaign=pilot&email=private&from=secret'},
     URLSearchParams, AbortSignal, FormData: class {get(key){return fields[key];}},
     fetch:async(url, options)=>{calls.push({url,...options});const result=responses.shift(); if(result instanceof Error)throw result;return result;}};
   vm.runInNewContext(source, context);
-  return {button,error,receipt,fields,calls,elements,send:()=>submit({preventDefault(){}})};
+  return {form,button,error,receipt,fields,calls,elements,send:()=>submit({preventDefault(){}})};
 }
 const reply = (status, body) => ({ok: status >= 200 && status < 300, status, json: async () => {
   if (body === undefined) throw new SyntaxError('no body'); return body; }});
@@ -95,4 +96,35 @@ test('a second click while sending does not post twice', async () => {
   const first = app.send(); const second = app.send();
   await Promise.all([first, second]);
   assert.equal(app.calls.length, 1);
+});
+
+const failures = {
+  network: () => new TypeError('offline'), server: () => reply(503, {}), rate: () => reply(429, {}), unavailable: () => reply(403, {}),
+};
+for (const [kind, make] of Object.entries(failures)) {
+  test(`${kind} failure ends with a mailto link read from the form's data attribute`, async () => {
+    const app = setup([make()], 'info@anth.us');
+    await app.send();
+    assert.match(app.error.textContent, /, or email $/);
+    const [link, tail] = app.error.parts;
+    assert.equal(link.tag, 'a');
+    assert.equal(link.href, 'mailto:info@anth.us');
+    assert.equal(link.textContent, 'info@anth.us');
+    assert.equal(tail, '.');
+    assert.equal(app.form.dataset.state, 'error');
+  });
+  test(`${kind} failure without a fallback address is plain text`, async () => {
+    const app = setup([make()]);
+    await app.send();
+    assert.match(app.error.textContent, /\.$/);
+    assert.equal(app.error.parts.length, 0);
+  });
+}
+
+test('validation and conflict messages get no email link; state tracks sending and sent', async () => {
+  const app = setup([reply(400, {message: 'Enter a valid email address so we can reply.'}), reply(409, {}), accepted('r-9')], 'info@anth.us');
+  await app.send(); assert.equal(app.error.parts.length, 0);
+  await app.send(); assert.equal(app.error.parts.length, 0);
+  const p = app.send(); assert.equal(app.form.dataset.state, 'sending'); await p;
+  assert.equal(app.form.dataset.state, 'sent');
 });
