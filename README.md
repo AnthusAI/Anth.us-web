@@ -8,14 +8,16 @@
 > Do not promote unrelated historical develop changes as part of a website fix.
 > Use AWS CLI/API only; no AWS console browser.
 >
-> **Engagement intake is pending upstream approval.** `web/inquiry-config.json`
-> ships disabled, retaining the Google Form. Once Prospectus real-contact intake
-> is approved, a scoped PR must supply its HTTPS endpoint, approved notice text
-> and notice version together. This file is bundled with `web/` into the S3
-> projector Lambda; `GATSBY_PROSPECTUS_INTAKE_URL` and Next build variables do
-> not configure that runtime. No Prospectus settings, privacy, retention or grants
-> are activated by this work. Track kanbus-e28f and kanbus-0d24 in the historical
-> Gatsby site-operations board until the intake handoff is complete.
+> **Engagement intake posts to Prospectus; the Google Form is retired.**
+> `web/inquiry-config.json` is the only configuration (it is bundled with `web/`
+> into the S3 projector Lambda; `GATSBY_PROSPECTUS_INTAKE_URL` and Next build
+> variables do not configure that runtime). The engage form renders only when
+> `endpoint` (the `EvaluationIntakeUrl` stack output, https), `notice_version`
+> (exactly `contact-v1`), `privacy_notice` and `notice_approved: true` are all set;
+> otherwise the page says the form is unavailable and shows `fallback_email` if
+> set. Prospectus accepts `https://anth.us` and `https://www.anth.us` origins in
+> real-contacts mode. Track kanbus-e28f and kanbus-0d24 in the historical Gatsby
+> site-operations board; Prospectus tracks kanbus-47dc15 and kanbus-67ae2d.
 
 # Anth.us-Papyrus
 
