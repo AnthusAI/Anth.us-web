@@ -69,7 +69,7 @@ PROJECTED_SECTIONS = ("articles", "platform")
 SITEMAP_KEY = "sitemap-0.xml"
 STATIC_SITE_FILES = ("robots.txt", "sitemap-index.xml")
 OWNED_TOP_LEVEL_DIRECTORIES = frozenset(
-    {"articles", "platform", "posts", "tags", "about", "ai-solutions", "ryan", "engage", "decision-models", "benchmarks", "reading", "research"}
+    {"articles", "platform", "posts", "tags", "about", "ai-solutions", "ryan", "engage", "privacy", "decision-models", "benchmarks", "reading", "research"}
 )
 LEGACY_OG_IMAGES_PATH = MODULE_DIRECTORY / "legacy-og-images.json"
 LEGACY_REDIRECT_RULES_PATH = MODULE_DIRECTORY / "legacy-redirect-rules.json"

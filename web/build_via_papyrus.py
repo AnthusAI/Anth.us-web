@@ -514,6 +514,9 @@ def generate_pages(collections: Collections, images: ImageIndex) -> None:
         "engage.html", _page_title(meta["/engage/"]["title"]), pages.engage_page(), meta_key="/engage/"
     )
     _generated(
+        "privacy.html", _page_title(meta["/privacy/"]["title"]), pages.privacy_page(), meta_key="/privacy/"
+    )
+    _generated(
         "decision-models.html",
         _page_title(meta["/decision-models/"]["title"]),
         pages.decision_models_page(),

@@ -29,6 +29,7 @@ EXPECTED_GENERATED_HREFS = {
     "index.html",
     "platform/index.html",
     "posts/index.html",
+    "privacy.html",
     "reading.html",
     "research.html",
     "ryan.html",

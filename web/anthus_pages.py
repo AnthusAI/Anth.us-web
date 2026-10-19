@@ -12,6 +12,7 @@ Only the MDX corpus (articles and platform-product bodies) goes through Markus.
 | `/ai-solutions/`        | `ai_solutions_page`                         |
 | `/ryan/`                | `ryan_page`                                 |
 | `/engage/`              | `engage_page`                               |
+| `/privacy/`             | `privacy_page`                              |
 | `/decision-models/`     | `decision_models_page`                      |
 | `/benchmarks/`          | `benchmarks_page`                           |
 | `/research/` `/reading/`| `research_page`, `reading_page`             |
@@ -84,6 +85,10 @@ PAGE_META: dict[str, dict[str, str]] = {
     "/engage/": {
         "title": "Engage Anthus | Anthus",
         "description": "What an Anthus engagement looks like: bring any problem you think AI might solve, and we scope a first month with a record you can inspect. Classifier labs, factory-run software, and newsrooms are three examples.",
+    },
+    "/privacy/": {
+        "title": "Privacy Policy | Anthus",
+        "description": "How anth.us handles your information: the contact form, analytics and cookies, hosting, and your choices and rights.",
     },
     "/reading/": {
         "title": "Reading List | Anthus",
@@ -1693,6 +1698,159 @@ def engage_page() -> str:
             "send goes through a short contact form.",
             label="Open the contact form", href="#tell-us",
         ) + _ENGAGE_SCRIPT,
+    )
+
+
+# --------------------------------------------------------------------------
+# Privacy
+# --------------------------------------------------------------------------
+
+#: Details this repository cannot supply. They render as visible bracketed placeholders until the owner
+#: replaces them here; `tests/test_privacy_page.py` fails if an invented value slips in.
+PRIVACY_CONTACT_EMAIL = "[PRIVACY CONTACT EMAIL — Ryan to supply]"
+PRIVACY_LEGAL_ENTITY = "[LEGAL ENTITY NAME — Ryan to supply]"
+PRIVACY_POSTAL_ADDRESS = "[POSTAL ADDRESS — Ryan to supply]"
+PRIVACY_EFFECTIVE_DATE = "2026-10-19"
+
+
+def _prose_list(items: tuple[str, ...]) -> str:
+    return "<ul>" + "".join(f"<li>{item}</li>" for item in items) + "</ul>"
+
+
+def privacy_page() -> str:
+    contact_email = escape(PRIVACY_CONTACT_EMAIL)
+    who = _prose(
+        "This policy explains what personal information the website at anth.us (the “site”) collects, why, "
+        "and the choices you have. It applies to the site and to the contact form on it. Our other sites, such as "
+        "the solution sites on anth.us subdomains and the projects on GitHub, may have their own practices.",
+        f"The site is run by Anthus AI Solutions (“Anthus”, “we”, “us”), operated by {escape(PRIVACY_LEGAL_ENTITY)}, "
+        f"{escape(PRIVACY_POSTAL_ADDRESS)}.",
+        f"For privacy questions or to make a request about your information, write to {contact_email}. "
+        "You can also send a note through the contact form on the "
+        '<a href="/engage/">engage page</a> and say it is a privacy request.',
+    )
+    collect = (
+        '<div class="prose"><h3>If you use the contact form</h3>'
+        "<p>The form on the <a href=\"/engage/\">engage page</a> asks for:</p>"
+        + _prose_list((
+            "your name and email address (required);",
+            "your company (optional);",
+            "your message (required).",
+        ))
+        + "<p>It also includes a hidden field that real visitors never see or fill in; we use it to spot automated "
+        "spam. When you send the form we also receive the page you sent it from and any campaign tags in the address "
+        "you arrived with (<code>utm_source</code>, <code>utm_medium</code> and <code>utm_campaign</code>), the version "
+        "of the privacy notice shown with the form, and a random identifier that stops the same note being filed twice. "
+        "The form does not ask you to join any mailing list.</p>"
+        "<p>We use these details only to reply to you and to keep a record of our conversation. We never sell them "
+        "and we never add them to a mailing list. We keep them until you ask us to delete them.</p>"
+        "<h3>Analytics</h3>"
+        "<p>The site uses Google Analytics 4 to understand how it is used: which pages are visited, how visitors "
+        "arrive, and roughly what kind of device and browser they use. Google Analytics uses cookies or similar "
+        "identifiers in your browser and sends this usage information to Google. We use it to improve the site and "
+        "the writing on it.</p>"
+        "<h3>Technical information</h3>"
+        "<p>Like any website, delivering a page to you means our hosting provider and the content delivery network "
+        "receive your browser’s request, which includes your IP address and details such as the browser type and the "
+        "page requested. The site also loads its fonts from Google Fonts, so your browser contacts Google’s font "
+        "servers when a page loads.</p>"
+        "<h3>Advertising</h3>"
+        "<p>We do not currently run advertising on the site or use advertising cookies. We may in future use "
+        "advertising services such as Google Ads or LinkedIn to measure and improve our advertising. If we do, we "
+        "will use them only after you accept advertising cookies in the cookie settings, and we will update this "
+        "policy first.</p></div>"
+    )
+    basis = _prose(
+        "Where the law of your region requires a legal basis for processing, we rely on the following.",
+    ) + _prose_list((
+        "<strong>Contact form:</strong> our legitimate interest in responding to the request you chose to send us "
+        "and in keeping a record of that conversation.",
+        "<strong>Analytics and advertising cookies in the European Economic Area, the United Kingdom and "
+        "Switzerland:</strong> your consent. These cookies stay off until you choose to allow them.",
+        "<strong>Analytics elsewhere:</strong> our legitimate interest in understanding how the site is used. "
+        "You can switch analytics off in the cookie settings at any time.",
+    ))
+    cookies = (
+        '<div class="prose"><p>Cookies and similar technologies, such as local storage in your browser, are used '
+        "for three things on the site.</p>"
+        + _prose_list((
+            "<strong>Analytics</strong> (Google Analytics 4). Used to measure use of the site, as described above.",
+            "<strong>Your cookie choice.</strong> The site stores your choice in your browser’s local storage so it "
+            "does not ask you again each visit. The choice is kept for about six months, after which we ask again.",
+            "<strong>Your opt-out flag.</strong> If you add <code>?notrack=1</code> to the end of a page address, "
+            "the site stores a flag in your browser’s local storage that turns Google Analytics off for that browser. "
+            "Adding <code>?notrack=0</code> removes the flag.",
+        ))
+        + "<p>The contact form does not set cookies: it sends your note without credentials or cookies.</p>"
+        "<h3>Your choices</h3>"
+        "<p>If you are in the European Economic Area, the United Kingdom or Switzerland, analytics and advertising "
+        "are denied until you choose. Elsewhere, analytics is on by default and advertising stays off until you "
+        "accept it. In every region the cookie banner lets you accept or reject, with the same prominence for each, and "
+        "you can change your choice at any time with the “Cookie settings” link in the footer of every page. You "
+        "can also block or delete cookies and local storage in your browser settings.</p></div>"
+    )
+    retention = _prose(
+        "Contact form details are kept until you ask us to delete them. Your cookie choice is kept in your own "
+        "browser for about six months. Analytics data is kept by Google Analytics for the period set in our Google "
+        "Analytics configuration, after which it is deleted by Google.",
+    )
+    sharing = (
+        '<div class="prose"><p>We do not sell the details you send through the contact form and we do not share them '
+        "for marketing. We use these service providers (“processors”) to run the site, and they handle information "
+        "only as needed to provide those services.</p>"
+        + _prose_list((
+            "<strong>Amazon Web Services</strong> hosts the site (storage and content delivery) and the system that "
+            "receives and stores contact form submissions.",
+            "<strong>Google</strong> provides Google Analytics 4 and Google Fonts.",
+        ))
+        + "<p>We may also disclose information if the law requires it, or to protect our rights and the security of "
+        "the site.</p></div>"
+    )
+    transfers = _prose(
+        "Our service providers operate internationally, so information about you may be processed in countries other "
+        "than your own, including the United States. Where the law requires it, we rely on appropriate safeguards "
+        "for those transfers, such as the contractual terms and transfer mechanisms our providers offer.",
+    )
+    rights = (
+        '<div class="prose"><p>Depending on where you live, you may have the right to:</p>'
+        + _prose_list((
+            "access the personal information we hold about you;",
+            "correct information that is wrong;",
+            "ask us to delete your information;",
+            "object to our processing that rests on legitimate interest;",
+            "withdraw your consent at any time, without affecting what we did before you withdrew it. "
+            "For cookies, use “Cookie settings” in the footer.",
+        ))
+        + f"<p>To use any of these rights, contact us at {contact_email}. We may need to confirm who you are first. "
+        "You also have the right to complain to your local data protection supervisory authority if you think we "
+        "have handled your information unlawfully.</p></div>"
+    )
+    children = _prose(
+        "The site is meant for adults and businesses and is not directed at children. We do not knowingly collect "
+        "personal information from children. If you believe a child has sent us information, contact us and we will "
+        "delete it.",
+    )
+    changes = _prose(
+        "We may update this policy as the site or the law changes. When we do, we will change the effective date "
+        "below.",
+        f"This policy is effective from {PRIVACY_EFFECTIVE_DATE}.",
+    )
+    return _page(
+        _page_hero(
+            "PRIVACY", "Privacy policy",
+            "What the anth.us website collects, why we collect it, who sees it, and the choices you have.",
+            compact=True,
+        ),
+        _section("01", "Who we are", "Who we are and how to contact us", body=who, stack=True),
+        _section("02", "What we collect", "What we collect and why", body=collect, stack=True),
+        _section("03", "Legal basis", "Why we may process it", body=basis, stack=True),
+        _section("04", "Cookies", "Cookies and similar technologies", body=cookies, stack=True),
+        _section("05", "Retention", "How long we keep it", body=retention, stack=True),
+        _section("06", "Sharing", "Sharing and service providers", body=sharing, stack=True),
+        _section("07", "Transfers", "International transfers", body=transfers, stack=True),
+        _section("08", "Your rights", "Your rights", body=rights, stack=True),
+        _section("09", "Children", "Children", body=children, stack=True),
+        _section("10", "Changes", "Changes to this policy", body=changes, stack=True),
     )
 
 

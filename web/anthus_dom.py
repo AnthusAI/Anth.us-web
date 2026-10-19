@@ -205,6 +205,7 @@ FOOTER_COLUMNS = (
             ("About", "/about/", False),
             ("Ryan Porter", "/ryan/", False),
             ("Contact", "/engage/", False),
+            ("Privacy", "/privacy/", False),
         ),
     ),
     (
