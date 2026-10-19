@@ -65,19 +65,27 @@ def render():
         return render_unavailable(config)
     endpoint = config['endpoint']
     address = fallback_email(config)
-    email_note = '<p data-fallback>Prefer email? ' + _email_link(address) + '</p>' if address else ''
+    email_note = '<p class="inquiry__alt" data-fallback>Prefer email? ' + _email_link(address) + '</p>' if address else ''
+    fallback_attr = ' data-fallback-email="' + escape(address, quote=True) + '"' if address else ''
     return (
         '<form id="engage-inquiry" method="post" action="' + escape(endpoint, quote=True)
-        + '" class="prose" data-endpoint="' + escape(endpoint, quote=True)
-        + '" data-notice-version="' + escape(config['notice_version'], quote=True) + '">'
-        '<label>Name <input name="name" required maxlength="150" autocomplete="name"></label><br>'
-        '<label>Email <input name="email" type="email" required maxlength="254" autocomplete="email"></label><br>'
-        '<label>Company (optional) <input name="company" maxlength="150" autocomplete="organization"></label><br>'
-        '<label>What’s the problem? <textarea name="message" required maxlength="3000" rows="8"></textarea></label>'
-        '<div hidden aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off"></label></div>'
-        '<p data-notice>' + escape(config['privacy_notice']) + '</p>'
-        '<p data-error role="alert"></p><div data-receipt role="status" aria-live="polite"></div>'
-        '<button type="submit" class="button" disabled>Start an engagement</button>'
+        + '" class="inquiry" data-endpoint="' + escape(endpoint, quote=True)
+        + '" data-notice-version="' + escape(config['notice_version'], quote=True) + '"' + fallback_attr + '>'
+        '<div class="inquiry__field"><label for="inquiry-name">Name</label>'
+        '<input id="inquiry-name" name="name" required maxlength="150" autocomplete="name"></div>'
+        '<div class="inquiry__field"><label for="inquiry-email">Email</label>'
+        '<input id="inquiry-email" name="email" type="email" required maxlength="254" autocomplete="email"></div>'
+        '<div class="inquiry__field"><label for="inquiry-company">Company <span class="inquiry__opt">(optional)</span></label>'
+        '<input id="inquiry-company" name="company" maxlength="150" autocomplete="organization"></div>'
+        '<div class="inquiry__field"><label for="inquiry-message">What’s the problem?</label>'
+        '<textarea id="inquiry-message" name="message" required maxlength="3000" rows="9"></textarea></div>'
+        '<div class="inquiry__trap" hidden aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off"></label></div>'
+        '<p class="inquiry__notice" data-notice>' + escape(config['privacy_notice']) + '</p>'
+        '<p class="inquiry__error" data-error role="alert"></p>'
+        '<div class="inquiry__receipt" data-receipt role="status" aria-live="polite"></div>'
+        '<div class="inquiry__actions"><button type="submit" class="btn" disabled>'
+        '<span><span class="inquiry__idle">Start an engagement &rarr;</span>'
+        '<span class="inquiry__busy">Sending&hellip;</span></span></button></div>'
         + email_note +
         '<noscript><p>This form needs JavaScript.'
         + (' Email us at ' + _email_link(address) + ' instead.' if address else '')

@@ -1648,8 +1648,9 @@ def engage_page() -> str:
         extra=_links([("Tell us the problem", "#tell-us")]),
     ) + "</ul>"
     checklist = (
-        '<div class="prose"><p>The form has one open question. Answer these four in it, in a line each. Rough answers '
-        "are fine, and “I don’t know yet” is a real answer.</p>"
+        '<div class="prose inquiry-guide"><p>In your message, a line on each of these helps us reply. The box starts '
+        "with these prompts, so just type after each colon. Rough answers are fine, and “I don’t know yet” is a "
+        "real answer.</p>"
         "<ol><li><strong>Which solution or problem?</strong> Cyclotron, Chatticus, Papyrus, Auritus, or the problem "
         "in your own words.</li>"
         "<li><strong>Rough volume or scale.</strong> Decisions a month, documents, users, whatever fits.</li>"
@@ -1686,7 +1687,7 @@ def engage_page() -> str:
             ),
             band=True,
         ),
-        _section("05", "Tell us", "Four things that help us reply", body=inquiry_form.render() + checklist, section_id="tell-us"),
+        _section("05", "Tell us", "Four things that help us reply", body=checklist + inquiry_form.render(), section_id="tell-us"),
         _cta(
             "Bring us the problem.",
             "Tell us the problem, even if it’s half-formed, and we’ll scope the first month together. Anything you "

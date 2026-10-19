@@ -8,13 +8,15 @@
   let sending = false;
   button.disabled = false;
 
-  const uncertainOutcomeMessage = 'We couldn’t confirm your note. Try again without changing it.';
+  const fallbackEmail = form.dataset.fallbackEmail || '';
+  // `lead` ends mid-sentence: with a fallback address it continues ", or email <address>."
+  const uncertainOutcomeLead = 'We couldn’t confirm your note. Try again without changing it';
   const outcomes = {
-    network: {text: uncertainOutcomeMessage, keepId: true},
-    server: {text: uncertainOutcomeMessage, keepId: true},
-    rate: {text: 'Too many requests right now. Wait a minute, then try again without changing your note.', keepId: true},
+    network: {lead: uncertainOutcomeLead, keepId: true},
+    server: {lead: uncertainOutcomeLead, keepId: true},
+    rate: {lead: 'Too many requests right now. Wait a minute, then try again without changing your note', keepId: true},
     conflict: {text: 'We couldn’t file this note automatically. Reload the page and send it again.', keepId: false},
-    unavailable: {text: 'The form is not accepting notes from this page right now. Please try again later.', keepId: true},
+    unavailable: {lead: 'The form is not accepting notes from this page right now. Please try again later', keepId: true},
   };
   function failureKindForStatus(status) {
     if (status === 429) return 'rate';
@@ -28,7 +30,16 @@
   function showFailure(kind, detail) {
     const outcome = outcomes[kind];
     if (!outcome.keepId) pending = null;
-    error.textContent = detail || outcome.text;
+    if (detail || outcome.text || !fallbackEmail) {
+      error.textContent = detail || outcome.text || outcome.lead + '.';
+    } else {
+      const link = document.createElement('a');
+      link.href = 'mailto:' + fallbackEmail;
+      link.textContent = fallbackEmail;
+      error.textContent = outcome.lead + ', or email ';
+      error.append(link, '.');
+    }
+    form.dataset.state = 'error';
     button.disabled = false;
   }
 
@@ -50,6 +61,7 @@
     });
     if (!pending || pending.data !== data) pending = {data, id: crypto.randomUUID()};
     sending = true;
+    form.dataset.state = 'sending';
     button.disabled = true;
     error.textContent = '';
     try {
@@ -69,6 +81,7 @@
         receipt.textContent = 'Thanks, we have your note. Receipt ' + result.receipt;
         form.querySelectorAll('input, textarea, button').forEach(field => { field.disabled = true; });
         pending = null;
+        form.dataset.state = 'sent';
       } else if (response.status === 400 && typeof result.message === 'string' && result.message) {
         showFailure('server', result.message + ' Please correct it and send again.');
       } else {
