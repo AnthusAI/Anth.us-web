@@ -378,7 +378,7 @@ def _supporting_row() -> str:
 PRIMUS_PROOF_PARAGRAPHS = (
     "Primus is the MLOps platform behind Call Criteria's in-house classifier lab: one scorecard after another, "
     "evaluated, deployed and improved with reviewer feedback, running in their own AWS account.",
-    "We built it, then operated it for them for years. It is open source.",
+    "We built it, then operated it for them for years. It is free and open source.",
 )
 
 
