@@ -1707,9 +1707,9 @@ def engage_page() -> str:
 
 #: Details this repository cannot supply. They render as visible bracketed placeholders until the owner
 #: replaces them here; `tests/test_privacy_page.py` fails if an invented value slips in.
-PRIVACY_CONTACT_EMAIL = "[PRIVACY CONTACT EMAIL — Ryan to supply]"
-PRIVACY_LEGAL_ENTITY = "[LEGAL ENTITY NAME — Ryan to supply]"
-PRIVACY_POSTAL_ADDRESS = "[POSTAL ADDRESS — Ryan to supply]"
+PRIVACY_CONTACT_EMAIL = "info@anth.us"
+PRIVACY_LEGAL_ENTITY = "Endymion Corporation"
+PRIVACY_POSTAL_ADDRESS = "PO Box 398795, Miami Beach, FL 33139"
 PRIVACY_EFFECTIVE_DATE = "2026-10-19"
 
 
@@ -1718,7 +1718,7 @@ def _prose_list(items: tuple[str, ...]) -> str:
 
 
 def privacy_page() -> str:
-    contact_email = escape(PRIVACY_CONTACT_EMAIL)
+    contact_email = f'<a href="mailto:{escape(PRIVACY_CONTACT_EMAIL, quote=True)}">{escape(PRIVACY_CONTACT_EMAIL)}</a>'
     who = _prose(
         "This policy explains what personal information the website at anth.us (the “site”) collects, why, "
         "and the choices you have. It applies to the site and to the contact form on it. Our other sites, such as "

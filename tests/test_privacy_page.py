@@ -21,11 +21,6 @@ except (ImportError, SystemExit) as error:
     build = None
     BUILD_ERROR = error
 
-PLACEHOLDERS = (
-    '[PRIVACY CONTACT EMAIL — Ryan to supply]',
-    '[LEGAL ENTITY NAME — Ryan to supply]',
-    '[POSTAL ADDRESS — Ryan to supply]',
-)
 PAGE = anthus_pages.privacy_page()
 TEXT = re.sub(r'<[^>]+>', ' ', PAGE)
 
@@ -42,11 +37,12 @@ class PrivacyPageTests(unittest.TestCase):
     def test_effective_date_is_shown(self):
         self.assertIn('2026-10-19', TEXT)
 
-    def test_unknown_details_are_bracketed_placeholders_not_invented_values(self):
-        for placeholder in PLACEHOLDERS:
-            self.assertIn(placeholder, TEXT)
-        self.assertNotIn('mailto:', PAGE)
-        self.assertIsNone(re.search(r'[\w.+-]+@[\w-]+\.[\w.]+', TEXT))
+    def test_names_the_operator_and_its_privacy_contact(self):
+        self.assertIn('Endymion Corporation', TEXT)
+        self.assertIn('PO Box 398795, Miami Beach, FL 33139', TEXT)
+        self.assertIn('<a href="mailto:info@anth.us">info@anth.us</a>', PAGE)
+        self.assertEqual(set(re.findall(r'[\w.+-]+@[\w-]+\.[\w.]+', TEXT)), {'info@anth.us'})
+        self.assertNotIn('Ryan to supply', PAGE)
 
     def test_no_draft_wording_on_the_rendered_page(self):
         for word in ('draft', 'todo', 'tbd', 'lorem', 'placeholder'):
