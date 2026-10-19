@@ -364,6 +364,27 @@ def _supporting_row() -> str:
     return f'<p class="supporting"><strong>Supporting technology</strong> {links}</p>'
 
 
+MARKUS_FEATURE_PARAGRAPHS = (
+    "Markus is Markdown for documents, with a small vocabulary of typed layout directives: "
+    "pull quotes, peer cards, side-by-side views. You write the intent; it renders accessible "
+    "HTML and responsive CSS.",
+    "It powers the Papyrus newsroom and its own docs site, and it is open source.",
+)
+
+
+def _markus_feature(section_number: str) -> str:
+    paragraphs = "".join(f"<p>{escape(text)}</p>" for text in MARKUS_FEATURE_PARAGRAPHS)
+    link = (
+        '<div class="btn-row"><a class="btn" href="https://markus.anth.us/" rel="noopener">'
+        "<span>See Markus &rarr;</span></a></div>"
+    )
+    return _section(
+        section_number, "Open source", "Markdown with layout intent.",
+        body=f'<div class="prose-block">{paragraphs}</div>{link}',
+        section_id="markus",
+    )
+
+
 #: The "How we work" section ("AI-built, and checked harder because of it.") is hidden until
 #: it's rewritten around our tools for cognitive debt (Pudicus, Kanbus right-now and standup
 #: reports, DataParade); see the website board epic.
@@ -437,9 +458,11 @@ def homepage(
         )
     )
 
+    out.append(_markus_feature("05" if SHOW_HOW_WE_WORK else "04"))
+
     out.append(
         _section(
-            "05" if SHOW_HOW_WE_WORK else "04", "Articles", "Latest from the lab.",
+            "06" if SHOW_HOW_WE_WORK else "05", "Articles", "Latest from the lab.",
             body='<ul class="grid grid--list">'
             + "".join(_article_card(n, images) for n in articles[:6])
             + '</ul><p class="more"><a href="/blog/">All articles</a></p>',
@@ -468,7 +491,7 @@ def homepage(
     if thumbs:
         out.append(
             _section(
-                "06" if SHOW_HOW_WE_WORK else "05", "News", "Recent posts.",
+                "07" if SHOW_HOW_WE_WORK else "06", "News", "Recent posts.",
                 body=f'<ul class="mini-grid">{thumbs}</ul>'
                 + (f'<div class="shorter shorter--flat shorter--cols"><ul>{posts_items}</ul></div>' if posts_items else "")
                 + '<p class="more"><a href="/posts/">All posts</a></p>',
