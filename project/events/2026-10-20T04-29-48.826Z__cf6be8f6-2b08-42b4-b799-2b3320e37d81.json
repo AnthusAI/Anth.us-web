@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "event_id": "cf6be8f6-2b08-42b4-b799-2b3320e37d81",
+  "issue_id": "anthus-web-42a1dd5c-e60c-41da-98db-49353dc977d2",
+  "event_type": "issue_created",
+  "occurred_at": "2026-10-20T04:29:48.826Z",
+  "actor_id": "home",
+  "payload": {
+    "title": "Anth.us-web default branch develop is 80 commits behind main; stale README on GitHub landing",
+    "description": "**Problem**\nThe GitHub default branch develop is 80 commits behind main (develop has 18 commits main lacks), so visitors land on a stale README and stale instructions. AGENTS.md on main says develop's instructions are superseded.\n\n**Evidence**\n`git rev-list --count origin/develop..origin/main` = 80; `git rev-list --count origin/main..origin/develop` = 18 (2026-10-20).\n\n**Fix**\nReconcile branches (without promoting unrelated develop changes to production, per AGENTS.md) or change the default branch to main. Update the README.\n\n**How to verify**\n`gh api repos/AnthusAI/Anth.us-web --jq .default_branch` returns the intended branch and its README matches current serving.\n\nSource: Anthus repo audit, 2026-10-20.",
+    "issue_type": "bug",
+    "status": "open",
+    "priority": 2,
+    "assignee": null,
+    "parent": null,
+    "labels": [],
+    "agent": {
+      "platform": "claude-code",
+      "model": "claude-sonnet-5-5",
+      "name": "audit-filer"
+    }
+  }
+}
