@@ -29,7 +29,6 @@ export const anthUsBrand: SiteBrand = {
   rootRoute: { kind: "newsroom" },
   newsroomBasePath: "",
   opsChrome: "app",
-  newsroomLayout: "organizer",
   corpusKey: "anth-us",
   steeringConfigPath: "corpora/anth-us-steering.yml",
   newsroomSectionsConfigPath: "corpora/anth-us-newsroom-sections.yml",
