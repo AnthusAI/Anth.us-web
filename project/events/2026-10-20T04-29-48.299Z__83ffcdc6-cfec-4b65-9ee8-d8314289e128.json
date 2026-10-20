@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "event_id": "83ffcdc6-cfec-4b65-9ee8-d8314289e128",
+  "issue_id": "anthus-web-87062289-0a11-4722-b1ec-c061e4a1f250",
+  "event_type": "issue_created",
+  "occurred_at": "2026-10-20T04:29:48.299Z",
+  "actor_id": "home",
+  "payload": {
+    "title": "Live article /articles/venue-driver/ shows [DRAFT] body; 11 stub solution pages 301 to it",
+    "description": "**Problem**\nThe live page https://anth.us/articles/venue-driver/ has \"[DRAFT]\" as its body. Eleven stub solution pages (Checkout-Driver, Menu-Driver, ...) are published as \"[DRAFT]\" and 301 redirect to it. The article excerpt is also run together.\n\n**Evidence**\n`curl -sL https://anth.us/articles/venue-driver/ | grep -o '\\[DRAFT\\]'` prints \"[DRAFT]\" (HTTP 200, re-checked 2026-10-20).\n\n**Fix**\nWrite the Venue Driver article body (mind the claims-honesty rule: no present-tense production claims), or unpublish it and the stub pages and remove the redirects. Fix the excerpt spacing.\n\n**How to verify**\n`curl -sL https://anth.us/articles/venue-driver/ | grep -c '\\[DRAFT\\]'` prints 0, or the URL returns 404/410 if unpublished.\n\nSource: Anthus repo audit, 2026-10-20.",
+    "issue_type": "bug",
+    "status": "open",
+    "priority": 1,
+    "assignee": null,
+    "parent": null,
+    "labels": [],
+    "agent": {
+      "platform": "claude-code",
+      "model": "claude-sonnet-5-5",
+      "name": "audit-filer"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "event_id": "90c9ed6d-91b7-484a-ace5-4d84035e28d3",
+  "issue_id": "anthus-web-0e477787-6000-4e88-88cc-059ebb3e8731",
+  "event_type": "issue_created",
+  "occurred_at": "2026-10-20T04:29:48.581Z",
+  "actor_id": "home",
+  "payload": {
+    "title": "[anthus-site-content] 12 articles link to retired Plexus URLs (/platform/plexus, plexus.anth.us, GitHub Plexus)",
+    "description": "**Problem**\nTwelve articles link to /platform/plexus, plexus.anth.us and the GitHub Plexus repo. These redirect, since the product was renamed to Primus.\n\n**Evidence**\nAudit crawl of anth.us (193 pages): 12 articles with such links.\n\n**Fix**\nUpdate links to the Primus locations. See also the related item that the word \"Plexus\" itself appears in 21 places.\n\n**How to verify**\n`grep -rn 'platform/plexus\\|plexus.anth.us' content/` prints nothing.\n\nSource: Anthus repo audit, 2026-10-20.",
+    "issue_type": "bug",
+    "status": "open",
+    "priority": 2,
+    "assignee": null,
+    "parent": null,
+    "labels": [],
+    "agent": {
+      "platform": "claude-code",
+      "model": "claude-sonnet-5-5",
+      "name": "audit-filer"
+    }
+  }
+}

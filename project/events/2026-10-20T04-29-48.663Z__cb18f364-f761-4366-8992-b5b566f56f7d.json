@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "event_id": "cb18f364-f761-4366-8992-b5b566f56f7d",
+  "issue_id": "anthus-web-b8949fc0-8030-41a2-99d4-4c08a1351b75",
+  "event_type": "issue_created",
+  "occurred_at": "2026-10-20T04:29:48.663Z",
+  "actor_id": "home",
+  "payload": {
+    "title": "[anthus-site-content] \"Plexus\" still appears in 21 places across ~10 articles and diagrams",
+    "description": "**Problem**\nThe old product name \"Plexus\" remains in about 21 places in roughly 10 articles, including diagrams. The product is now Primus.\n\n**Evidence**\nAudit grep over anthus-site-content. Note that historical references may be intentional; decide per case.\n\n**Fix**\nReplace with \"Primus\" where it refers to the current product; leave dated historical mentions or annotate them. Regenerate diagrams.\n\n**How to verify**\n`grep -rni plexus content/ | wc -l` is 0 (or only intentional historical mentions).\n\nSource: Anthus repo audit, 2026-10-20.",
+    "issue_type": "bug",
+    "status": "open",
+    "priority": 2,
+    "assignee": null,
+    "parent": null,
+    "labels": [],
+    "agent": {
+      "platform": "claude-code",
+      "model": "claude-sonnet-5-5",
+      "name": "audit-filer"
+    }
+  }
+}

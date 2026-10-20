@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "event_id": "3cf73694-62eb-41c7-a4a7-921cc53ea299",
+  "issue_id": "anthus-web-20b5a418-a2b9-4f83-8c8d-99ab7c21c51e",
+  "event_type": "issue_created",
+  "occurred_at": "2026-10-20T04:29:48.746Z",
+  "actor_id": "home",
+  "payload": {
+    "title": "[anthus-site-content] README describes the old Gatsby/S3/webhook flow; CI builds the old Anth.us repo",
+    "description": "**Problem**\nThe anthus-site-content README describes the retired Gatsby/S3/webhook publishing flow, and its CI still builds the old Anth.us repo. anth.us is now served from an S3 projection of the Papyrus CMS (see AGENTS.md in this repo).\n\n**Evidence**\nAudit finding on anthus-site-content README and CI config.\n\n**Fix**\nRewrite the README for the current flow; remove or repoint the CI that builds the old repo.\n\n**How to verify**\nREADME mentions no Gatsby/webhook flow; CI workflow does not reference AnthusAI/Anth.us.\n\nSource: Anthus repo audit, 2026-10-20.",
+    "issue_type": "bug",
+    "status": "open",
+    "priority": 2,
+    "assignee": null,
+    "parent": null,
+    "labels": [],
+    "agent": {
+      "platform": "claude-code",
+      "model": "claude-sonnet-5-5",
+      "name": "audit-filer"
+    }
+  }
+}

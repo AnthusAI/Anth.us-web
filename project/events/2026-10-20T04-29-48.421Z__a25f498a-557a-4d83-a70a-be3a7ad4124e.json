@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "event_id": "a25f498a-557a-4d83-a70a-be3a7ad4124e",
+  "issue_id": "anthus-web-071e598c-1a63-48a0-a93a-e316afa7be6b",
+  "event_type": "issue_created",
+  "occurred_at": "2026-10-20T04:29:48.421Z",
+  "actor_id": "home",
+  "payload": {
+    "title": "[anthus-site-content] the-dominance-of-ones: 9 responsive images return 400 (% in filename)",
+    "description": "**Problem**\nOn https://anth.us/articles/the-dominance-of-ones/ nine responsive images 400 because the filenames contain an unescaped \"%\".\n\n**Evidence**\nsrcset entries such as `/assets/responsive/images/benfords-law/simulated-1%-structured-deposits---daily-sums-400.avif` (audit: 9 images, HTTP 400).\n\n**Fix**\nRename the source images to remove \"%\" (e.g. \"1pct\") and update the references, or URL-encode the path as %25 in the generated srcset.\n\n**How to verify**\nEvery URL in the page's srcset/src attributes returns 200: extract with `curl -sL <page> | grep -o 'srcset=\"[^\"]*\"'` and curl each.\n\nSource: Anthus repo audit, 2026-10-20.",
+    "issue_type": "bug",
+    "status": "open",
+    "priority": 2,
+    "assignee": null,
+    "parent": null,
+    "labels": [],
+    "agent": {
+      "platform": "claude-code",
+      "model": "claude-sonnet-5-5",
+      "name": "audit-filer"
+    }
+  }
+}
