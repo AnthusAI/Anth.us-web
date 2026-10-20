@@ -18,6 +18,7 @@ export const anthUsBrand: SiteBrand = {
   mastheadDateFormat: "formatted",
   mastheadSource: "brand",
   sectionLinkStrategy: "route",
+  kanbusTheme: "newspaper-gothic",
   themePack: "anth-us",
   themeTokens: ANTH_US_THEME_PACK_TOKENS,
   renderer: { kind: "markus" },
