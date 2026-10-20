@@ -15,7 +15,7 @@
     network: {lead: uncertainOutcomeLead, keepId: true},
     server: {lead: uncertainOutcomeLead, keepId: true},
     rate: {lead: 'Too many requests right now. Wait a minute, then try again without changing your note', keepId: true},
-    conflict: {text: 'We couldn’t file this note automatically. Reload the page and send it again.', keepId: false},
+    conflict: {lead: 'We couldn’t file your note automatically. Please email it to', tail: ' and we’ll reply.', noEmailText: 'We couldn’t file your note automatically. Please copy your note and email it to us, and we’ll reply.', carryNote: true, keepId: false},
     unavailable: {lead: 'The form is not accepting notes from this page right now. Please try again later', keepId: true},
   };
   function failureKindForStatus(status) {
@@ -50,17 +50,25 @@
   async function readJson(response) {
     try { return await response.json(); } catch { return {}; }
   }
+  const maximumNoteCharactersInMailto = 1500;
+  const mailtoSubject = 'Note from the anth.us contact form';
+  function mailtoAddressWithNote() {
+    const noteCharacters = Array.from(String(new FormData(form).get('message') || ''));
+    const note = noteCharacters.slice(0, maximumNoteCharactersInMailto).join('');
+    if (!note) return 'mailto:' + fallbackEmail + '?subject=' + encodeURIComponent(mailtoSubject);
+    return 'mailto:' + fallbackEmail + '?subject=' + encodeURIComponent(mailtoSubject) + '&body=' + encodeURIComponent(note);
+  }
   function showFailure(kind, detail) {
     const outcome = outcomes[kind];
     if (!outcome.keepId) pending = null;
-    if (detail || outcome.text || !fallbackEmail) {
-      error.textContent = detail || outcome.text || outcome.lead + '.';
+    if (detail || !fallbackEmail) {
+      error.textContent = detail || outcome.noEmailText || outcome.lead + '.';
     } else {
       const link = document.createElement('a');
-      link.href = 'mailto:' + fallbackEmail;
+      link.href = outcome.carryNote ? mailtoAddressWithNote() : 'mailto:' + fallbackEmail;
       link.textContent = fallbackEmail;
-      error.textContent = outcome.lead + ', or email ';
-      error.append(link, '.');
+      error.textContent = outcome.carryNote ? outcome.lead + ' ' : outcome.lead + ', or email ';
+      error.append(link, outcome.tail || '.');
     }
     form.dataset.state = 'error';
     button.disabled = false;

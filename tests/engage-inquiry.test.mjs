@@ -78,11 +78,57 @@ test('400 shows the server validation message and edits start a new submission',
   assert.notEqual(JSON.parse(app.calls[0].body).submission_id, JSON.parse(app.calls[1].body).submission_id);
 });
 
-test('409 conflict drops the key so the next send is a fresh submission', async () => {
-  const app = setup([reply(409, {message: 'Contact needs private duplicate review.'}), accepted('r-5')]);
-  await app.send(); assert.match(app.error.textContent, /Reload the page/); assert.equal(app.receipt.textContent, undefined);
+test('409 conflict tells the visitor to email the note, never to reload, and keeps the typed fields', async () => {
+  const app = setup([reply(409, {message: 'Contact needs private duplicate review.'}), accepted('r-5')], 'info@anth.us');
+  const fieldsBefore = {...app.fields};
+  await app.send();
+  assert.equal(app.error.textContent, 'We couldn’t file your note automatically. Please email it to ');
+  const [link, tail] = app.error.parts;
+  assert.equal(link.tag, 'a');
+  assert.equal(link.textContent, 'info@anth.us');
+  assert.equal(tail, ' and we’ll reply.');
+  assert.doesNotMatch(app.error.textContent + tail, /reload/i);
+  assert.deepEqual(app.fields, fieldsBefore);
+  assert.equal(app.button.disabled, false);
+  assert.equal(app.form.dataset.state, 'error');
+  assert.equal(app.receipt.textContent, undefined);
   await app.send();
   assert.notEqual(JSON.parse(app.calls[0].body).submission_id, JSON.parse(app.calls[1].body).submission_id);
+});
+
+test('409 mailto link carries the encoded subject and note', async () => {
+  const app = setup([reply(409, {})], 'info@anth.us');
+  app.fields.message = 'Hello & welcome?\nLine two = 100% «ünï» 😀';
+  await app.send();
+  const [link] = app.error.parts;
+  const expected = 'mailto:info@anth.us?subject=' + encodeURIComponent('Note from the anth.us contact form')
+    + '&body=' + encodeURIComponent('Hello & welcome?\nLine two = 100% «ünï» 😀');
+  assert.equal(link.href, expected);
+  assert.doesNotMatch(link.href, /\s/);
+});
+
+test('409 mailto body is capped at 1500 characters without splitting emoji', async () => {
+  const app = setup([reply(409, {})], 'info@anth.us');
+  app.fields.message = '😀'.repeat(2000);
+  await app.send();
+  const body = decodeURIComponent(new URL(app.error.parts[0].href).searchParams.get('body'));
+  assert.equal(Array.from(body).length, 1500);
+  assert.equal(body, '😀'.repeat(1500));
+});
+
+test('409 without a typed note links to a subject-only mailto', async () => {
+  const app = setup([reply(409, {})], 'info@anth.us');
+  app.fields.message = '';
+  await app.send();
+  assert.equal(app.error.parts[0].href, 'mailto:info@anth.us?subject=' + encodeURIComponent('Note from the anth.us contact form'));
+});
+
+test('409 without a fallback address asks the visitor to copy the note and has no reload wording', async () => {
+  const app = setup([reply(409, {})]);
+  await app.send();
+  assert.equal(app.error.textContent, 'We couldn’t file your note automatically. Please copy your note and email it to us, and we’ll reply.');
+  assert.doesNotMatch(app.error.textContent, /reload/i);
+  assert.equal(app.error.parts.length, 0);
 });
 
 test('403/415 and non-JSON error bodies never claim a receipt', async () => {
@@ -121,10 +167,10 @@ for (const [kind, make] of Object.entries(failures)) {
   });
 }
 
-test('validation and conflict messages get no email link; state tracks sending and sent', async () => {
+test('validation messages get no email link; state tracks sending and sent', async () => {
   const app = setup([reply(400, {message: 'Enter a valid email address so we can reply.'}), reply(409, {}), accepted('r-9')], 'info@anth.us');
   await app.send(); assert.equal(app.error.parts.length, 0);
-  await app.send(); assert.equal(app.error.parts.length, 0);
+  await app.send(); assert.equal(app.error.parts.length, 2);
   const p = app.send(); assert.equal(app.form.dataset.state, 'sending'); await p;
   assert.equal(app.form.dataset.state, 'sent');
 });
