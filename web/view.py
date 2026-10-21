@@ -12,6 +12,8 @@ import listings
 import site_support as support
 import links
 from papyrus_content.markus_renderer.images import FADE_IN_SCRIPT
+from papyrus_content.projection.standard.markdown import md_path
+from papyrus_content.projection.standard.page_actions import render_page_actions
 
 SITE_TITLE = "Anthus"
 SITE_DESCRIPTION = (
@@ -65,8 +67,26 @@ def page_head(head, page):
 def body(page) -> str:
     """Everything between ``<body>`` and the scripts."""
     path = route(page)
-    fragment = page.fragment if page.kind == "item" else main(page)
+    fragment = page_actions(page) + page.fragment if page.kind == "item" else main(page)
     return dom.render_envelope(fragment=fragment, route=path, scripts="", guarded=page.environment.guarded)
+
+
+def page_actions(page) -> str:
+    """Copy / view / open-in actions above an article: the site lays out its own body, so it asks core's renderer for them.
+
+    The same eligibility as core's own article pages: switched on, Markdown twins published, a listed type, indexable.
+    """
+    settings, entry = page.settings, page.entry
+    if not (settings.page_actions.enabled and settings.agents.markdown) or entry is None or entry.noindex:
+        return ""
+    if entry.type not in settings.listings.types or entry.key is None:
+        return ""
+    twin = md_path(entry.key)
+    origin = page.environment.origin
+    canonical = entry.canonical or (origin + entry.url if origin and entry.url else None)
+    if twin is None:
+        return ""
+    return render_page_actions(settings.page_actions, markdown_path=twin, title=entry.title, canonical=canonical)
 
 
 def main(page) -> str:

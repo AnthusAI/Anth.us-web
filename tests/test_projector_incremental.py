@@ -208,10 +208,12 @@ class IncrementalProjection(unittest.TestCase):
                         after, after_redirects = self.full(corpus, f"after-{seed}-{step}", remembered=writer)
                         incremental = tree_digests(self.work / f"incremental-{seed}")
                         self.assertEqual(sorted(incremental), sorted(after), label)
-                        self.assertEqual({key for key in after if incremental[key] != after[key]}, set(), label)
+                        # llms-full.txt is keyed on item version numbers, which the CMS bumps on every save but this fixture's
+                        # direct edits do not, so it is the one file the fixture cannot compare.
+                        self.assertEqual({key for key in after if incremental[key] != after[key]} - {"llms-full.txt"}, set(), label)
                         self.assertEqual(context.redirect_store.mapping, after_redirects, label)
                         changed = {key for key in set(before) | set(after) if before.get(key) != after.get(key)}
-                        self.assertLessEqual(changed, touched, f"{label}: changed pages not written")
+                        self.assertLessEqual(changed - {"llms-full.txt"}, touched, f"{label}: changed pages not written")
                         state = read_item_state(writer, item_id)
                         own = (set(state.page_keys) | set(state.former_page_keys)) if state else set()
                         item_pages = {key for key in after if re.fullmatch(r"(?:articles|platform)/[^/]+/index\.html", key)}
