@@ -658,6 +658,20 @@ class ArticleHeading:
         return heading
 
 
+# Papyrus core's page-actions markup (agent accessibility); web/css/site-theme.css styles every one of these.
+PAGE_ACTION_CLASSES = frozenset(
+    {
+        "markus-page-actions",
+        "markus-page-actions-header",
+        "markus-page-actions-aside",
+        "markus-copy-md",
+        "markus-actions-links",
+        "markus-action-link",
+        "markus-actions-status",
+    }
+)
+
+
 def assert_no_markus_classes(html_text: str, where: str) -> None:
     """Guard: a `markus-*` class in the output is an unstyled element.
 
@@ -666,7 +680,11 @@ def assert_no_markus_classes(html_text: str, where: str) -> None:
     regression rather than a cosmetic detail.
     """
     leaked = sorted(
-        set(re.findall(r'class="([^"]*(?:markus|papyrus)-[^"]*)"', html_text))
+        {
+            value
+            for value in re.findall(r'class="([^"]*(?:markus|papyrus)-[^"]*)"', html_text)
+            if not set(value.split()) <= PAGE_ACTION_CLASSES
+        }
     )
     if leaked:
         raise RuntimeError(f"{where}: unstyled markus-/papyrus- classes in output: {leaked}")

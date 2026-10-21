@@ -78,7 +78,7 @@ class FixedPageSet(unittest.TestCase):
             self.assertNotRegex(text, r"::(?:raw|endraw|include|band|column|button|island)", key)
             self.assertNotIn("<!--bare-->", text, key)
             self.assertNotRegex(re.sub(r"<pre.*?</pre>", "", text, flags=re.S), r"\{\{[a-z]", key)  # a code sample may show the token
-            self.assertNotRegex(text, r'class="[^"]*\bmarkus-', key)  # the site's own class vocabulary only
+            self.assertNotRegex(re.sub(r'<div class="markus-page-actions.*?</div>', "", text, flags=re.S), r'class="[^"]*\bmarkus-', key)  # the site's own class vocabulary only
 
     def test_page_metadata(self):
         titles = {"about/index.html": "About Us | Anthus", "ryan/index.html": "Ryan Porter | Anthus",

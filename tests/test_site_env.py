@@ -73,7 +73,8 @@ class ProjectedOutput(unittest.TestCase):
         self.assertIn('<meta name="twitter:creator" content="@RyanAlynPorter">', head)
         self.assertIn('<link rel="sitemap" type="application/xml" href="/sitemap-index.xml">', head)
         self.assertNotIn('name="robots"', head)
-        self.assertNotIn("alternate", head)  # no feeds are advertised
+        self.assertIn('<link rel="alternate" type="application/rss+xml" title="Anthus" href="/feed.xml">', head)  # feeds are advertised
+        self.assertIn('<link rel="alternate" type="application/atom+xml" title="Anthus" href="/atom.xml">', head)
         self.assertIn("googletagmanager.com/gtag/js?id=G-31SC26SDGX", head)  # analytics is on in production
         self.assertIn("noindex, nofollow", self.head(self.production.page("/articles/draft-article/")))  # a draft page
         self.assertNotIn("noindex", self.head(self.production.page("/articles/plain-article/")))
@@ -104,7 +105,7 @@ class ProjectedOutput(unittest.TestCase):
         locations = re.findall(r"<loc>([^<]+)</loc>", self.production.text("sitemap-0.xml"))
         self.assertEqual(locations, sorted(locations))
         self.assertIn("https://anth.us/", locations)
-        self.assertNotIn("<lastmod>", self.production.text("sitemap-0.xml"))
+        self.assertIn("<lastmod>", self.production.text("sitemap-0.xml"))
         self.assertNotIn("https://anth.us", self.guarded.text("sitemap-index.xml"))
         self.assertNotIn("https://anth.us", self.guarded.text("sitemap-0.xml"))
         self.assertTrue(all(url.startswith(STAGING) for url in re.findall(r"<loc>([^<]+)</loc>", self.guarded.text("sitemap-0.xml"))))
