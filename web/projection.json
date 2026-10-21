@@ -54,15 +54,17 @@
   },
   "sitemap": {
     "style": "index",
-    "lastmod": false
+    "lastmod": true
   },
   "feeds": {
-    "formats": []
+    "formats": ["rss", "atom"],
+    "count": 30,
+    "title": "Anthus"
   },
   "agents": {
-    "markdown": false,
-    "llmsTxt": false,
-    "llmsFull": false
+    "markdown": true,
+    "llmsTxt": true,
+    "llmsFull": true
   },
   "images": {
     "gatsby_parity": true,
