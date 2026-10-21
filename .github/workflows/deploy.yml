@@ -1,0 +1,51 @@
+# Merge to main deploys: CI runs here (this repository is public, so Actions minutes are free);
+# a green push to main starts the Amplify job for that exact commit through GitHub OIDC.
+# No AWS keys are stored: the role trusts repo:AnthusAI/Anth.us-web:ref:refs/heads/main only and may only
+# start and read jobs on this app's main branch. Amplify's own auto-build is off on main.
+# Defined by the Papyrus app shell (docs/site-hosting.md, "Deploy on merge to main").
+name: CI and deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # amplify_outputs.json is generated per deployment and git-ignored; the typecheck only needs
+      # the module to resolve, so an empty stub stands in. No secrets.
+      - run: echo '{}' > amplify_outputs.json
+      - run: npx papyrus-app sync
+      - run: npx tsc --noEmit
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install "papyrus-newsroom[markus]==5.12.0" pytest
+      # test_projector_incremental needs a `procedures` package that is not in this repository.
+      - run: python -m pytest -q tests --ignore=tests/test_projector_incremental.py
+      - run: node --test tests/*.test.mjs
+
+  deploy:
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      id-token: write
+      contents: read
+    uses: AnthusAI/Papyrus/.github/workflows/amplify-deploy.yml@main
+    with:
+      app-id: d7s858igkyct5
+      role-to-assume: arn:aws:iam::712236451410:role/anth-us-github-deploy
