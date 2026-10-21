@@ -6,14 +6,59 @@
     "description": "Anthus builds self-aligning AI systems: custom models, agent harnesses, evaluation loops, and unattended automation with a human in the loop, grounded in production operations since 2007.",
     "productionUrl": "https://anth.us"
   },
+  "urls": {
+    "style": "directory"
+  },
+  "redirects": {
+    "patterns": [
+      {
+        "pattern": "^/blog/page/([^/]+)/$",
+        "to": "/articles/page/$1/"
+      },
+      {
+        "pattern": "^/blog/page/([^/]+)/index\\.html$",
+        "to": "/articles/page/$1/"
+      },
+      {
+        "pattern": "^/blog/([^/]+)/$",
+        "to": "/articles/$1/"
+      },
+      {
+        "pattern": "^/blog/([^/]+)/index\\.html$",
+        "to": "/articles/$1/"
+      },
+      {
+        "pattern": "^/biased-decisions(?:/(.*))?$",
+        "to": "https://biased-decisions.anth.us/$1"
+      }
+    ]
+  },
   "seo": {
     "defaultImage": "/assets/site/share-card.png",
     "twitterCreator": "@RyanAlynPorter",
     "publisherName": "Anthus AI Solutions"
   },
-  "sitemap": { "style": "index", "lastmod": false },
-  "feeds": { "formats": [] },
-  "agents": { "markdown": false, "llmsTxt": false, "llmsFull": false },
-  "images": { "gatsby_parity": true, "placeholder": null, "listing_max_width": 1600 },
-  "publicData": { "searchIndex": true, "latest": true, "latestCount": 20, "summaryCharacters": 240 }
+  "sitemap": {
+    "style": "index",
+    "lastmod": false
+  },
+  "feeds": {
+    "formats": []
+  },
+  "agents": {
+    "markdown": false,
+    "llmsTxt": false,
+    "llmsFull": false
+  },
+  "images": {
+    "gatsby_parity": true,
+    "placeholder": null,
+    "listing_max_width": 1600
+  },
+  "publicData": {
+    "searchIndex": true,
+    "latest": true,
+    "latestCount": 20,
+    "summaryCharacters": 240
+  }
 }
