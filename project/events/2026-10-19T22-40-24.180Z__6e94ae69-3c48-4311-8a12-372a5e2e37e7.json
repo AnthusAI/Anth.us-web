@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "event_id": "6e94ae69-3c48-4311-8a12-372a5e2e37e7",
+  "issue_id": "anthus-web-685615d9-8a77-447f-b312-bc2549ac6ea2",
+  "event_type": "issue_created",
+  "occurred_at": "2026-10-19T22:40:24.180Z",
+  "actor_id": "home",
+  "payload": {
+    "title": "Publish short DeepSeek restrictions and model trust post",
+    "description": "Ryan requested exactly two short paragraphs linking the official DHS notice 2026-21447 and ProjectDiscovery controlled poisoned-model experiment, with newest Desktop screenshot as image. Publish through current Anth.us-web Papyrus CMS/S3 workflow; preserve content/markus-native-markup and existing drafts. Screenshot inspected: official notice only, no private UI. No infrastructure or permission changes.",
+    "issue_type": "task",
+    "status": "open",
+    "priority": 2,
+    "assignee": null,
+    "parent": null,
+    "labels": []
+  }
+}
