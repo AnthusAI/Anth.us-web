@@ -69,19 +69,14 @@ class DraftReview(unittest.TestCase):
         self.assertGreater(page.index("Hidden"), page.index('class="drafts-review"'))
 
     def test_draft_page_head_has_noindex_in_production_and_a_normal_page_does_not(self):
-        self.assertIn("noindex", site_env.head_extras(self.prod, draft=True))
-        self.assertNotIn("noindex", site_env.head_extras(self.prod))
+        draft = site_env.head_tags(self.prod, title="T", path="/x/", description="d", image=None, noindex=True)
+        normal = site_env.head_tags(self.prod, title="T", path="/x/", description="d", image=None)
+        self.assertIn("noindex", draft)
+        self.assertNotIn("noindex", normal)
 
-    def test_production_guard_allows_noindex_only_on_draft_pages(self):
-        base = ('<link rel="canonical" href="https://anth.us/x/"><meta property="og:url" content="https://anth.us/x/">'
-                + site_env.SITEMAP_LINK)
-        draft = '<div class="draft-overlay"></div>' + site_env.NOINDEX_META + base
-        normal_noindex = site_env.NOINDEX_META + base
-        draft_without = '<div class="draft-overlay"></div>' + base
-        self.assertEqual(site_env._check_page(self.prod, "a/index.html", draft), [])
-        self.assertTrue(site_env._check_page(self.prod, "a/index.html", normal_noindex))
-        self.assertTrue(site_env._check_page(self.prod, "a/index.html", draft_without))
-        self.assertEqual(site_env._check_page(self.prod, "a/index.html", base), [])
+    def test_a_guarded_page_is_noindex_draft_or_not(self):
+        guarded = site_env.resolve({})
+        self.assertIn("noindex", site_env.head_tags(guarded, title="T", path="/x/", description="d", image=None))
 
     def test_draft_hrefs_leave_the_sitemap(self):
         build._DRAFT_HREFS.clear()

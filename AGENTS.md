@@ -191,9 +191,12 @@ Production is the S3 projection described above. Facts for agents:
 
 ### Environment switch (`SITE_ENV`)
 
-`web/site_env.py` reads `SITE_ENV` once (hooks in `build_via_papyrus.py` and
-`anthus_dom.py` only call into it). The build prints the resolved mode and
-origin first.
+Papyrus core owns the guard, the head tags, the sitemap and `robots.txt`
+(`resolve_environment`, `HeadBuilder`, `sitemap_files`, `robots_text`; settings in
+the `site`, `seo` and `sitemap` blocks of `web/projection.json`). `web/site_env.py`
+only maps the Amplify staging variables (`SITE_ENV`, `AWS_BRANCH`, `AWS_APP_ID`) to
+core's `PAPYRUS_SITE_PUBLIC_URL` and draws the footer staging note. The staging
+build prints the resolved mode and origin first.
 
 | Condition | Mode |
 | --- | --- |
@@ -215,13 +218,8 @@ Both modes publish `/sitemap-index.xml` (a sitemapindex) and `/sitemap-0.xml`
 serves -- plus `<link rel="sitemap" href="/sitemap-index.xml">` on every page.
 There is no `/sitemap.xml`.
 
-**Build-time assertions** (end of the build, over every written HTML page; the
-build fails with a list of offenders): production -- origin is
-`https://anth.us`, no robots noindex, no staging note, canonical/og:url on
-`https://anth.us`; guarded -- every page has noindex and the staging note, no
-analytics, canonical on the guarded origin; both -- `robots.txt` matches the
-mode, sitemaps are valid XML and every `<loc>` is a file in the output.
-Tests: `python3 tests/test_site_env.py`.
+Tests: `python3 tests/test_site_env.py` (needs `PAPYRUS_ROOT`). The deployed host
+is checked with `bin/check-guards.py` (below).
 
 **Verify a deployed host** (read-only GETs):
 

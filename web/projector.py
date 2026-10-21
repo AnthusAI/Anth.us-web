@@ -334,9 +334,7 @@ class Snapshot:
 
     def sitemap_urls(self) -> list[str]:
         outputs = [urls.page_output(href) for href in sorted(self.page_set - self.draft_hrefs)]
-        return sorted(
-            {site_build._canonical_url(output) for output in outputs if output != "404.html"}
-        )
+        return sorted({urls.page_url(output) for output in outputs if output != "404.html"})
 
     def sitemap_bytes(self) -> bytes:
         return site_env.sitemap_0_xml(self.sitemap_urls()).encode("utf-8")

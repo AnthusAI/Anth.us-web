@@ -155,7 +155,6 @@ CITATIONS = CitationRendering()
 
 # --- SITE_ENV guards (PPY-f1f0a8): all logic lives in site_env.py -----------
 ENV = site_env.ENV
-SITE_ORIGIN = ENV.origin
 # Live anth.us GA4 property. Emitted (with the owner opt-out) only in production.
 GA_MEASUREMENT_ID = "G-31SC26SDGX"
 
@@ -324,16 +323,6 @@ _ARTICLE_LD: dict[str, dict] = {}
 _DRAFT_HREFS: set[str] = set()
 
 
-def _canonical_url(active_href: str) -> str:
-    return f"{SITE_ORIGIN}{urls.page_url(active_href)}"
-
-
-def _absolute(src: str) -> str:
-    if src.startswith(("http://", "https://")):
-        return src
-    return f"{SITE_ORIGIN}/{src.lstrip('/')}"
-
-
 def _inject_social_meta(html: str, *, active_href: str) -> str:
     title_match = re.search(r"<title>(.*?)</title>", html, re.S)
     title = unescape(title_match.group(1)) if title_match else ""
@@ -345,42 +334,26 @@ def _inject_social_meta(html: str, *, active_href: str) -> str:
     if not image:
         image = _DEFAULT_COVER
     page_title = (title or "").strip() or pages.SITE_TITLE
-    url = _canonical_url(active_href)
     article_ld = _ARTICLE_LD.get(active_href)
-    ld_json = ""
+    article = None
     if article_ld is not None:
-        data = dict(article_ld, mainEntityOfPage=url)
-        if image != _DEFAULT_COVER:
-            data["image"] = _absolute(image)
-        ld_json = (
-            '<script type="application/ld+json">'
-            + json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
-            + "</script>\n"
-        )
-
-    def q(value: str) -> str:
-        return escape(value, quote=True)
-
-    meta = (
-        f'<meta name="description" content="{q(description)}">\n'
-        f'<link rel="canonical" href="{q(url)}">\n'
-        f'<meta property="og:site_name" content="{q(pages.SITE_TITLE)}">\n'
-        f'<meta property="og:type" content="{"article" if article_ld is not None else "website"}">\n'
-        f'<meta property="og:title" content="{q(page_title)}">\n'
-        f'<meta property="og:description" content="{q(description)}">\n'
-        f'<meta property="og:url" content="{q(url)}">\n'
-        f'<meta property="og:image" content="{q(_absolute(image))}">\n'
-        f'<meta name="twitter:card" content="summary_large_image">\n'
-        f'<meta name="twitter:creator" content="@RyanAlynPorter">\n'
-        f'<meta name="twitter:title" content="{q(page_title)}">\n'
-        f'<meta name="twitter:description" content="{q(description)}">\n'
-        f'<meta name="twitter:image" content="{q(_absolute(image))}">\n'
-        + site_env.head_extras(ENV, draft=active_href in _DRAFT_HREFS)  # noindex (guarded only) + sitemap link
-        + ld_json
+        article = {
+            "headline": article_ld["headline"],
+            "published": article_ld["datePublished"],
+            "authors": [person["name"] for person in article_ld["author"]],
+        }
+    meta = site_env.head_tags(
+        ENV,
+        title=page_title,
+        path=urls.page_url(active_href),
+        description=description,
+        image=image,
+        article=article,
+        noindex=active_href in _DRAFT_HREFS,
     )
     if 'property="og:title"' in html:
         return html
-    html2, count = re.subn(r"(</title>\s*)", r"\1" + meta, html, count=1)
+    html2, count = re.subn(r"(</title>\s*)", lambda found: found.group(1) + meta, html, count=1)
     if count != 1:
         raise RuntimeError(f"social meta inject failed for {active_href!r}")
     return html2
@@ -942,18 +915,22 @@ def main() -> int:
     ruleset = write_custom_rules(_SITE_URLS)
     redirects = len(ruleset.rules)
 
-    site_env.write_site_files(
-        ENV,
-        result.out_dir,
-        (
-            _canonical_url(page.relative_to(result.out_dir).as_posix())
-            for page in result.pages
-            if page.relative_to(result.out_dir).as_posix() != "404.html"
-            and page.relative_to(result.out_dir).as_posix() not in _DRAFT_OUTPUTS()
+    for name, body in {
+        "robots.txt": site_env.robots_txt(ENV),
+        "sitemap-index.xml": site_env.sitemap_index_xml(ENV),
+        "sitemap-0.xml": site_env.sitemap_0_xml(
+            sorted(
+                {
+                    urls.page_url(page.relative_to(result.out_dir).as_posix())
+                    for page in result.pages
+                    if page.relative_to(result.out_dir).as_posix() != "404.html"
+                    and page.relative_to(result.out_dir).as_posix() not in _DRAFT_OUTPUTS()
+                }
+            ),
+            ENV,
         ),
-    )
-    guarded_pages = site_env.assert_dist(ENV, result.out_dir)
-    print(f"  {ENV.mode} guard assertions passed over {guarded_pages} HTML pages")
+    }.items():
+        (result.out_dir / name).write_text(body, encoding="utf-8")
 
     print(f"\nBuilt Anth.us via Papyrus renderer: {result.out_dir}")
     print(f"  {len(result.pages)} pages, {redirects} redirect rules")
