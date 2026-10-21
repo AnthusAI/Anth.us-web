@@ -25,11 +25,9 @@ import hashlib
 import json
 import os
 import re
-import shutil
 import sys
 from datetime import datetime
 from pathlib import Path, PurePosixPath
-from types import SimpleNamespace
 
 #: In the content-actions function this file is bundled as ``site_projector.py`` and the ``web``
 #: directory as ``site_static``, named by PAPYRUS_SITE_STATIC_DIR.
@@ -48,11 +46,12 @@ import site_css  # noqa: E402
 import site_env  # noqa: E402
 from solution_sites import is_external, is_folded  # noqa: E402
 import build_via_papyrus as site_build  # noqa: E402
-from anthus_content import Collections, ContentNode, ImageIndex, _slugify, stage_nodes  # noqa: E402
+from anthus_content import Collections, ContentNode, ImageIndex, _slugify, staged_article  # noqa: E402
 from papyrus_content.markus_renderer import build as markus_build  # noqa: E402
 from papyrus_content.projection.projector import static_version  # noqa: E402
 from papyrus_content.projection.writers import request_paths_for_key  # noqa: E402
 from papyrus_content.markus_renderer import shell as markus_shell  # noqa: E402
+from papyrus_content.markus_renderer.pages import read_title  # noqa: E402
 from papyrus_content.renditions import RenditionCatalog, S3RenditionStore, StoredRenditionImageBuilder  # noqa: E402
 
 CONTENT_ROOT = Path(os.environ["ANTHUS_BUILD_DIR"]) / "content-root-projector"
@@ -124,15 +123,10 @@ def effective_exact_redirects(ordered_rules: list[dict], page_request_paths: set
     return exact
 
 
-def convert_fragment_in_process(source, *, theme=None, markus_executable="markus", transform=None):
-    text = Path(source).read_text(encoding="utf-8")
-    html = markusmd.convert(text, allow_html=False, include_css=False, full_document=False, theme=theme)
-    if not html.endswith("\n"):
-        html += "\n"
-    return html if transform is None else transform.apply(html)
-
-
-markus_build.convert_fragment = convert_fragment_in_process
+def convert_in_process(markdown: str) -> str:
+    """Markus in this process: the fragment of one Markdown text."""
+    html = markusmd.convert(markdown, allow_html=False, include_css=False, full_document=False, theme=None)
+    return html if html.endswith("\n") else html + "\n"
 
 
 def node_for(summary) -> ContentNode:
@@ -160,41 +154,26 @@ class Snapshot:
         nodes = sorted(self.nodes_by_item.values(), key=lambda node: node.source)
         self.collections = Collections.from_nodes(nodes)
         self.images = projector.build_image_index()
-        projector.reset_globals()
-        site_build.register_article_metadata(self.collections, self.images)
+        self.state = state = site_build.SiteState()
+        site_build.register_article_metadata(state, self.collections, self.images)
         for node in self.collections.platform:
-            site_build._register_meta(f"platform/{node.slug}.html", node.excerpt_text, pages._preview(node, self.images))
-        site_build.generate_pages(self.collections, self.images)
-        self.generated = dict(site_build.GENERATED)
-        self.page_meta = dict(site_build._PAGE_META)
-        self.article_ld = dict(site_build._ARTICLE_LD)
-        self.draft_hrefs = set(site_build._DRAFT_HREFS)
-        page_set = set(self.generated)
+            state.register_meta(f"platform/{node.slug}.html", node.excerpt_text, pages._preview(node, self.images))
+        site_build.generate_pages(state, self.collections, self.images)
+        page_set = set(state.generated)
         page_set |= {f"articles/{markus_build.slugify(node.slug)}.html" for node in self.collections.blog}
         page_set |= {f"platform/{markus_build.slugify(node.slug)}.html" for node in self.collections.platform}
         self.page_set = page_set
-        self.urls = urls.SiteUrls.from_collections(self.collections, pages=page_set, posts_per_page=site_build.POSTS_PER_PAGE)
+        self.urls = state.urls = urls.SiteUrls.from_collections(
+            self.collections, pages=page_set, posts_per_page=site_build.POSTS_PER_PAGE
+        )
         self.urls.add_content_redirect_stubs(REDIRECTS_DIRECTORY)
-        site_build._SITE_URLS = self.urls
-        self.output_by_href = {href: urls.page_output(href) for href in self.generated}
+        self.output_by_href = {href: urls.page_output(href) for href in state.generated}
         self._inputs: dict[str, str] | None = None
         self._shared: str | None = None
         self._redirects: dict[str, str] | None = None
 
-    def activate(self) -> None:
-        """Point the build module's globals at this snapshot before rendering from it."""
-        site_build.GENERATED.clear()
-        site_build.GENERATED.update(self.generated)
-        site_build._PAGE_META.clear()
-        site_build._PAGE_META.update(self.page_meta)
-        site_build._ARTICLE_LD.clear()
-        site_build._ARTICLE_LD.update(self.article_ld)
-        site_build._DRAFT_HREFS.clear()
-        site_build._DRAFT_HREFS.update(self.draft_hrefs)
-        site_build._SITE_URLS = self.urls
-
     def sitemap_urls(self) -> list[str]:
-        outputs = [urls.page_output(href) for href in sorted(self.page_set - self.draft_hrefs)]
+        outputs = [urls.page_output(href) for href in sorted(self.page_set - self.state.draft_hrefs)]
         return sorted({urls.page_url(output) for output in outputs if output != "404.html"})
 
     def sitemap_bytes(self) -> bytes:
@@ -227,10 +206,9 @@ class Snapshot:
 
     def inputs(self) -> dict[str, str]:
         if self._inputs is None:
-            self.activate()
             inputs: dict[str, str] = {}
-            for href, (title, fragment) in sorted(self.generated.items()):
-                rewritten = site_build._rewrite_internal_links(fragment, active_href=href)
+            for href, (title, fragment) in sorted(self.state.generated.items()):
+                rewritten = site_build._rewrite_internal_links(self.state, fragment, active_href=href)
                 inputs[self.output_by_href[href]] = digest_of(title, rewritten)
             inputs[SITEMAP_KEY] = digest_of(self.sitemap_bytes().decode("utf-8"))
             for key, body in self.public_data_pages().items():
@@ -249,11 +227,10 @@ class Snapshot:
 
     def redirects(self) -> dict[str, str]:
         if self._redirects is None:
-            self.activate()
             ruleset = urls.legacy_rules(
                 self.urls,
                 og_images=json.loads(LEGACY_OG_IMAGES_PATH.read_text(encoding="utf-8")),
-                page_images={href: image for href, (_description, image) in site_build._PAGE_META.items()},
+                page_images={href: image for href, (_description, image) in self.state.page_meta.items()},
                 dist=None,
             )
             legacy_rules = json.loads(LEGACY_REDIRECT_RULES_PATH.read_text(encoding="utf-8"))
@@ -296,14 +273,6 @@ class AnthusProjector:
         )
         return images
 
-    @staticmethod
-    def reset_globals() -> None:
-        site_build.GENERATED.clear()
-        site_build._PAGE_META.clear()
-        site_build._ARTICLE_LD.clear()
-        site_build._DRAFT_HREFS.clear()
-        site_build._UNRESOLVED_LINKS.clear()
-
     def _snapshot(self, site) -> Snapshot:
         for snapshot in self._snapshots:
             if snapshot.items is site.items:
@@ -315,38 +284,21 @@ class AnthusProjector:
         del self._snapshots[:-SNAPSHOTS_KEPT]
         return snapshot
 
-    def _reset_staging(self) -> None:
-        for directory in (CONTENT_ROOT, site_build.STAGING):
-            if directory.exists():
-                shutil.rmtree(directory)
-        CONTENT_ROOT.mkdir(parents=True)
-
-    def _stage_item(self, snapshot: Snapshot, item) -> str:
+    def _render_item(self, snapshot: Snapshot, item) -> dict[str, bytes]:
+        """One article or platform page, in process: normalize the source, convert it, wrap it in the shell, finish it."""
         node = snapshot.nodes_by_item[item.summary.item_id]
-        self._reset_staging()
-        node.source.parent.mkdir(parents=True, exist_ok=True)
-        node.source.write_text(item.source_text, encoding="utf-8")
         if node.rel_dir == "platform":
-            site_build.stage_platform_page(node, snapshot.images, source_text=item.source_text)
-            return "platform"
-        stage_nodes([node], staging=site_build.STAGING, directory="articles", images=snapshot.images)
-        return "articles"
-
-    def _finished(self, href: str, html: str) -> bytes:
-        page_path = site_build.DIST / href
-        page_path.parent.mkdir(parents=True, exist_ok=True)
-        page_path.write_text(html, encoding="utf-8")
-        site_build.finish_pages(SimpleNamespace(pages=[page_path], out_dir=site_build.DIST))
-        return page_path.read_text(encoding="utf-8").encode("utf-8")
-
-    def _render_item(self, node: ContentNode, directory: str) -> dict[str, bytes]:
+            directory = "platform"
+            staged, _report = site_build.staged_platform_markdown(node, snapshot.images, item.source_text)
+        else:
+            directory = "articles"
+            staged, _report = staged_article(node, item.source_text, snapshot.images)
         stem = markus_build.slugify(node.slug)
         href = f"{directory}/{stem}.html"
-        staged = site_build.STAGING / directory / f"{node.slug}.md"
         builder = StoredRenditionImageBuilder(site_build.IMAGES, self._catalog)
-        fragment = markus_build.render_fragment(
+        fragment = markus_build.render_fragment_text(
             staged,
-            theme=None,
+            convert=convert_in_process,
             depth=1,
             images=site_build.IMAGES,
             image_builder=builder,
@@ -354,7 +306,7 @@ class AnthusProjector:
             transform=site_build.ANTHUS_TRANSFORM,
         )
         html = markus_shell.render_page(
-            title=markus_build._read_title(staged, stem.replace("-", " ").title()),
+            title=read_title(staged, stem.replace("-", " ").title()),
             fragment=fragment,
             active_href=href,
             nav_items=[],
@@ -362,12 +314,11 @@ class AnthusProjector:
             chrome=site_build.ANTHUS_CHROME,
             css_version=self._config["markus_pages"],
         )
-        return {urls.page_output(href): self._finished(href, html)}
+        return {urls.page_output(href): site_build.finish_page(snapshot.state, html, active_href=href).encode("utf-8")}
 
     def _render_generated(self, snapshot: Snapshot, keys) -> dict[str, bytes]:
-        snapshot.activate()
         rendered: dict[str, bytes] = {}
-        for href, (title, fragment) in sorted(snapshot.generated.items()):
+        for href, (title, fragment) in sorted(snapshot.state.generated.items()):
             output = snapshot.output_by_href[href]
             if keys is not None and output not in keys:
                 continue
@@ -380,7 +331,7 @@ class AnthusProjector:
                 chrome=site_build.ANTHUS_CHROME,
                 css_version=self._config["generated_pages"],
             )
-            rendered[output] = self._finished(href, html)
+            rendered[output] = site_build.finish_page(snapshot.state, html, active_href=href).encode("utf-8")
         return rendered
 
     @staticmethod
@@ -400,10 +351,7 @@ class AnthusProjector:
     def item_pages(self, item, site):
         if item.summary.section not in PROJECTED_SECTIONS or self._lives_elsewhere(item.summary):
             return {}
-        snapshot = self._snapshot(site)
-        snapshot.activate()
-        directory = self._stage_item(snapshot, item)
-        return self._render_item(snapshot.nodes_by_item[item.summary.item_id], directory)
+        return self._render_item(self._snapshot(site), item)
 
     def listing_inputs(self, site):
         return dict(self._snapshot(site).inputs())

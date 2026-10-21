@@ -79,15 +79,10 @@ class DraftReview(unittest.TestCase):
         self.assertIn("noindex", site_env.head_tags(guarded, title="T", path="/x/", description="d", image=None))
 
     def test_draft_hrefs_leave_the_sitemap(self):
-        build._DRAFT_HREFS.clear()
-        build.register_article_metadata(self.c, _NoImages())
-        try:
-            self.assertEqual(build._DRAFT_HREFS, {"articles/hidden.html"})
-            self.assertEqual(build._DRAFT_OUTPUTS(), {"articles/hidden/index.html"})
-        finally:
-            build._DRAFT_HREFS.clear()
-            build._PAGE_META.clear()
-            build._ARTICLE_LD.clear()
+        state = build.SiteState()
+        build.register_article_metadata(state, self.c, _NoImages())
+        self.assertEqual(state.draft_hrefs, {"articles/hidden.html"})
+        self.assertEqual(state.draft_outputs(), {"articles/hidden/index.html"})
 
 
 class _NoImages:

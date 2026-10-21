@@ -59,10 +59,10 @@ class FoldedPages(unittest.TestCase):
         self.assertLess(order.index("/blog/ticket-driver/"), order.index("/blog/<slug>/"))
 
     def test_links_in_bodies_are_rewritten(self):
-        build._SITE_URLS = self.urls
+        state = build.SiteState(urls=self.urls)
         for url in ("/blog/store-driver/", "/solutions/Paytronix/", "/articles/marketo/", "/vault"):
-            self.assertEqual(build._absolutize(url, base_dir="articles"), TARGET, url)
-        self.assertEqual(build._absolutize("/blog/call-criteria/", base_dir="articles"), "/articles/call-criteria/")
+            self.assertEqual(build._absolutize(state, url, base_dir="articles"), TARGET, url)
+        self.assertEqual(build._absolutize(state, "/blog/call-criteria/", base_dir="articles"), "/articles/call-criteria/")
 
     def test_projector_skips_them(self):
         proj = projector.AnthusProjector.__new__(projector.AnthusProjector)
