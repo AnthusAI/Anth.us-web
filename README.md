@@ -172,7 +172,7 @@ spaces intact. All four are in production's sitemap, so all four are published.
 Redirects are real **301**s, not meta-refresh HTML stubs: exact rules are
 CloudFront key-value-store entries written by `papyrus ops content project --all`
 (from `web/legacy-redirect-rules.json` and the generated rules), and pattern
-rules run in the edge function `infra/edge/viewer-request.js`.
+rules are data (`redirects.patterns` in `web/projection.json`) that Papyrus compiles into the edge function.
 
 Every internal reference the build emits is normalized to the canonical URL in
 one pass over the rendered HTML, so no internal link lands on a redirect. That

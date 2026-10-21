@@ -149,9 +149,10 @@ The whole `web/` directory is bundled into the content-actions function as `site
 * The projector keeps no list of images: it reads the rendition records (`assets/responsive/**/*.meta.json`) of
   the site store through Papyrus's `RenditionCatalog`, so `PAPYRUS_SITE_BUCKET` must name the store.
 * `web/legacy-redirect-rules.json` is the redirect list the previous host (Amplify) served, frozen. The exact
-  rules become key-value store entries; the pattern rules and the static-hosting behaviour (trailing slash,
-  `.html`, the 404 page) live in `infra/edge/viewer-request.js`, the header rewriting in
-  `infra/edge/viewer-response.js`. Both are tested with `node --test tests/edge/*.test.mjs`.
+  rules become key-value store entries; the pattern rules are `redirects.patterns` in `web/projection.json`, the
+  static-hosting behaviour (trailing slash, `.html`, the 404 page) is `urls.style: directory`; Papyrus compiles
+  both into the viewer-request function (`papyrus-infra compile-edge-function --static-dir web`). The header
+  rewriting is `infra/edge/viewer-response.js`. Both are tested with `node --test tests/edge/*.test.mjs`.
 * Parity gate: `bin/project_export_locally.py EXPORT OUT` writes what `papyrus ops content project --all`
   writes; `tests/test_projector_incremental.py` (with `ANTHUS_PROJECTOR_EXPORT` and
   `ANTHUS_PROJECTOR_REFERENCE`) compares it byte for byte with a reference build.
@@ -174,8 +175,9 @@ Production is the S3 projection described above. Facts for agents:
 * **Redirects, 404 and headers** live at the edge, not in Amplify app config:
   the exact redirects are CloudFront key-value-store entries written by
   `project --all`; the pattern rules, the `/x/` and `.html` behaviour and the
-  404 page are in `infra/edge/viewer-request.js`; header rewriting is in
-  `infra/edge/viewer-response.js`. Test with `node --test tests/edge/*.test.mjs`.
+  404 page are Papyrus's viewer-request function compiled from `web/projection.json`
+  (no function of our own); header rewriting is in `infra/edge/viewer-response.js`.
+  Test with `node --test tests/edge/*.test.mjs`.
   The edge template is `infra/edge/anth-us-s3.template.yaml`
   (`bin/render_edge_template.py`).
 * **Missing pages** return HTTP 404 with the `404.html` body (CloudFront maps S3
