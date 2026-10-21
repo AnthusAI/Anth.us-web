@@ -63,7 +63,7 @@ MENU_LINKS = (
     ("Articles", "/blog/", "Long-form pieces on classifiers, agents, and the economics of AI."),
     ("About", "/about/", "Who we are, and the track record since 2007."),
 )
-CTA_LINK = ("Start a project", "/engage/")
+CTA_LINK = ("Start a project", "/engage/#tell-us")
 
 # The wordmark is one SVG in Jersey 25 font units (1230 per em, cap height 750),
 # so the pixel "A" tile and the letters scale together and always line up. Set

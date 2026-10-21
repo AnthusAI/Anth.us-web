@@ -9,7 +9,7 @@ import support
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 LISTENER_NAME = "conversion-events.js"
-ENGAGE_LINK = re.compile(r'<a\b[^>]*href="/engage/(?:\?[^"]*)?"')
+ENGAGE_LINK = re.compile(r'<a\b[^>]*href="/engage/(?:\?[^"#]*)?(?:#[\w-]+)?"')
 PAGES = ("/", "/about/", "/ai-solutions/", "/ryan/", "/decision-models/", "/benchmarks/", "/platform/", "/articles/", "/articles/call-criteria/", "/platform/biblicus/")
 
 
