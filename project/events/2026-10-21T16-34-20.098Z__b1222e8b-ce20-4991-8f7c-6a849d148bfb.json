@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "event_id": "b1222e8b-ce20-4991-8f7c-6a849d148bfb",
+  "issue_id": "anthus-web-670c8331-839d-4d3c-93c7-855e3cfff3ef",
+  "event_type": "issue_created",
+  "occurred_at": "2026-10-21T16:34:20.098Z",
+  "actor_id": "home",
+  "payload": {
+    "title": "Cognitive Debt section",
+    "description": "Ryan's description of the new anth.us section: \"Cognitive Debt\" is about humans struggling to keep up with the mountains of code that AI can now generate, and how that is becoming a bigger problem than writing the code.\n\nFirst accepted source: https://www.oreilly.com/radar/agentic-code-review/ (O'Reilly Radar, \"Agentic Code Review\"). Ryan accepted it as a ground-truth label for the Anth.us newsroom, with no section assigned because the section does not exist yet.\n\nScope of this story: define and build the section. Not started; this story only records the focus and the first source.",
+    "issue_type": "story",
+    "status": "open",
+    "priority": 2,
+    "assignee": null,
+    "parent": null,
+    "labels": []
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "anthus-web-670c8331-839d-4d3c-93c7-855e3cfff3ef",
+  "title": "Cognitive Debt section",
+  "description": "Ryan's description of the new anth.us section: \"Cognitive Debt\" is about humans struggling to keep up with the mountains of code that AI can now generate, and how that is becoming a bigger problem than writing the code.\n\nFirst accepted source: https://www.oreilly.com/radar/agentic-code-review/ (O'Reilly Radar, \"Agentic Code Review\"). Ryan accepted it as a ground-truth label for the Anth.us newsroom, with no section assigned because the section does not exist yet.\n\nScope of this story: define and build the section. Not started; this story only records the focus and the first source.",
+  "type": "story",
+  "status": "open",
+  "priority": 2,
+  "assignee": null,
+  "creator": null,
+  "parent": null,
+  "labels": [],
+  "dependencies": [],
+  "comments": [],
+  "created_at": "2026-10-21T16:34:20.098709Z",
+  "updated_at": "2026-10-21T16:34:23.233060Z",
+  "closed_at": null,
+  "agent": {
+    "platform": "claude_code",
+    "model": "Claude Sonnet 5.5",
+    "name": "Claude"
+  },
+  "right_now_summary": null,
+  "right_now_updated_at": null,
+  "custom": {}
+}
