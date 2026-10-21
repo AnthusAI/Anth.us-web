@@ -4,8 +4,8 @@
 Usage: project_export_locally.py EXPORT_DIR OUT_DIR [--redirects-json PATH]
 
 Needs PAPYRUS_ROOT (a Papyrus checkout with the projection engine) on PYTHONPATH as
-``$PAPYRUS_ROOT/src`` and ``$PAPYRUS_ROOT``, the ``web/site-state.json`` and
-``web/projector-config.json`` the deploy writes, and the build requirements.
+``$PAPYRUS_ROOT/src`` and ``$PAPYRUS_ROOT``, ``PAPYRUS_SITE_BUCKET`` (the site store whose image rendition
+records the projector reads), the optional ``web/projector-config.json`` the deploy writes, and the build requirements.
 Writes exactly what ``papyrus ops content project --all --out OUT_DIR`` writes, plus the
 redirect map the site's key-value store would hold.
 """

@@ -12,7 +12,6 @@ import json
 import os
 import random
 import re
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -184,15 +183,66 @@ def reference_tokens():
     return {"markus_pages": article.group(1), "generated_pages": home.group(1)}
 
 
-def make_projector(state_path):
-    state = json.loads(Path(state_path).read_text())
+def write_rendition_records(content_root, store):
+    """Rendition records for every image of the content root, shaped like the ones the upload-time function writes.
+
+    Only the plain data a page render reads (sizes and rendition names); no derivative is encoded.
+    """
+    from PIL import Image, ImageOps
+
+    from papyrus_content.markus_renderer.images import (
+        _SUFFIX_FOR_FORMAT, ImagePipeline, gatsby_widths, image_has_alpha, _svg_dimensions,
+    )
+    from papyrus_content.renditions import meta_key
+
+    pipeline = ImagePipeline(gatsby_parity=True, placeholder=None)
+    formats = list(pipeline.resolved_formats())
+    for path in sorted(Path(content_root).rglob("*")):
+        if not path.is_file() or path.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp", ".avif", ".gif", ".svg"}:
+            continue
+        source = path.relative_to(content_root).as_posix()
+        record = {"version": 1, "source": source, "kind": "passthrough", "href": f"{pipeline.out_subdir}/{source}", "size": None}
+        try:
+            with Image.open(path) as opened:
+                upright = ImageOps.exif_transpose(opened)
+                upright.load()
+                size = list(upright.size)
+                if path.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp", ".avif"}:
+                    fallback = "png" if image_has_alpha(upright) else "jpeg"
+                    widths, display = gatsby_widths(size[0], max_width=pipeline.max_width)
+                    directory = f"{pipeline.out_subdir}/{Path(source).parent.as_posix()}".rstrip("/.")
+                    directory = directory if directory.endswith("/") else directory + "/"
+                    record = {
+                        "version": 1, "source": source, "kind": "gatsby", "size": size, "displayWidth": display,
+                        "fallbackFormat": fallback, "placeholder": None,
+                        "renditions": [
+                            {"width": width, "height": max(1, round(size[1] * width / size[0])),
+                             "href": f"{directory}{Path(source).stem}-{width}{_SUFFIX_FOR_FORMAT[image_format]}", "format": image_format}
+                            for width in widths
+                            for image_format in dict.fromkeys([*formats, fallback])
+                        ],
+                    }
+                else:
+                    record["size"] = size
+        except Exception:
+            if path.suffix.lower() == ".svg":
+                dimensions = _svg_dimensions(path)
+                record["size"] = list(dimensions) if dimensions else None
+        store.put(meta_key(pipeline, source), json.dumps(record).encode("utf-8"), cache_control="x")
+
+
+def make_projector(store):
+    from papyrus_content.renditions import RenditionCatalog
+
+    import build_via_papyrus as site_build
+
     config = reference_tokens() or anthus_projector.default_projector_config()
     settings = None
     if PUBLIC_DATA:
         from papyrus_content.projection.public_data import PublicDataSettings
 
         settings = PublicDataSettings()
-    return anthus_projector.AnthusProjector(state, config, public_data_settings=settings)
+    return anthus_projector.AnthusProjector(config, RenditionCatalog(store, site_build.IMAGES), public_data_settings=settings)
 
 
 @unittest.skipIf(SKIP, "needs PAPYRUS_ROOT and ANTHUS_PROJECTOR_EXPORT")
@@ -205,13 +255,10 @@ class IncrementalProjectionOfTheRealCorpus(unittest.TestCase):
         from cms_content_root import materialize_content_root
 
         materialize_content_root(Path(EXPORT), content_root, REPOSITORY / "web" / "content-redirects")
-        cls.state_path = Path(cls.work.name) / "site-state.json"
-        subprocess.run(
-            [sys.executable, str(REPOSITORY / "bin" / "make_site_state.py"), EXPORT, str(content_root), str(cls.state_path)],
-            check=True,
-            env={**os.environ, "PYTHONPATH": os.pathsep.join([str(Path(PAPYRUS) / "src"), os.environ.get("PYTHONPATH", "")])},
-            capture_output=True,
-        )
+        from papyrus_content.renditions import DirectoryRenditionStore
+
+        cls.store = DirectoryRenditionStore(Path(cls.work.name) / "site-store")
+        write_rendition_records(content_root, cls.store)
 
     @classmethod
     def tearDownClass(cls):
@@ -222,7 +269,7 @@ class IncrementalProjectionOfTheRealCorpus(unittest.TestCase):
         redirects = FakeRedirectStore()
         context = ProjectionContext(
             source=PublishedContentSource(corpus.client),
-            projector=make_projector(self.state_path),
+            projector=make_projector(self.store),
             writer=store,
             redirect_store=redirects,
         )
