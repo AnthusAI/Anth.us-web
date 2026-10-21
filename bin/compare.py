@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""compare.py -- diff two directories of shoot.js output.
+"""compare.py -- diff two directories of shoot.cjs output.
 
 Pairs up every ``<name>@<width>.png`` / ``<name>@<width>.json`` that exists in
 BOTH directories and reports how far apart they are, both pixel-wise and
@@ -249,7 +249,7 @@ def print_class_list(caption: str, items: List[str], limit: int) -> None:
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         prog="compare.py",
-        description="Diff two directories of shoot.js screenshots and fingerprints.",
+        description="Diff two directories of shoot.cjs screenshots and fingerprints.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )

@@ -306,3 +306,22 @@ ANTHUS_SITE_ORIGIN=https://<review-host> \
 * **Main images start at `opacity:0`** (gatsby-plugin-image's behaviour).
   `_render_body` appends Papyrus's `FADE_IN_SCRIPT` to every page that has a
   `data-main-image`; without it the images stay invisible.
+
+### Parity gate for site changes (PPY-e329c3)
+
+Anth.us is production: a change to how the site is rendered or served is gated on every published URL before and
+after it, not on spot checks.
+
+1. Export the published content (`papyrus content export-published --out EXPORT`, IAM, `PAPYRUS_GRAPHQL_AUTH=iam`) and
+   project it with the old code and with the new code (`bin/project_export_locally.py EXPORT OUT --redirects-json R`;
+   `PAPYRUS_SITE_BUCKET` names the site store, whose image rendition records the projector reads).
+2. `python3 bin/parity.py dir:OLD,OLD_R.json dir:NEW,NEW_R.json report.json [--allow allow.json]` compares every URL
+   of either side through a simulated edge: status, redirect target, content type, cache control, normalised body
+   DOM, head metadata (parsed JSON-LD included), sitemap URL set, robots.txt. Anything that differs and is not in
+   the allow-list (each entry has a written reason) is blocking. It needs `lxml` and Papyrus on `PYTHONPATH`.
+3. Deploy (merge; the Amplify job reprojects; an edge change goes by CloudFormation change set, read before it is
+   executed). `bin/poll.py LOG` requests the key pages every 3 s through the change. Afterwards
+   `bin/crawl.py https://anth.us DIR --extra paths.txt` and `python3 bin/parity.py live:BEFORE live:AFTER ...`, then
+   `node bin/shoot.cjs` (Puppeteer) for home, an article, a listing, about and engage at 1440 and 390 and
+   `bin/compare.py`. `node bin/edge-diff.mjs OLD.js NEW.js REDIRECTS.json URIS.txt` compares two viewer-request
+   functions over a list of URIs.

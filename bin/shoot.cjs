@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * shoot.js -- reusable Puppeteer screenshot harness.
+ * shoot.cjs -- reusable Puppeteer screenshot harness.
  *
  * Captures a full-page PNG plus a small JSON "fingerprint" for every
  * (page x viewport width) combination, so that two runs against two
@@ -8,7 +8,7 @@
  * with bin/compare.py.
  *
  * USAGE
- *   node bin/shoot.js --base http://localhost:8081 \
+ *   node bin/shoot.cjs --base http://localhost:8081 \
  *                     --out  /tmp/shots/old \
  *                     --pages pages.json \
  *                     --widths 1440,390
@@ -51,6 +51,7 @@
 'use strict';
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 // ---------------------------------------------------------------------------
@@ -63,15 +64,15 @@ const path = require('path');
 
 const PUPPETEER_CANDIDATES = [
   process.env.PUPPETEER_MODULE_PATH,
-  '/Users/home/Projects/Anth.us/node_modules/puppeteer',
-  '/Users/home/Projects/Pilobol.us/node_modules/puppeteer',
+  path.join(os.homedir(), 'Projects/Anth.us/node_modules/puppeteer'),
+  path.join(os.homedir(), 'Projects/Pilobol.us/node_modules/puppeteer'),
 ].filter(Boolean);
 
 // Chrome binaries to fall back on when the puppeteer-managed download is
 // absent (`npx puppeteer browsers install chrome` was never run).
 const CHROME_CANDIDATES = [
   process.env.PUPPETEER_EXECUTABLE_PATH,
-  '/Users/home/Library/Caches/ms-playwright/chromium_headless_shell-1208/chrome-headless-shell-mac-arm64/chrome-headless-shell',
+  path.join(os.homedir(), 'Library/Caches/ms-playwright/chromium_headless_shell-1208/chrome-headless-shell-mac-arm64/chrome-headless-shell'),
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   '/Applications/Chromium.app/Contents/MacOS/Chromium',
   '/usr/bin/google-chrome',
