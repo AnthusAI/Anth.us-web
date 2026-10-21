@@ -37,6 +37,7 @@ import posixpath
 import re
 import shutil
 import sys
+from dataclasses import dataclass, field
 from html import escape, unescape
 from pathlib import Path
 
@@ -81,6 +82,7 @@ import site_env  # noqa: E402  (PPY-f1f0a8)
 from anthus_content import (  # noqa: E402
     POSTS_PER_PAGE,
     Collections,
+    ContentNode,
     ConversionReport,
     ImageIndex,
     discover,
@@ -239,14 +241,32 @@ _REF_RE = re.compile(r'\b(?P<attr>href|src)="(?P<url>[^"]*)"')
 _SRCSET_RE = re.compile(r'\bsrcset="(?P<value>[^"]*)"')
 _SKIP_PREFIXES = ("//", "#", "?", "data:", "mailto:", "tel:", "http://", "https://")
 
-#: Papyrus hrefs this build renders, and the authored-name tables that map a
-#: live-site URL onto one of them. Both are populated from the staged corpus
-#: before the first page renders; see `main`.
-_SITE_URLS = urls.SiteUrls()
-_UNRESOLVED_LINKS: dict[str, int] = {}
+@dataclass
+class SiteState:
+    """Everything a render of the site shares, in one object (it used to be module-level globals).
+
+    ``urls`` is the Papyrus hrefs this build renders and the authored-name tables that map a live-site URL onto
+    one of them; ``generated`` the pages whose body is generated HTML that bypasses Markus (Papyrus href ->
+    (title, ``<main>`` inner HTML)); ``page_meta`` the (description, image) of every page; ``article_ld`` the
+    JSON-LD ``Article`` of published articles; ``draft_hrefs`` the hrefs of ``state: draft`` articles (noindex, no
+    sitemap entry); ``unresolved`` the site-absolute links that name no page, with their counts.
+    """
+
+    urls: urls.SiteUrls = field(default_factory=urls.SiteUrls)
+    generated: dict[str, tuple[str, str]] = field(default_factory=dict)
+    page_meta: dict[str, tuple[str, str]] = field(default_factory=dict)
+    article_ld: dict[str, dict] = field(default_factory=dict)
+    draft_hrefs: set[str] = field(default_factory=set)
+    unresolved: dict[str, int] = field(default_factory=dict)
+
+    def register_meta(self, href: str, description: str, image: str | None) -> None:
+        self.page_meta[href] = (description, image or _DEFAULT_COVER)
+
+    def draft_outputs(self) -> set[str]:
+        return {urls.page_output(href) for href in self.draft_hrefs}
 
 
-def _absolutize(url: str, *, base_dir: str) -> str:
+def _absolutize(state: SiteState, url: str, *, base_dir: str) -> str:
     """Canonicalize one reference from one page.
 
     ``base_dir`` is the page's *Papyrus* output directory, which is what the
@@ -265,13 +285,13 @@ def _absolutize(url: str, *, base_dir: str) -> str:
         absolute = "/" + posixpath.normpath(posixpath.join(base_dir, path))
     if urls.is_non_page(absolute):
         return absolute + sep + tail
-    folded = _SITE_URLS.folded_for(absolute)
+    folded = state.urls.folded_for(absolute)
     if folded is not None:
         return folded + sep + tail
-    external = _SITE_URLS.external_for(absolute)
+    external = state.urls.external_for(absolute)
     if external is not None:
         return external + "/"
-    href = _SITE_URLS.resolve(absolute)
+    href = state.urls.resolve(absolute)
     if href is not None:
         return urls.page_url(href) + sep + tail
     # No page here, on this site or on production: a content bug. Report it and
@@ -280,11 +300,11 @@ def _absolutize(url: str, *, base_dir: str) -> str:
     # scheme-less `arxiv.org/abs/...` link when this pass first absolutized
     # everything it touched.
     if absolute != "/":
-        _UNRESOLVED_LINKS[path] = _UNRESOLVED_LINKS.get(path, 0) + 1
+        state.unresolved[path] = state.unresolved.get(path, 0) + 1
     return url
 
 
-def _rewrite_internal_links(html: str, *, active_href: str) -> str:
+def _rewrite_internal_links(state: SiteState, html: str, *, active_href: str) -> str:
     """Rewrite every internal reference on one page to its canonical URL.
 
     Done on rendered HTML rather than on Markdown so it also catches links
@@ -295,7 +315,7 @@ def _rewrite_internal_links(html: str, *, active_href: str) -> str:
 
     def one(match: re.Match[str]) -> str:
         url = unescape(match.group("url"))
-        resolved = _absolutize(url, base_dir=base_dir)
+        resolved = _absolutize(state, url, base_dir=base_dir)
         return f'{match.group("attr")}="{escape(resolved, quote=True)}"'
 
     def many(match: re.Match[str]) -> str:
@@ -304,7 +324,7 @@ def _rewrite_internal_links(html: str, *, active_href: str) -> str:
             parts = candidate.strip().split(None, 1)
             if not parts:
                 continue
-            resolved = _absolutize(parts[0], base_dir=base_dir)
+            resolved = _absolutize(state, parts[0], base_dir=base_dir)
             out.append(" ".join([resolved] + parts[1:]))
         return f'srcset="{escape(", ".join(out), quote=True)}"'
 
@@ -316,17 +336,12 @@ def _rewrite_internal_links(html: str, *, active_href: str) -> str:
 # --------------------------------------------------------------------------
 
 _DEFAULT_COVER = "/assets/site/share-card.png"
-_PAGE_META: dict[str, tuple[str, str]] = {}  # active_href -> (description, image)
-#: active_href -> JSON-LD `Article` object, for published articles only (as live).
-_ARTICLE_LD: dict[str, dict] = {}
-#: Papyrus hrefs (`articles/<slug>.html`) of `state: draft` articles: noindex, no sitemap entry.
-_DRAFT_HREFS: set[str] = set()
 
 
-def _inject_social_meta(html: str, *, active_href: str) -> str:
+def _inject_social_meta(state: SiteState, html: str, *, active_href: str) -> str:
     title_match = re.search(r"<title>(.*?)</title>", html, re.S)
     title = unescape(title_match.group(1)) if title_match else ""
-    description, image = _PAGE_META.get(
+    description, image = state.page_meta.get(
         active_href, (pages.SITE_DESCRIPTION, _DEFAULT_COVER)
     )
     if not description:
@@ -334,7 +349,7 @@ def _inject_social_meta(html: str, *, active_href: str) -> str:
     if not image:
         image = _DEFAULT_COVER
     page_title = (title or "").strip() or pages.SITE_TITLE
-    article_ld = _ARTICLE_LD.get(active_href)
+    article_ld = state.article_ld.get(active_href)
     article = None
     if article_ld is not None:
         article = {
@@ -349,7 +364,7 @@ def _inject_social_meta(html: str, *, active_href: str) -> str:
         description=description,
         image=image,
         article=article,
-        noindex=active_href in _DRAFT_HREFS,
+        noindex=active_href in state.draft_hrefs,
     )
     if 'property="og:title"' in html:
         return html
@@ -364,36 +379,27 @@ def _inject_social_meta(html: str, *, active_href: str) -> str:
 # --------------------------------------------------------------------------
 
 
-def _register_meta(href: str, description: str, image: str | None) -> None:
-    _PAGE_META[href] = (description, image or _DEFAULT_COVER)
-
-
-#: Pages whose body is generated HTML and bypasses Markus entirely:
-#: Papyrus href -> (title, `<main>` inner HTML). Filled by `stage`.
-GENERATED: dict[str, tuple[str, str]] = {}
-
-
 def _page_title(plain: str) -> str:
     """`PAGE_META` titles carry the ` | Anthus` suffix the shell adds itself."""
     return plain.removesuffix(" | Anthus")
 
 
-def _generated(href: str, title: str, fragment: str, *, meta_key: str | None = None) -> None:
-    GENERATED[href] = (title, fragment)
+def _generated(state: SiteState, href: str, title: str, fragment: str, *, meta_key: str | None = None) -> None:
+    state.generated[href] = (title, fragment)
     meta = pages.PAGE_META.get(meta_key) if meta_key else None
     if meta:
-        _register_meta(href, meta["description"], None)
+        state.register_meta(href, meta["description"], None)
 
 
-def _collection_page(directory: str, title: str, number: int, fragment: str) -> None:
+def _collection_page(state: SiteState, directory: str, title: str, number: int, fragment: str) -> None:
     """One page of a `collection.jsx` listing, at its canonical Papyrus href."""
     href = (
         f"{directory}/index.html"
         if number == 1
         else f"{directory}/page/{number}/index.html"
     )
-    _generated(href, title if number == 1 else f"{title}, page {number}", fragment)
-    _register_meta(href, pages.COLLECTION_DESCRIPTIONS[title], None)
+    _generated(state, href, title if number == 1 else f"{title}, page {number}", fragment)
+    state.register_meta(href, pages.COLLECTION_DESCRIPTIONS[title], None)
 
 
 def _pictogram_og(node: ContentNode) -> str | None:
@@ -408,18 +414,14 @@ def _pictogram_og(node: ContentNode) -> str | None:
     return None
 
 
-def _DRAFT_OUTPUTS() -> set[str]:
-    return {urls.page_output(href) for href in _DRAFT_HREFS}
-
-
-def register_article_metadata(collections: Collections, images: ImageIndex) -> None:
+def register_article_metadata(state: SiteState, collections: Collections, images: ImageIndex) -> None:
     for node in collections.blog:
         href = f"articles/{node.slug}.html"
-        _register_meta(href, node.excerpt_text, pages._preview(node, images) or _pictogram_og(node))
+        state.register_meta(href, node.excerpt_text, pages._preview(node, images) or _pictogram_og(node))
         if node.draft:
-            _DRAFT_HREFS.add(href)
+            state.draft_hrefs.add(href)
         if node.published:
-            _ARTICLE_LD[href] = {
+            state.article_ld[href] = {
                 "@context": "https://schema.org",
                 "@type": "Article",
                 "headline": node.title,
@@ -440,9 +442,10 @@ def _drafts_of(collections: Collections, kind: str) -> list[ContentNode]:
     return [n for n in collections.drafts if not ({"solutions", "posts"} & set(n.tags))]
 
 
-def generate_pages(collections: Collections, images: ImageIndex) -> None:
+def generate_pages(state: SiteState, collections: Collections, images: ImageIndex) -> None:
     meta = pages.PAGE_META
     _generated(
+        state,
         "index.html",
         "Home",
         pages.homepage(
@@ -454,57 +457,66 @@ def generate_pages(collections: Collections, images: ImageIndex) -> None:
         ),
     )
     for number, text in pages.articles_collection(collections.articles, images, _drafts_of(collections, "articles")).items():
-        _collection_page("articles", "Articles", number, text)
-    _generated("platform/index.html", "Anthus Platform", pages.platform_index(collections.platform))
-    _register_meta(
+        _collection_page(state, "articles", "Articles", number, text)
+    _generated(state, "platform/index.html", "Anthus Platform", pages.platform_index(collections.platform))
+    state.register_meta(
         "platform/index.html",
         "Explore the Anthus Platform: the runtime, orchestration, MLOps, knowledge, "
         "observability, and media systems behind our AI-native delivery work.",
         None,
     )
     _generated(
+        state,
         "about.html", _page_title(meta["/about/"]["title"]), pages.about_page(), meta_key="/about/"
     )
     _generated(
+        state,
         "ai-solutions.html",
         _page_title(meta["/ai-solutions/"]["title"]),
         pages.ai_solutions_page(collections.blog, images),
         meta_key="/ai-solutions/",
     )
     _generated(
+        state,
         "ryan.html",
         _page_title(meta["/ryan/"]["title"]),
         pages.ryan_page(collections.solutions, images),
         meta_key="/ryan/",
     )
     _generated(
+        state,
         "404.html",
         _page_title(meta["/404.html"]["title"]),
         pages.not_found_page(),
         meta_key="/404.html",
     )
     _generated(
+        state,
         "engage.html", _page_title(meta["/engage/"]["title"]), pages.engage_page(), meta_key="/engage/"
     )
     _generated(
+        state,
         "decision-models.html",
         _page_title(meta["/decision-models/"]["title"]),
         pages.decision_models_page(),
         meta_key="/decision-models/",
     )
     _generated(
+        state,
         "benchmarks.html",
         _page_title(meta["/benchmarks/"]["title"]),
         pages.benchmarks_page(),
         meta_key="/benchmarks/",
     )
     _generated(
+        state,
         "reading.html",
         _page_title(meta["/reading/"]["title"]),
         pages.reading_page(collections.blog, images),
         meta_key="/reading/",
     )
     _generated(
+        state,
         "research.html",
         _page_title(meta["/research/"]["title"]),
         pages.research_page(collections.blog, images),
@@ -512,23 +524,15 @@ def generate_pages(collections: Collections, images: ImageIndex) -> None:
     )
 
     for number, text in pages.posts_collection(collections.posts, images, _drafts_of(collections, "posts")).items():
-        _collection_page("posts", "Posts", number, text)
+        _collection_page(state, "posts", "Posts", number, text)
 
     for slug, (label, text) in pages.tag_pages(collections.tags, images).items():
-        _generated(f"tags/{slug}.html", label if slug != "index" else "Tags", text)
+        _generated(state, f"tags/{slug}.html", label if slug != "index" else "Tags", text)
 
 
-def stage_platform_page(node: ContentNode, images: ImageIndex, *, source_text: str | None = None) -> ConversionReport:
-    """Stage one platform product page into ``STAGING/platform`` and register its page metadata.
-
-    ``source_text`` replaces reading ``node.source`` for callers that hold the
-    item in memory (the projector).
-    """
-    platform_dir = STAGING / "platform"
-    platform_dir.mkdir(parents=True, exist_ok=True)
-    front_matter, body = split_front_matter(
-        node.source.read_text(encoding="utf-8") if source_text is None else source_text
-    )
+def staged_platform_markdown(node: ContentNode, images: ImageIndex, source_text: str) -> tuple[str, ConversionReport]:
+    """The Markus Markdown of one platform product page: its source normalized, between the production heading and tail."""
+    front_matter, body = split_front_matter(source_text)
     text, node_report = normalize_body(
         body,
         resolve_image_name=images.content_src,
@@ -541,8 +545,7 @@ def stage_platform_page(node: ContentNode, images: ImageIndex, *, source_text: s
         + text
         + ("\n\n" + block_sentinel(tail) + "\n" if tail else "")
     )
-    write_if_changed(
-        platform_dir / f"{node.slug}.md",
+    return (
         staged_markdown(
             {
                 "title": node.title,
@@ -555,8 +558,15 @@ def stage_platform_page(node: ContentNode, images: ImageIndex, *, source_text: s
             },
             document,
         ),
+        node_report,
     )
-    _register_meta(
+
+
+def stage_platform_page(state: SiteState, node: ContentNode, images: ImageIndex) -> ConversionReport:
+    """Stage one platform product page into ``STAGING/platform`` and register its page metadata."""
+    text, node_report = staged_platform_markdown(node, images, node.source.read_text(encoding="utf-8"))
+    write_if_changed(STAGING / "platform" / f"{node.slug}.md", text)
+    state.register_meta(
         f"platform/{node.slug}.html",
         node.excerpt_text,
         pages._preview(node, images),
@@ -564,9 +574,9 @@ def stage_platform_page(node: ContentNode, images: ImageIndex, *, source_text: s
     return node_report
 
 
-def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
+def stage(state: SiteState, collections: Collections, images: ImageIndex) -> ConversionReport:
     STAGING.mkdir(parents=True, exist_ok=True)
-    GENERATED.clear()
+    state.generated.clear()
     report = ConversionReport()
 
     # The blog corpus. `build_markus_site` hard-requires `articles/`, which is
@@ -580,11 +590,11 @@ def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
     # heading and "where this fits" section are block sentinels around it.
     (STAGING / "platform").mkdir(parents=True, exist_ok=True)
     for node in collections.platform:
-        report.merge(stage_platform_page(node, images))
+        report.merge(stage_platform_page(state, node, images))
 
-    register_article_metadata(collections, images)
+    register_article_metadata(state, collections, images)
 
-    generate_pages(collections, images)
+    generate_pages(state, collections, images)
 
     # Images: only what pages actually reference, downscaled.
     copied, downscaled = images.stage(STAGING / "assets")
@@ -619,7 +629,7 @@ def stage(collections: Collections, images: ImageIndex) -> ConversionReport:
     # not committed -- a silently broken hero is worse than a failed build.
     referenced = {
         match
-        for _title, fragment in GENERATED.values()
+        for _title, fragment in state.generated.values()
         # Filenames contain spaces ("Anthus AI Application Lifecycle.png"),
         # so stop only at the closing quote or paren, never at whitespace.
         for match in re.findall(r"/assets/site/([^\"')]+)", fragment)
@@ -674,7 +684,7 @@ def audit_staging(staging: Path) -> tuple[int, int, int]:
 # --------------------------------------------------------------------------
 
 
-def write_generated(result) -> None:
+def write_generated(state: SiteState, result) -> None:
     """Render every generated page through the same shell, bypassing Markus.
 
     ``markus_shell.render_page`` is called directly with the generated
@@ -684,7 +694,7 @@ def write_generated(result) -> None:
     """
     css_version = markus_build._css_version(result.out_dir / "css", result.out_dir / "assets")
     known = {page.relative_to(result.out_dir).as_posix() for page in result.pages}
-    for href, (title, fragment) in sorted(GENERATED.items()):
+    for href, (title, fragment) in sorted(state.generated.items()):
         page_path = result.out_dir / href
         page_path.parent.mkdir(parents=True, exist_ok=True)
         page_path.write_text(
@@ -706,33 +716,35 @@ def write_generated(result) -> None:
 _CELL_ALIGN_RE = re.compile(r'<(th|td) style="text-align:(?:left|right|center)">')
 
 
-def finish_pages(result) -> None:
-    """Post-pass over every rendered page, before relocation to canonical paths.
+def finish_page(state: SiteState, text: str, *, active_href: str) -> str:
+    """The post-pass over one rendered page, before relocation to its canonical path.
 
-    Link canonicalization, social meta and the staging `noindex` guard are
-    applied to Markus-rendered and generated pages alike, keyed by each file's
-    Papyrus href. Then the output gate: no `markus-`/`papyrus-` class may
-    survive, because the production stylesheet has no rule for either.
+    Link canonicalization, social meta and the staging `noindex` guard are applied to Markus-rendered and
+    generated pages alike, keyed by the page's Papyrus href. Then the output gate: no `markus-`/`papyrus-`
+    class may survive, because the production stylesheet has no rule for either.
     """
+    text = _rewrite_internal_links(state, text, active_href=active_href)
+    text = _inject_social_meta(state, text, active_href=active_href)
+    text = text.replace('<body class="">', "<body>", 1)
+    # Markus renders a Markdown table's `---:` column alignment as an inline
+    # style; production's MDX pipeline emits none (cells stay left-aligned).
+    text = _CELL_ALIGN_RE.sub(r"<\1>", text)
+    if "twitter-tweet" in text and "platform.twitter.com/widgets.js" not in text:
+        # Production's /about/ embeds a tweet and loads Twitter's widget
+        # script from its head; without it the blockquote never renders.
+        text = text.replace(
+            "</head>",
+            '<script src="https://platform.twitter.com/widgets.js"></script>\n</head>',
+            1,
+        )
+    dom.assert_no_markus_classes(text, active_href)
+    return text
+
+
+def finish_pages(state: SiteState, result) -> None:
     for page in result.pages:
         active_href = page.relative_to(result.out_dir).as_posix()
-        text = page.read_text(encoding="utf-8")
-        text = _rewrite_internal_links(text, active_href=active_href)
-        text = _inject_social_meta(text, active_href=active_href)
-        text = text.replace('<body class="">', "<body>", 1)
-        # Markus renders a Markdown table's `---:` column alignment as an inline
-        # style; production's MDX pipeline emits none (cells stay left-aligned).
-        text = _CELL_ALIGN_RE.sub(r"<\1>", text)
-        if "twitter-tweet" in text and "platform.twitter.com/widgets.js" not in text:
-            # Production's /about/ embeds a tweet and loads Twitter's widget
-            # script from its head; without it the blockquote never renders.
-            text = text.replace(
-                "</head>",
-                '<script src="https://platform.twitter.com/widgets.js"></script>\n</head>',
-                1,
-            )
-        dom.assert_no_markus_classes(text, active_href)
-        page.write_text(text, encoding="utf-8")
+        page.write_text(finish_page(state, page.read_text(encoding="utf-8"), active_href=active_href), encoding="utf-8")
 
 
 # --------------------------------------------------------------------------
@@ -742,19 +754,19 @@ def finish_pages(result) -> None:
 _RENDERED_DIRS = ("articles", "platform")
 
 
-def staged_page_hrefs() -> set[str]:
+def staged_page_hrefs(state: SiteState) -> set[str]:
     """Predict the Papyrus hrefs this build renders.
 
     `build_markus_site` walks `articles/` plus the `platform` section and
     renders every non-hidden `*.md` at `slugify(stem)` (Papyrus #89, which
-    replaced the old lowercase-only filename filter); everything in `GENERATED` is
+    replaced the old lowercase-only filename filter); everything in `state.generated` is
     written by `write_generated`. Predicting the set here lets every internal
     link be resolved against real pages during rendering, and `main` then
     asserts the prediction against what was actually written -- which is how a
     staged page that Papyrus quietly skipped would fail the build instead of
     becoming a 404 behind a successful deploy.
     """
-    hrefs = set(GENERATED)
+    hrefs = set(state.generated)
     for directory in _RENDERED_DIRS:
         for path in sorted((STAGING / directory).glob("*.md")):
             if not path.name.startswith(("_", ".")):
@@ -815,7 +827,7 @@ CUSTOM_RULES = _BUILD_DIR / "custom-rules.json"
 LEGACY_OG_IMAGES = POD_ROOT / "legacy-og-images.json"  # bin/extract-legacy-og-images.py
 
 
-def write_custom_rules(site_urls: urls.SiteUrls) -> urls.RuleSet:
+def write_custom_rules(state: SiteState) -> urls.RuleSet:
     """Generate the Amplify `customRules` that 301 every legacy URL shape.
 
     Replaces the ~120 meta-refresh HTML stubs this build used to emit under
@@ -825,9 +837,9 @@ def write_custom_rules(site_urls: urls.SiteUrls) -> urls.RuleSet:
     301s, served by Amplify before it touches the filesystem.
     """
     ruleset = urls.legacy_rules(
-        site_urls,
+        state.urls,
         og_images=json.loads(LEGACY_OG_IMAGES.read_text(encoding="utf-8")),
-        page_images={href: image for href, (_, image) in _PAGE_META.items()},
+        page_images={href: image for href, (_, image) in state.page_meta.items()},
         dist=DIST,
     )
     CUSTOM_RULES.write_text(
@@ -843,6 +855,7 @@ def write_custom_rules(site_urls: urls.SiteUrls) -> urls.RuleSet:
 
 def main() -> int:
     site_env.announce(ENV)
+    state = SiteState()
     if not (CONTENT_SUBMODULE / "README.md").is_file():
         sys.exit(
             f"Content submodule missing at {CONTENT_SUBMODULE}. "
@@ -867,7 +880,7 @@ def main() -> int:
     print("Staging Markus Markdown…")
     if STAGING.exists():
         shutil.rmtree(STAGING)
-    report = stage(collections, images)
+    report = stage(state, collections, images)
     image_count, citation_count, citations_list_count = audit_staging(STAGING)
     print(
         f"  staged markup: {image_count} ::image{{}}, {citation_count} [@key], "
@@ -876,12 +889,11 @@ def main() -> int:
 
     # Link rewriting needs the full URL map before any page renders: the
     # canonical page set, plus every name the live Gatsby site answers to.
-    global _SITE_URLS
-    _SITE_URLS = urls.SiteUrls.from_collections(
-        collections, pages=staged_page_hrefs(), posts_per_page=POSTS_PER_PAGE
+    state.urls = urls.SiteUrls.from_collections(
+        collections, pages=staged_page_hrefs(state), posts_per_page=POSTS_PER_PAGE
     )
-    _SITE_URLS.add_content_redirect_stubs(CONTENT_SUBMODULE / "redirects")
-    sample = next(iter(sorted(_SITE_URLS.pages - {"index.html"})), "index.html")
+    state.urls.add_content_redirect_stubs(CONTENT_SUBMODULE / "redirects")
+    sample = next(iter(sorted(state.urls.pages - {"index.html"})), "index.html")
     print(f"  canonical URL style: {urls.URL_STYLE} (e.g. {urls.page_url(sample)})")
 
     print("Rendering through Papyrus's Markus renderer…")
@@ -897,22 +909,22 @@ def main() -> int:
         transform=ANTHUS_TRANSFORM,
         vendor_css=False,
     )
-    write_generated(result)
+    write_generated(state, result)
 
     rendered = {page.relative_to(result.out_dir).as_posix() for page in result.pages}
-    if rendered != _SITE_URLS.pages:
-        missing = sorted(_SITE_URLS.pages - rendered)
-        extra = sorted(rendered - _SITE_URLS.pages)
+    if rendered != state.urls.pages:
+        missing = sorted(state.urls.pages - rendered)
+        extra = sorted(rendered - state.urls.pages)
         raise RuntimeError(
             "staged pages and rendered pages disagree; internal links were "
             f"resolved against the wrong set. staged-but-not-rendered={missing} "
             f"rendered-but-not-staged={extra}"
         )
 
-    finish_pages(result)
+    finish_pages(state, result)
     moved = relocate_pages(result)
     copy_static_root(result.out_dir)
-    ruleset = write_custom_rules(_SITE_URLS)
+    ruleset = write_custom_rules(state)
     redirects = len(ruleset.rules)
 
     for name, body in {
@@ -924,7 +936,7 @@ def main() -> int:
                     urls.page_url(page.relative_to(result.out_dir).as_posix())
                     for page in result.pages
                     if page.relative_to(result.out_dir).as_posix() != "404.html"
-                    and page.relative_to(result.out_dir).as_posix() not in _DRAFT_OUTPUTS()
+                    and page.relative_to(result.out_dir).as_posix() not in state.draft_outputs()
                 }
             ),
             ENV,
@@ -956,13 +968,13 @@ def main() -> int:
     print(f"  inline <svg> preserved               {report.svgs}")
     print(f"  colspan/rowspan tables preserved     {report.span_tables}")
     print(f"  JSX blockDiagram trees preserved     {report.diagrams}")
-    if _UNRESOLVED_LINKS:
-        total = sum(_UNRESOLVED_LINKS.values())
+    if state.unresolved:
+        total = sum(state.unresolved.values())
         print(
-            f"\n{total} site-absolute link(s) to {len(_UNRESOLVED_LINKS)} path(s) "
+            f"\n{total} site-absolute link(s) to {len(state.unresolved)} path(s) "
             "with no page in this build (these are broken on production too):"
         )
-        for path, count in sorted(_UNRESOLVED_LINKS.items(), key=lambda kv: -kv[1]):
+        for path, count in sorted(state.unresolved.items(), key=lambda kv: -kv[1]):
             print(f"    {count:5d}  {path}")
     if report.dropped_html:
         buckets: dict[str, int] = {}

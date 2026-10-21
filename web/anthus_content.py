@@ -513,6 +513,34 @@ class Collections:
 # --------------------------------------------------------------------------
 
 
+def staged_article(node: ContentNode, source_text: str, images: ImageIndex) -> tuple[str, ConversionReport]:
+    """The Markus Markdown of one article: its source normalized, with the production heading block in front."""
+    front_matter, body = split_front_matter(source_text)
+    text, report = normalize_body(
+        body,
+        resolve_image_name=images.content_src,
+        resolve_image_path=lambda src, n=node: images.content_src(src, relative_to=n.source),
+    )
+    front = {
+        "title": node.title,
+        "date": node.display_date,
+        # Native `citations:` from the converted corpus, plus anything
+        # lifted out of legacy `<Citation>` elements on an un-migrated
+        # branch. Read before `merge()`, which deliberately drops it.
+        "citations": {
+            **(front_matter.get("citations") or {}),
+            **report.citation_entries,
+        },
+    }
+    header = _article_header(node)
+    tail = (
+        "\n\n" + block_sentinel(anthus_dom.ENGAGE_CTA_HTML) + "\n"
+        if "client-acquisition" in node.tags
+        else ""
+    )
+    return staged_markdown(front, header + text + tail), report
+
+
 def stage_nodes(
     nodes: list[ContentNode],
     *,
@@ -525,35 +553,9 @@ def stage_nodes(
     out_dir = staging / directory
     out_dir.mkdir(parents=True, exist_ok=True)
     for node in nodes:
-        front_matter, body = split_front_matter(node.source.read_text(encoding="utf-8"))
-        text, report = normalize_body(
-            body,
-            resolve_image_name=images.content_src,
-            resolve_image_path=lambda src, n=node: images.content_src(
-                src, relative_to=n.source
-            ),
-        )
+        text, report = staged_article(node, node.source.read_text(encoding="utf-8"), images)
         total.merge(report)
-        front = {
-            "title": node.title,
-            "date": node.display_date,
-            # Native `citations:` from the converted corpus, plus anything
-            # lifted out of legacy `<Citation>` elements on an un-migrated
-            # branch. Read before `merge()`, which deliberately drops it.
-            "citations": {
-                **(front_matter.get("citations") or {}),
-                **report.citation_entries,
-            },
-        }
-        header = _article_header(node)
-        tail = (
-            "\n\n" + block_sentinel(anthus_dom.ENGAGE_CTA_HTML) + "\n"
-            if "client-acquisition" in node.tags
-            else ""
-        )
-        write_if_changed(
-            out_dir / f"{node.slug}.md", staged_markdown(front, header + text + tail)
-        )
+        write_if_changed(out_dir / f"{node.slug}.md", text)
     return total
 
 

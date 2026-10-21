@@ -45,10 +45,10 @@ class ExternalSolutionSites(unittest.TestCase):
                         [r["source"] for r in rules].index("/<*>"))
 
     def test_links_to_the_old_pages_point_at_the_site(self):
-        build._SITE_URLS = self.urls
+        state = build.SiteState(urls=self.urls)
         for slug, site in EXTERNAL_SITES.items():
-            self.assertEqual(build._absolutize(f"/platform/{slug}/", base_dir="articles"), site + "/")
-        self.assertEqual(build._absolutize("/platform/biblicus/", base_dir="articles"), "/platform/biblicus/")
+            self.assertEqual(build._absolutize(state, f"/platform/{slug}/", base_dir="articles"), site + "/")
+        self.assertEqual(build._absolutize(state, "/platform/biblicus/", base_dir="articles"), "/platform/biblicus/")
 
 
 if __name__ == "__main__":
