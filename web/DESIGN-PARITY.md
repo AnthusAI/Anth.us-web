@@ -1,3 +1,7 @@
+> **Historical.** The Gatsby-parity shell described here was replaced by the arcade design (DESIGN.md) and the modules it names
+> (`build_via_papyrus.py`, `anthus_pages.py`, `anthus_mdx.py`, `site_env.py`) are gone; the site now runs on Papyrus's standard
+> front end with hooks (README.md, AGENTS.md).
+
 # Design parity with the production Anth.us site
 
 Goal: the port's front end looks exactly like production Anth.us, proven by

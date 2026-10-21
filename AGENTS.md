@@ -19,7 +19,7 @@
 > real-contacts mode. Track kanbus-e28f and kanbus-0d24 in the historical Gatsby
 > site-operations board; Prospectus tracks kanbus-47dc15 and kanbus-67ae2d.
 
-# AGENTS.md — Anth.us-Papyrus
+# AGENTS.md — Anth.us-web
 
 ## Read this first: how anth.us is served now
 
@@ -44,16 +44,15 @@ below and `Papyrus/docs/site-hosting.md`.
   zone or a record from this repo. A change to the edge is a CloudFormation
   change set that Ryan approves.
 * **Guarded (staging-style) builds** still exist for local and review builds:
-  see [Environment switch](#environment-switch-site_env). A guarded build ships
-  `noindex`; never hand-edit a guard out to "go live". The projection is built
-  with `SITE_ENV=production` semantics and the build fails if any guard
-  survives.
+  see [Environment switch](#environment-switch). A guarded build ships
+  `noindex`; never hand-edit a guard out to "go live". The live projection runs
+  as production (the origin is `site.productionUrl`) and a guarded environment
+  never loads analytics.
 
 ## Read-only boundaries
 
 | Path | Rule |
 | --- | --- |
-| `content/anthus-site-content/` | **Read only.** Same repo the live Gatsby site renders from. A commit here can break production Anth.us. The submodule is pinned to branch `content/markus-native-markup` (native Papyrus markup); **that branch must never be merged to `main`** while anth.us builds from `main`. Converting another branch is a run of `web/mdx_codemod.py` against a fresh clone, never against this checkout. |
 | `../Papyrus` | **Read only** from this repo. Papyrus owns the renderer and `publications/anth_us/` (the `SiteBrand`). Changes there are Papyrus PRs on the `PPY` board. |
 | `../Anth.us` | **Read only.** Reference for chrome, copy, and design tokens. |
 | `../Pilobol.us` | **Read only.** The architectural template. |
@@ -70,74 +69,72 @@ gitignored.
 
 ## Build
 
+There is no build. The CMS app's publish mutation projects the published items
+into the S3 site bucket, and a merge to `main` re-projects every page inside AWS
+(`deploy-render`). Locally:
+
 ```bash
-git submodule update --init --recursive
-pip install "git+https://github.com/AnthusAI/Markus@v0.5.1" "Pillow>=10,<12" "PyYAML>=6"
-PAPYRUS_ROOT=/path/to/Papyrus python3 web/build_via_papyrus.py
-python3 bin/dev-server.py --port 8080
+PAPYRUS_ROOT=/path/to/Papyrus PAPYRUS_SITE_BUCKET=<site bucket> \
+  python3 bin/project_export_locally.py EXPORT OUT --redirects-json R.json
+python3 bin/dev-server.py OUT --port 8080
+PYTHONPATH=$PAPYRUS_ROOT/src:$PAPYRUS_ROOT python3 -m pytest tests
 ```
 
 On this machine Papyrus is at `/Users/home/Projects/Papyrus`. Papyrus's own
 skills reference `/Users/ryan/Projects/Papyrus/...` — that path is stale;
 translate, do not follow literally.
 
-The build ends with a **parity accounting** report. Treat a growth in the
-"dropped/approximated" counts as a regression and explain it.
-
 ### Architecture, in one paragraph
 
-The front end is **the production Anth.us stylesheet and DOM**, not Markus's
-design language (see `web/DESIGN-PARITY.md`). `anthus_content.discover()` reads
-the MDX submodule and classifies nodes the way `Anth.us/gatsby-node.js` does.
-Article and platform-product **bodies** go `anthus_mdx.normalize_body()` ->
-`web/staging/*.md` -> Papyrus `build_markus_site(transform=ANTHUS_TRANSFORM,
-vendor_css=False, ...)`. `markus convert` runs **without** `--allow-html` (a
-Papyrus security invariant), so HTML the build itself generates -- the
-production `.heading` block, `<mark>`, inline `<svg>`, JSX diagram trees,
-colspan tables -- crosses it as Papyrus sentinels (`inline_sentinel`,
-`block_sentinel`) and is re-emitted by `FragmentTransform`. Every other page
-(home, listings, posts, tags, platform index, about, ai-solutions, ryan, 404,
-engage, reading, research, decision-models) is **generated HTML** from
-`anthus_pages` (arcade design language, see `web/DESIGN.md`) and rendered by calling
-`markus_shell.render_page` directly, bypassing Markus. The page envelope is
-`SiteChrome` hooks (`render_masthead`, `render_body`, `head_html`,
-`stylesheets`, `asset_root`), with no monkeypatching. A post-pass over
-`result.pages` (`finish_pages`) rewrites links, injects social meta and the
-`noindex` guard, and gates on `markus-`/`papyrus-` classes before
-`relocate_pages` moves files to canonical directory URLs.
+The site is **Papyrus's standard Markus front end configured by
+`web/projection.json`**, plus named hooks (`web/hooks.py`). The front end is
+**the production Anth.us stylesheet and DOM**, not Markus's design language
+(`web/css/site-theme.css`, `web/DESIGN.md`, `web/DESIGN-PARITY.md`). An article
+or platform item goes through the `source` hook (the production `.heading`
+block, the closing call to action, clean-up of editor leftovers), Markus, the
+`item_transform` hook (Markus classes to the Anthus vocabulary, block
+passthrough for the heading, `<svg>` and `<mark>`), and the page envelope of the
+`page_body` hook (header, container, footer). The other pages are **page files**
+(`web/pages/*.md`: Markus with `::raw` HTML and `::include{...}` for the parts
+generated from content) or listing pages the hooks compose from Papyrus's view
+of a collection. Collections (`articles`, `posts`, `reading`, `research`) are
+**defined by tag** in `projection.json`; pagination is core's (featured 4, then
+pages of 8). A last pass (`page_finish`) rewrites internal links to the
+canonical URLs (`web/links.py`, `web/anthus_urls.py`). Redirects are the
+`redirects` hook plus `redirects.patterns` in `projection.json`.
 
-### Images and citations: Papyrus content markup
+### Page files and includes
 
-Both constructs Markus cannot express are now Papyrus capabilities, opted into
-in `build_via_papyrus.py` via `build_markus_site(images=IMAGES,
-citations=CITATIONS)`. The authoring contract is Papyrus
-`docs/markus-content-markup.md`; read it before changing either.
+`web/pages/<id>.md` is the body of the page named in `projection.json`
+`pages[].source` (`notFound.source` for the 404 page). It starts with
+`::band{size="bare"}` and is a sequence of `::raw` ... `::endraw` regions (HTML
+exactly as written; allowed only in page files, never in CMS items) and
+`::include{kind=...}` lines. Includes that name content are the page's declared
+dependencies, so publishing or editing an item rewrites exactly the pages whose
+includes show it:
 
-* `::image{src= layout= alt=}` — responsive images, 232 uses. Emitted by
-  `anthus_mdx.render_image_directive()`.
-* `[@key]` + a front-matter `citations:` block of CSL-JSON + `::citations{}` —
-  201 markers over 197 entries, 25 bibliographies. Emitted by
-  `render_citation_marker()` / `render_citations_directive()`, with the block
-  re-emitted by `staged_markdown()`.
-* `:::figure{}` — `render_static_figure()`, for the three site-chrome images
-  that are vendored in **this** repo and so have no path under the pipeline's
-  source root (which is the content submodule). Not responsive, by design.
+* `kind="listing"` with `collection=` or `sections= tags= allTags= notTags=`,
+  `sort`, `ties`, `skip`, `count`, `card="text:code=0,grid"` (the `card` hook
+  variants are in `web/cards.py`: `text`, `mini`, `line`, `chip`), `layout="bare"`
+  and `tag="ul" class="..."` for the wrapper element.
+* `kind="block" name=... depends=...` calls `site_blocks.render` (pictograms,
+  the solution grids, further reading, the platform list, the engage form).
+  `depends` names the sections the block reads.
 
-`markus convert` fails a whole page on an unregistered directive, so the
-Papyrus version this site depends on must include PR #83 (it does, along with the
-shell hooks and fragment transforms this build needs); keep it that way when bumping.
+Copy rules (DESIGN.md section 8) apply to the copy in these files. Anth.us
+copy and design rules do not change with the machinery: the arcade redesign,
+the four featured solutions (Cyclotron, Chatticus, Papyrus, Auritus, with the
+Auritus logo), the Primus credibility section ("Built and run for years", "free
+and open source"), the proof strip and claims honesty are pinned by tests.
 
-The content is authored in this markup directly, so the MDX conversion in
-`anthus_mdx` is a pass-through for the pinned content branch. It is kept
-working — and `mdx_codemod` is shared by both paths — because the content repo
-has two dozen un-migrated feature branches. Verified by building the submodule
-at `main` and at `content/markus-native-markup` and diffing
-`web/dist-papyrus`: byte-identical HTML.
+### Images and citations
 
-The build raises if a `<BlogImage>`/`<Citation>`/`<CitationsList>` survives
-into `web/staging/` (`audit_staging`). Leave that check in: without it a
-leftover component would be escaped into visible angle brackets rather than
-failing anything.
+Images in article bodies are `::image{src= layout= alt=}`, citations `[@key]` +
+a front-matter `citations:` block + `::citations{}`; the authoring contract is
+Papyrus `docs/markus-content-markup.md`. The renditions are made at upload and
+read by the projector (`images` in `projection.json`); the `image_pipeline` hook
+only sets the wrapper (`anthus_dom.anthus_image_wrap`, gatsby-plugin-image's
+DOM) and the layout sizes.
 
 ## S3 projection (PPY-f1df00)
 
@@ -154,8 +151,12 @@ The whole `web/` directory is bundled into the content-actions function as `site
   both into the viewer-request function (`papyrus-infra compile-edge-function --static-dir web`). The header
   rewriting is `infra/edge/viewer-response.js`. Both are tested with `node --test tests/edge/*.test.mjs`.
 * Parity gate: `bin/project_export_locally.py EXPORT OUT` writes what `papyrus ops content project --all`
-  writes; `tests/test_projector_incremental.py` (with `ANTHUS_PROJECTOR_EXPORT` and
-  `ANTHUS_PROJECTOR_REFERENCE`) compares it byte for byte with a reference build.
+  writes; `tests/test_projector_incremental.py` proves that incremental projection after random publish, edit and
+  unpublish equals a fresh `project --all` (on the fixture corpus, or on a real export with `ANTHUS_PROJECTOR_EXPORT`).
+* **CMS staging preview.** The `staging` branch of the CMS app exports the drafts and projects them through the same
+  standard projector (`cms.stagingPreview.buildCommand` in `infra/site.json`: `papyrus ops content project --all
+  --from-dir content-export --static-dir web`, guarded). It reads image renditions from the site bucket, so the branch
+  needs `PAPYRUS_SITE_BUCKET` and read access to that bucket; the build fails loudly without it.
 
 ## Hosting
 
@@ -188,40 +189,29 @@ Production is the S3 projection described above. Facts for agents:
 * **Rollback.** Content: restore the previous item version in the newsroom and
   save. Site code: revert the PR on `main` (the deploy re-renders the site). Edge:
   update the edge stack with the previous template.
-* `customHttp.yml` and `bin/deploy-amplify.sh`, `bin/apply_custom_rules.py` are
-  from the Amplify reader and do not affect the live site.
+* `customHttp.yml` is from the Amplify reader and does not affect the live site.
 
-### Environment switch (`SITE_ENV`)
+### Environment switch
 
 Papyrus core owns the guard, the head tags, the sitemap and `robots.txt`
 (`resolve_environment`, `HeadBuilder`, `sitemap_files`, `robots_text`; settings in
-the `site`, `seo` and `sitemap` blocks of `web/projection.json`). `web/site_env.py`
-only maps the Amplify staging variables (`SITE_ENV`, `AWS_BRANCH`, `AWS_APP_ID`) to
-core's `PAPYRUS_SITE_PUBLIC_URL` and draws the footer staging note. The staging
-build prints the resolved mode and origin first.
+the `site`, `seo` and `sitemap` blocks of `web/projection.json`). The projector is
+**production** when its origin (`PAPYRUS_SITE_PUBLIC_URL`, default `site.productionUrl`)
+is `https://anth.us`; `PAPYRUS_SITE_ENV=guarded` (or `production`) overrides the
+guess, and any other origin is guarded. The live Lambda sets neither, so it is production.
 
-| Condition | Mode |
-| --- | --- |
-| `SITE_ENV=production` and `AWS_BRANCH` unset or `main` | **production** |
-| `SITE_ENV=production`, `AWS_BRANCH` is another branch | guarded + loud warning |
-| `SITE_ENV` unset / `staging` / `local` / ... | guarded |
-| any other `SITE_ENV` value (typos, `Production`) | guarded + warning |
-
-| | guarded (default) | production |
+| | guarded | production |
 | --- | --- | --- |
-| origin (canonical, og:url, sitemaps) | `https://<AWS_BRANCH>.<AWS_APP_ID>.amplifyapp.com`, else `ANTHUS_SITE_ORIGIN`, else `http://localhost:8080` | `https://anth.us` (fixed) |
+| origin (canonical, og:url, sitemaps) | `PAPYRUS_SITE_PUBLIC_URL` | `https://anth.us` |
 | `<meta name="robots" content="noindex, nofollow">` | every page | none |
 | footer staging note | yes | no |
-| `robots.txt` | `Disallow: /` | `Allow: /` + `Sitemap: https://anth.us/sitemap-index.xml` (matches live) |
-| analytics (`analytics_enabled`) | off | GA4 `G-31SC26SDGX` with owner opt-out, via `SiteChrome.ga_measurement_id` / `ga_owner_opt_out` (Papyrus #86) |
+| `robots.txt` | `Disallow: /` | `Allow: /` + `Sitemap: https://anth.us/sitemap-index.xml` |
+| analytics | off | GA4 `G-31SC26SDGX` with owner opt-out (`chrome` in `projection.json`) |
 
 Both modes publish `/sitemap-index.xml` (a sitemapindex) and `/sitemap-0.xml`
 (the urlset of canonical 200 pages, no 404) -- the same URLs live anth.us
 serves -- plus `<link rel="sitemap" href="/sitemap-index.xml">` on every page.
 There is no `/sitemap.xml`.
-
-Tests: `python3 tests/test_site_env.py` (needs `PAPYRUS_ROOT`). The deployed host
-is checked with `bin/check-guards.py` (below).
 
 **Verify a deployed host** (read-only GETs):
 
@@ -236,25 +226,13 @@ Exits non-zero on any mismatch. `--no-sitemap` skips the sitemap checks
 for a host still serving a pre-sitemap-index build.
 
 **Topology.** One CMS Amplify app for editing, one S3 site bucket and one
-CloudFront distribution for the public site (see the top of this file). The
-production build uses `SITE_ENV=production`; `check-guards.py --expect
-production` is the check for a deployed host. The retired reader app's two
-branches (`main`, `staging`) no longer matter.
+CloudFront distribution for the public site (see the top of this file).
 
 ### Canonical URLs
 
-The origin comes from the [environment switch](#environment-switch-site_env):
-production is always `https://anth.us`; guarded builds derive it from
-`AWS_APP_ID`/`AWS_BRANCH` (injected by an Amplify CI build, which this site no longer runs; set `ANTHUS_SITE_ORIGIN` for review builds). A **local** build has
-neither, so it falls back to `http://localhost:8080`, which would ship in
-`<link rel="canonical">` and `og:url`. For a review build, build with:
-
-```bash
-ANTHUS_SITE_ORIGIN=https://<review-host> \
-  PAPYRUS_ROOT=/Users/home/Projects/Papyrus python3 web/build_via_papyrus.py
-```
-
-(Do **not** set `SITE_ENV=production` for a review build.)
+The origin comes from the [environment switch](#environment-switch): production is always `https://anth.us`. A local or
+review projection ships the origin you give it, so set `PAPYRUS_SITE_PUBLIC_URL=https://<review-host>` (and
+`PAPYRUS_SITE_ENV=guarded`) when projecting for review; otherwise it is production and its canonical links say `anth.us`.
 
 ## Things that will bite you
 
@@ -262,50 +240,36 @@ ANTHUS_SITE_ORIGIN=https://<review-host> \
   leaf, so it is `::metric{…}` with no closing fence. Writing three colons
   makes the parser see an unterminated container and the whole page fails to
   convert.
-* **Front-matter `title` is kept for Papyrus's `<title>` only.** Markus's own
-  `<header>` is removed by `FragmentTransform(strip_header=True)` and the
-  production `.heading` (h1, date, authors, `.draft-overlay`) is prepended as a
-  block sentinel by `anthus_content._article_header`. A body `# Heading` would
-  give the page two `<h1>`s.
+* **The title and the heading.** The page `<title>` and the head tags come from the
+  `page_head` hook. Markus's own `<header>` is removed by
+  `FragmentTransform(strip_header=True)` and the production `.heading` (h1, date,
+  authors, `.draft-overlay`) is prepended as a block sentinel by the `source` hook
+  (`anthus_dom.article_heading`). A body `# Heading` would give the page two `<h1>`s.
 * **Image wrappers ride in the layout name.** `<div className="center-full-image">`
   / `<figure>` / floated `<div style=...>` around an `::image{}` is DOM the
-  stylesheet targets, and `::image{}` has no wrapper attribute, so
-  `anthus_mdx._convert_image_wrappers` encodes it as `layout="full@figure-cfi"`
-  and `anthus_dom.anthus_image_wrap` decodes it. `anthus_layout_sizes` registers
-  every combination.
-* **The site stylesheet is hand-written.** `web/css/arcade.css` (the design
-  system, `web/DESIGN.md`) and `web/css/arcade-pictograms.css` (pictogram
-  sprites) are the source of truth: edit them directly. `web/site_css.py`
-  concatenates them; the build stages the result and Papyrus copies it to
-  `dist/css/site-theme.css`, and the projector ships the same bytes.
-  `web/css/anthus-theme.css` (generated from the old Gatsby repo; its generator
-  has been removed) is no longer shipped; do not edit it, and do not
-  expect its hashed CSS-module classes to be styled by the new sheet.
+  stylesheet targets, and `::image{}` has no wrapper attribute, so the content
+  encodes it as `layout="full@figure-cfi"` and `anthus_dom.anthus_image_wrap`
+  decodes it. `anthus_layout_sizes` registers every combination.
+* **The site stylesheet is hand-written.** `web/css/site-theme.css` is the design
+  system (`web/DESIGN.md`) and the pictogram sprites in one file: edit it directly.
+  Papyrus publishes it as `css/site-theme.css`.
 * **Do not strip tag-shaped prose.** `<N>`, `<arm>`, `<QUERY>` appear in
-  sentences as placeholders. `anthus_mdx` only strips names in
-  `_KNOWN_HTML_TAGS`; everything else is left for Markus to escape, which is
-  what the author meant the reader to see.
-* **Only referenced images are staged.** The content repo holds ~313 MB of
-  images, most unreferenced. Copying the tree wholesale would bloat the
-  artifact and serve multi-megabyte PNGs at thumbnail size. Article images no
-  longer go through that path at all — `ImagePipeline` reads them straight out
-  of the submodule and writes its own renditions.
-* **`upgrade_plain_images=False` is load-bearing.** `anthus_pages` emits
-  listing thumbnails and chrome as plain Markdown images with site-ABSOLUTE
-  hrefs, and `images.assert_safe_asset_src` rejects absolute paths by design.
-  Turning the upgrade on fails the build on the homepage.
-* **`web/.image-cache/` must stay outside `web/staging/` and
-  `web/dist-papyrus/`.** The build wipes both. Without the cache every build
-  re-encodes every source at every breakpoint in AVIF and WebP
-  (`gatsby_parity`, AVIF up to 4096px), which is slow. The live site does not
-  encode images in a build at all: renditions are made at upload by the
-  `renditions` Lambda (`web/projection.json`); this cache matters only for local
-  and parity builds.
-* **Pillow must be >=11.3** (it bundles libavif; the Lambdas and local builds need it). Check locally with
-  `python3 -c "from PIL import features; print(features.check('avif'))"`.
+  sentences as placeholders; Markus escapes them, which is what the author meant
+  the reader to see.
+* **`upgrade_plain_images=False` is load-bearing.** Cards and chrome use plain
+  `<img>` with site-ABSOLUTE hrefs, which the image pipeline rejects by design.
+  The `image_pipeline` hook sets it.
+* **Renditions are made at upload, not at projection.** An image that has no
+  rendition record in the site store cannot be placed; the projection fails loudly.
+* **Pillow must be >=11.3** (it bundles libavif; the renditions Lambda needs it).
 * **Main images start at `opacity:0`** (gatsby-plugin-image's behaviour).
-  `_render_body` appends Papyrus's `FADE_IN_SCRIPT` to every page that has a
+  `view.finish` appends Papyrus's `FADE_IN_SCRIPT` to every page that has a
   `data-main-image`; without it the images stay invisible.
+* **Page files are trusted HTML.** `::raw` is allowed only in `web/pages/*.md`
+  (Papyrus rejects it in a CMS item). Whitespace between inline elements is
+  visible, so break lines only between block elements.
+* **A new page is a `pages` entry in `projection.json` and a file.** Keep its
+  URL out of `legacy-redirect-rules.json` (a redirect would shadow it).
 
 ### Parity gate for site changes (PPY-e329c3)
 

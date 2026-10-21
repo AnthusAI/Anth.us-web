@@ -1,11 +1,6 @@
-# Generated static site. Built by `python3 web/build_via_papyrus.py`; Amplify
-# builds it at deploy time. Never commit build output.
+# Local projections (bin/project_export_locally.py OUT) and the CMS staging preview
 web/dist-papyrus/
 web/dist-preview/
-
-# Markdown staging tree normalized from the MDX content submodule at build
-# time. Derived, never authored — never commit it.
-web/staging/
 
 # Amplify Hosting build cache (restored by Amplify, not committed)
 .amplify-cache/
@@ -17,9 +12,6 @@ __pycache__/
 
 # Node tooling (not used by the build; local checks only)
 node_modules/
-
-# Generated responsive image renditions. A build cache, not output.
-web/.image-cache/
 
 # Papyrus publication app (CMS build; the static Python build never reads these)
 .next/

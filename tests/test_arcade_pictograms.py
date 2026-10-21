@@ -1,6 +1,6 @@
 """Tests for the animated pixel pictograms (web/arcade_pictograms.py).
 
-Run from the repo root:  python3 tests/test_arcade_pictograms.py
+Run with the rest of the suite (see tests/conftest.py).
 """
 
 import re
@@ -15,7 +15,11 @@ sys.path.insert(0, str(ROOT / "web"))
 import arcade_pictograms as ap  # noqa: E402
 from arcade_pictograms import _n  # noqa: E402
 
-CSS = (ROOT / "web" / "css" / "arcade-pictograms.css").read_text()
+THEME = (ROOT / "web" / "css" / "site-theme.css").read_text()
+#: The pictogram rules are the last section of the single theme file (they were arcade-pictograms.css).
+PICTOGRAM_MARKER = "/* ---- arcade-pictograms.css ---- */"
+assert PICTOGRAM_MARKER in THEME
+CSS = THEME[THEME.index(PICTOGRAM_MARKER):]
 SVG_NS = "{http://www.w3.org/2000/svg}"
 
 
@@ -93,7 +97,7 @@ class PictogramTests(unittest.TestCase):
                 self.assertIn('begin="', html)
 
     def test_solution_marks_have_no_css_length_motion(self):
-        css = (ROOT / "web" / "css" / "arcade.css").read_text()
+        css = THEME
         for needle in ("offset-distance", "offset-path", "sm-chat-gaze", "sm-chat-blink",
                        "sm-cyc-head", "sm-cyc-show"):
             self.assertNotIn(needle, css)
@@ -172,6 +176,17 @@ class PictogramTests(unittest.TestCase):
     def test_unknown_name(self):
         with self.assertRaises(KeyError):
             ap.render("nope")
+
+
+    def test_the_projected_pages_embed_the_pictograms_their_page_files_name(self):
+        import support
+
+        home = support.project_fixture().page("/")
+        self.assertIn('data-px="hero-loop"', home)
+        self.assertEqual(home.count('data-px="hero-loop"'), 1)
+        self.assertIn(ap.render("hero-loop"), home)
+        for name in re.findall(r'data-px="([^"]+)"', home):
+            self.assertIn(name, ap.NAMES)
 
 
 if __name__ == "__main__":

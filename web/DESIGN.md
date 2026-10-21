@@ -120,7 +120,7 @@ body `1.0625rem`. Root font-size steps up on big screens:
 - **Eyebrow**: see 3.
 - **Footer**: dark band `#150f20`, gradient pixel rule on top, columns
   (Company, Work, Platform, Writing, Elsewhere), wordmark, the
-  `site_env.footer_note()` line.
+  staging note of a guarded build.
 
 ## 6. Pictograms
 

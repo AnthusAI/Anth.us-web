@@ -1,18 +1,11 @@
 """Every authored layout and legacy wrapper maps onto one placement look."""
-import sys
+import re
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "web"))
-
-try:
-    import build_via_papyrus  # noqa: F401  (puts Papyrus on sys.path)
-    import anthus_dom as dom
-    IMPORT_ERROR = None
-except (ImportError, SystemExit) as error:
-    dom = None
-    IMPORT_ERROR = error
+import anthus_dom as dom
+import support
 
 
 def wrap(layout, caption=""):
@@ -20,7 +13,6 @@ def wrap(layout, caption=""):
                            width=800, height=400, display_width=None, placeholder=None, inner="<img>")
 
 
-@unittest.skipIf(dom is None, f"build module unavailable: {IMPORT_ERROR}")
 class ImagePlacement(unittest.TestCase):
     def test_layout_names(self):
         for layout, place in (("full", "full"), ("center-small-image", "small"), ("centered", "medium"),
@@ -36,6 +28,20 @@ class ImagePlacement(unittest.TestCase):
 
     def test_every_wrapper_key_is_mapped(self):
         self.assertEqual(set(dom.IMAGE_WRAPPERS), set(dom.WRAPPER_PLACEMENT))
+
+    def test_the_projected_article_places_each_image_by_its_layout(self):
+        main = support.project_fixture().main("/articles/pictured-article/")
+        wrappers = re.findall(r'<div class="img (img--[a-z-]+)">', main)
+        self.assertEqual(wrappers, ["img--full", "img--small", "img--inset-right"])
+        self.assertIn('<p class="image-caption">Wide</p>', main)
+        for place in ("full", "small", "inset-right"):  # the theme has a rule for each look it emits
+            self.assertIn(f".img--{place}", Path(dom.__file__).parent.joinpath("css", "site-theme.css").read_text())
+
+    def test_the_projected_images_are_responsive_and_use_the_stored_renditions(self):
+        main = support.project_fixture().main("/articles/pictured-article/")
+        self.assertIn("/assets/responsive/images/wide-1400.png", main)
+        self.assertIn('width="1400" height="700"', main)
+        self.assertNotIn("markus-", main)  # the class vocabulary of the converted fragment is the site's own
 
 
 if __name__ == "__main__":

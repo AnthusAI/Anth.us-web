@@ -4,10 +4,24 @@
     "shortName": "Anthus",
     "publisher": "Anthus AI Solutions",
     "description": "Anthus builds self-aligning AI systems: custom models, agent harnesses, evaluation loops, and unattended automation with a human in the loop, grounded in production operations since 2007.",
-    "productionUrl": "https://anth.us"
+    "productionUrl": "https://anth.us",
+    "componentsCss": false
   },
   "urls": {
-    "style": "directory"
+    "style": "directory",
+    "sections": {
+      "articles": {
+        "base": "articles",
+        "label": "Articles",
+        "listingPage": false,
+        "sort": "date"
+      },
+      "platform": {
+        "base": "platform",
+        "label": "Platform",
+        "listingPage": false
+      }
+    }
   },
   "redirects": {
     "patterns": [
@@ -60,5 +74,196 @@
     "latest": true,
     "latestCount": 20,
     "summaryCharacters": 240
+  },
+  "listings": {
+    "pageSize": 8,
+    "featuredCount": 4,
+    "tags": true,
+    "tagBase": "tags",
+    "types": [
+      "article",
+      "page"
+    ],
+    "tagSelect": {
+      "sections": [
+        "articles"
+      ]
+    },
+    "tagPageSize": 0,
+    "draft": {
+      "field": "state",
+      "values": [
+        "draft"
+      ]
+    },
+    "pageSuffix": ", page {page}",
+    "tagTitle": "Articles tagged with: {tag}"
+  },
+  "collections": [
+    {
+      "id": "articles",
+      "base": "articles",
+      "label": "Articles",
+      "select": {
+        "sections": [
+          "articles"
+        ],
+        "notTags": [
+          "solutions",
+          "posts"
+        ]
+      },
+      "ties": "slug-asc",
+      "drafts": true,
+      "sitemapPages": true,
+      "description": "Long-form articles from Anthus on decision models, agent systems, classifiers in production, and the economics of AI-built software."
+    },
+    {
+      "id": "posts",
+      "base": "posts",
+      "label": "Posts",
+      "select": {
+        "sections": [
+          "articles"
+        ],
+        "tags": [
+          "posts"
+        ]
+      },
+      "ties": "slug-asc",
+      "drafts": true,
+      "sitemapPages": true,
+      "description": "Short posts from Anthus on what shipped, what we read, and what changed in AI this week."
+    },
+    {
+      "id": "reading",
+      "base": "reading",
+      "label": "Reading List",
+      "select": {
+        "sections": [
+          "articles"
+        ],
+        "tags": [
+          "reading"
+        ]
+      },
+      "ties": "slug-asc",
+      "drafts": true,
+      "pageSize": 1000,
+      "featuredCount": 0,
+      "description": "Papers and books behind the work at Anthus, one short note each on what they say and what we checked."
+    },
+    {
+      "id": "research",
+      "base": "research",
+      "label": "Research",
+      "select": {
+        "sections": [
+          "articles"
+        ],
+        "tags": [
+          "research"
+        ]
+      },
+      "ties": "slug-asc",
+      "drafts": true,
+      "pageSize": 1000,
+      "featuredCount": 0,
+      "description": "Experiments on how Jev, Laya and other decision models actually behave in production: bias, calibration, fine-tuning and distillation, with the method and the measurements."
+    }
+  ],
+  "chrome": {
+    "scripts": [
+      "assets/site-nav.js",
+      "assets/conversion-events.js",
+      "assets/px-live.js",
+      "assets/drafts.js"
+    ],
+    "lang": "en",
+    "body_class": "",
+    "stylesheets": [
+      "css/site-theme.css"
+    ],
+    "head_html": "<meta name=\"color-scheme\" content=\"light dark\">\n<meta name=\"theme-color\" content=\"#dc5497\" media=\"(prefers-color-scheme: light)\">\n<meta name=\"theme-color\" content=\"#dc5497\" media=\"(prefers-color-scheme: dark)\">\n<script>document.documentElement.classList.add('js')</script>\n<link rel=\"icon\" href=\"/favicon-32x32.png?v=6767bf536f0dd7f40470f555fcf412a7\" type=\"image/png\"/>\n<link rel=\"manifest\" href=\"/manifest.webmanifest\" crossorigin=\"anonymous\"/>\n<link rel=\"apple-touch-icon\" sizes=\"192x192\" href=\"/icons/icon-192x192.png?v=6767bf536f0dd7f40470f555fcf412a7\"/>\n<link rel=\"apple-touch-icon\" sizes=\"512x512\" href=\"/icons/icon-512x512.png?v=6767bf536f0dd7f40470f555fcf412a7\"/>\n<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n<link href=\"https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Jersey+10&family=Jersey+25&family=Jersey+25+Charted&display=swap\" rel=\"stylesheet\">\n",
+    "title_template": "{title}",
+    "same_title_template": "{title}",
+    "asset_root": "/",
+    "ga_measurement_id": "G-31SC26SDGX",
+    "ga_owner_opt_out": true
+  },
+  "citations": true,
+  "hooks": "hooks.py",
+  "static": {
+    "copy": [
+      "static-root"
+    ]
+  },
+  "components": {
+    "breadcrumbs": false
+  },
+  "pages": [
+    {
+      "id": "about",
+      "path": "about",
+      "title": "About Us",
+      "description": "Anthus builds and operates self-aligning AI systems, grounded in production operations since 2007 — the reliability and security behind a multi-million-dollar platform, now applied to AI.",
+      "source": "pages/about.md"
+    },
+    {
+      "id": "ai-solutions",
+      "path": "ai-solutions",
+      "title": "AI Solutions",
+      "description": "Anthus builds and operates self-aligning AI systems — custom models, agent harnesses, and evaluation loops with a human in the loop, grounded in production operations since 2007.",
+      "source": "pages/ai-solutions.md"
+    },
+    {
+      "id": "ryan",
+      "path": "ryan",
+      "title": "Ryan Porter",
+      "description": "Anthus builds and operates self-aligning AI systems — custom models, agent harnesses, and evaluation loops with a human in the loop, grounded in production operations since 2007.",
+      "source": "pages/ryan.md"
+    },
+    {
+      "id": "engage",
+      "path": "engage",
+      "title": "Engage Anthus",
+      "description": "What an Anthus engagement looks like: bring any problem you think AI might solve, and we scope a first month with a record you can inspect. Classifier labs, factory-run software, and newsrooms are three examples.",
+      "source": "pages/engage.md"
+    },
+    {
+      "id": "decision-models",
+      "path": "decision-models",
+      "title": "Aligning Jev and Other Decision Models to Your Data",
+      "description": "You can't fine-tune Jev. Here is how to align a decision model to your own data instead: review its decisions, label the disagreements, calibrate its confidence, change the questions, gate by slice, and distill a classifier you own. Published measurements at every step.",
+      "source": "pages/decision-models.md"
+    },
+    {
+      "id": "benchmarks",
+      "path": "benchmarks",
+      "title": "Decision Model Benchmarks: Biased-Decisions and Hard-Decisions",
+      "description": "Two public benchmarks for decision models: Biased-Decisions measures how often an answer changes when one personal detail changes, and Hard-Decisions measures how accuracy falls as reasoning gets deeper.",
+      "source": "pages/benchmarks.md"
+    },
+    {
+      "id": "platform",
+      "path": "platform",
+      "title": "Anthus Platform",
+      "description": "Explore the Anthus Platform: the runtime, orchestration, MLOps, knowledge, observability, and media systems behind our AI-native delivery work.",
+      "source": "pages/platform.md"
+    },
+    {
+      "id": "home",
+      "path": "",
+      "title": "Home",
+      "description": "Anthus builds self-aligning AI systems: custom models, agent harnesses, evaluation loops, and unattended automation with a human in the loop, grounded in production operations since 2007.",
+      "source": "pages/home.md"
+    }
+  ],
+  "theme": null,
+  "notFound": {
+    "title": "404: Not Found",
+    "description": "Anthus builds and operates self-aligning AI systems — custom models, agent harnesses, and evaluation loops with a human in the loop, grounded in production operations since 2007.",
+    "noindex": false,
+    "source": "pages/404.md"
   }
 }

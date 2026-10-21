@@ -12,6 +12,7 @@ redirect map the site's key-value store would hold.
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -24,7 +25,8 @@ from papyrus_content.projection.writers import LocalDirectoryWriter  # noqa: E40
 from papyrus_content.publishing import ItemFields, project_item_to_published, save_item  # noqa: E402
 from procedures.newsroom.tests.fake_client import FakeAuthoringClient  # noqa: E402
 
-import projector as anthus_projector  # noqa: E402
+from papyrus_content.projection.projector import MarkusSiteProjector  # noqa: E402
+from papyrus_content.renditions import S3RenditionStore  # noqa: E402
 
 ACTOR = "project-export-locally"
 NOW = "2026-10-12T12:00:00Z"
@@ -85,7 +87,7 @@ def main():
     redirects = MemoryRedirectStore()
     context = ProjectionContext(
         source=PublishedContentSource(client),
-        projector=anthus_projector.create_projector(),
+        projector=MarkusSiteProjector.from_static_directory(REPOSITORY / "web", renditions=S3RenditionStore(os.environ["PAPYRUS_SITE_BUCKET"])),
         writer=LocalDirectoryWriter(arguments.out_directory),
         redirect_store=redirects,
         keep_state=False,
