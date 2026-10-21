@@ -200,7 +200,10 @@ main { display: block; }
 }
 .btn:hover { color: var(--on-pink); }
 .btn:hover > span { background: var(--pink-hot); }
-.btn:active { transform: translate(4px, 4px); filter: none; }
+/* The press moves the face, never the link: moving the link off the pointer between mousedown and
+ * mouseup sends the click to the parent instead, so a press near the edge would not navigate. */
+.btn:active { filter: none; }
+.btn:active > span { transform: translate(4px, 4px); }
 .btn--sm { font-size: 1.15rem; filter: drop-shadow(3px 3px 0 var(--pink-shadow)); }
 .btn--sm > span { padding: 0.7em 1.1em 0.65em; }
 
@@ -216,7 +219,7 @@ main { display: block; }
 }
 .btn--ghost:hover { color: var(--pink-deep); }
 .btn--ghost:hover > span { background: var(--pink-deep); }
-.btn--ghost:active { transform: translate(2px, 2px); }
+.btn--ghost:active > span { transform: translate(2px, 2px); }
 .section--band .btn--ghost > span::before { background: var(--panel); }
 
 
@@ -861,7 +864,7 @@ article .heading .authors { font-size: 0.9rem; }
 /* ----------------------------------------------------------------- motion */
 @media (prefers-reduced-motion: reduce) {
   .cursor { animation: none; }
-  .btn:active { transform: none; }
+  .btn:active > span { transform: none; }
   html { scroll-behavior: auto; }
 }
 
