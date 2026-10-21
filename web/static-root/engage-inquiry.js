@@ -1,6 +1,15 @@
 (() => {
   const form = document.getElementById('engage-inquiry');
   if (!form || !globalThis.crypto?.randomUUID) return;
+  // Time since the form was rendered, sent as the optional `elapsed_ms` intake field. Prospectus
+  // only uses it as a weak spam signal after the note is stored; it never changes the reply.
+  const clock = () => (typeof globalThis.performance?.now === 'function' ? globalThis.performance.now() : Date.now());
+  const renderedAt = clock();
+  const MAX_ELAPSED_MS = 86400000;
+  function elapsedSinceRender() {
+    const elapsed = Math.round(clock() - renderedAt);
+    return Number.isFinite(elapsed) ? Math.min(Math.max(elapsed, 0), MAX_ELAPSED_MS) : 0;
+  }
   const button = form.querySelector('button');
   const error = form.querySelector('[data-error]');
   const receipt = form.querySelector('[data-receipt]');
@@ -82,7 +91,8 @@
       website: String(fields.get('website') || ''), notice_version: form.dataset.noticeVersion,
       marketing_opt_in: false, page_path: '/engage', campaign,
     });
-    if (!pending || pending.data !== data) pending = {data, id: crypto.randomUUID()};
+    // A retry of the same note keeps its receipt and its first timing.
+    if (!pending || pending.data !== data) pending = {data, id: crypto.randomUUID(), elapsed: elapsedSinceRender()};
     sending = true;
     form.dataset.state = 'sending';
     button.disabled = true;
@@ -92,7 +102,7 @@
       try {
         response = await fetch(form.dataset.endpoint, {
           method: 'POST', headers: {'Content-Type': 'application/json'}, credentials: 'omit',
-          body: JSON.stringify({...JSON.parse(data), submission_id: pending.id}),
+          body: JSON.stringify({...JSON.parse(data), submission_id: pending.id, elapsed_ms: pending.elapsed}),
           signal: AbortSignal.timeout(20000),
         });
       } catch {
