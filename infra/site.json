@@ -4,7 +4,7 @@
   "repository": "https://github.com/AnthusAI/Anth.us-web",
   "brand": "anth-us",
   "frontend": "markus-static",
-  "papyrusVersion": "5.12.0",
+  "papyrusVersion": "5.13.0",
   "cms": {
     "staging": true,
     "stagingPreview": {
@@ -28,6 +28,8 @@
     "repo": "Anth.us-web",
     "branches": [
       "main"
-    ]
+    ],
+    "ownerId": 152415604,
+    "repoId": 1403145090
   }
 }
