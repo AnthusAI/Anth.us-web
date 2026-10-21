@@ -262,6 +262,13 @@
     }
   ],
   "theme": null,
+  "pageActions": {
+    "ai": [
+      "chatgpt",
+      "claude",
+      "perplexity"
+    ]
+  },
   "notFound": {
     "title": "404: Not Found",
     "description": "Anthus builds and operates self-aligning AI systems — custom models, agent harnesses, and evaluation loops with a human in the loop, grounded in production operations since 2007.",
