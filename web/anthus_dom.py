@@ -42,9 +42,7 @@ from pathlib import Path
 import arcade_pictograms
 import solution_marks
 from solution_sites import EXTERNAL_SITES
-import site_env  # PPY-f1f0a8: SITE_ENV guards
 
-POD_ROOT = Path(__file__).resolve().parent
 
 # --------------------------------------------------------------------------
 # Chrome
@@ -153,14 +151,6 @@ def _brand(*, home_current: bool, lockup_href: str, lockup_label: str, lockup_cu
     )
 
 
-def _logo(*, current: bool = False) -> str:
-    attrs = ' aria-current="page"' if current else ""
-    return (
-        f'<a class="site-logo" href="/"{attrs} aria-label="Anthus home">'
-        f'{_LOGO_SVG}</a>'
-    )
-
-
 #: The four flagship in-house solutions, always in this order: (name, site, one-liner, pictogram, anth.us page).
 PRODUCTS = (
     ("Cyclotron", "https://cyclotron.anth.us", "One AI decision that learns from your team’s corrections.",
@@ -240,14 +230,22 @@ def _footer_link(label: str, href: str, external: bool) -> str:
     return f'<li><a href="{html.escape(href, quote=True)}"{rel}>{html.escape(label)}</a></li>'
 
 
-def _footer_html() -> str:
+#: The footer note of a guarded (non-production) build, so no one mistakes a preview for the site.
+STAGING_NOTE_HTML = (
+    '<div style="max-width:1120px;margin:1.25rem auto 0 auto;padding:0 1rem">'
+    '<p style="margin:0;font-size:0.78rem;line-height:1.5;font-weight:300;'
+    'color:#cbbfef">Staging preview of the Papyrus/Markus port of anth.us. '
+    "Not the production site.</p></div>"
+)
+
+
+def _footer_html(note: str = "") -> str:
     columns = "".join(
         f'<div><h2>{html.escape(title)}</h2><ul>'
         + "".join(_footer_link(*item) for item in items)
         + "</ul></div>"
         for title, items in FOOTER_COLUMNS
     )
-    note = site_env.footer_note()
     products = "".join(
         '<li class="site-footer__product">'
         f'<a class="site-footer__pname" href="{html.escape(url, quote=True)}" rel="noopener">{html.escape(name)}{solution_marks.mark(name)}</a>'
@@ -281,6 +279,7 @@ def _footer_html() -> str:
 
 
 FOOTER_HTML = _footer_html()
+FOOTER_HTML_GUARDED = _footer_html(STAGING_NOTE_HTML)
 
 
 def _header_html(active_path: str) -> str:
@@ -324,56 +323,11 @@ def _same_route(menu_href: str, active_path: str) -> bool:
     return menu_href.strip("/") == (active_path or "").strip("/")
 
 
-#: One stylesheet link (preconnect + display=swap), DESIGN.md section 2.
-_FONTS = (
-    "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600"
-    "&family=Geist+Mono:wght@400;500&family=Jersey+10&family=Jersey+25"
-    "&family=Jersey+25+Charted&display=swap"
-)
-
-#: Markup placed after ``</title>`` by ``SiteChrome.head_html``.
-HEAD_HTML = (
-    '<meta name="color-scheme" content="light dark">\n'
-    # Browser chrome tint (Safari's toolbar, mobile address bars): the brand fuchsia in both modes.
-    '<meta name="theme-color" content="#dc5497" media="(prefers-color-scheme: light)">\n'
-    '<meta name="theme-color" content="#dc5497" media="(prefers-color-scheme: dark)">\n'
-    "<script>document.documentElement.classList.add('js')</script>\n"
-    '<link rel="icon" href="/favicon-32x32.png?v=6767bf536f0dd7f40470f555fcf412a7" type="image/png"/>\n'
-    '<link rel="manifest" href="/manifest.webmanifest" crossorigin="anonymous"/>\n'
-    '<link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png?v=6767bf536f0dd7f40470f555fcf412a7"/>\n'
-    '<link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512x512.png?v=6767bf536f0dd7f40470f555fcf412a7"/>\n'
-    '<link rel="preconnect" href="https://fonts.googleapis.com">\n'
-    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
-    f'<link href="{_FONTS}" rel="stylesheet">\n'
-)
-
-
-def route_for(active_href: str) -> str:
-    """Production-shaped route (``/blog/x/``) for a Papyrus ``active_href``.
-
-    Drives the nav ``active`` class, which Gatsby sets on an exact route match
-    only. Papyrus hrefs are ``index.html`` / ``about.html`` / ``posts/x.html``;
-    the nav links are ``/about/`` etc., so only the top-level pages can match.
-    """
-    href = (active_href or "index.html").lstrip("/")
-    if href in ("index.html", ""):
-        return "/"
-    if href.endswith("/index.html"):
-        return "/" + href[: -len("index.html")]
-    if href.endswith(".html"):
-        return "/" + href[: -len(".html")] + "/"
-    return "/" + href
-
-
 #: A generated page that lays out its own full-bleed sections starts with this.
 BARE_MARKER = "<!--bare-->"
 
 
-def render_masthead(route: str) -> str:
-    return _header_html(route)
-
-
-def render_envelope(*, fragment: str, route: str, scripts: str) -> str:
+def render_envelope(*, fragment: str, route: str, scripts: str, guarded: bool = False) -> str:
     """Everything between ``<body>`` and ``</body>``.
 
     The homepage and every generated page compose their own full-bleed
@@ -390,7 +344,7 @@ def render_envelope(*, fragment: str, route: str, scripts: str) -> str:
         '<a class="skip-link" href="#main">Skip to content</a>\n'
         + _header_html(route)
         + f'\n<main id="main">{body}</main>\n'
-        + FOOTER_HTML
+        + (FOOTER_HTML_GUARDED if guarded else FOOTER_HTML)
         + "\n"
         + scripts
     )
@@ -619,28 +573,6 @@ def anthus_image_wrap(wrap) -> str:
         else:
             markup += f'<p class="image-caption">{html.escape(caption)}</p>'
     return f'<{tag} class="img img--{place}"{style}>{markup}</{tag}>'
-
-
-def hero_image_html(*, src: str, alt: str, class_name: str) -> str:
-    """A full-bleed hero image, in `gatsby-plugin-image`'s FULL_WIDTH shape.
-
-    FULL_WIDTH differs from the constrained shape used by `image_html`: there
-    is no `max-width` sizer, just a `padding-top` percentage spacer that holds
-    the aspect ratio while `.hero .hero-image` sizes the box. `layout.scss`
-    switches between `.hero-image-default` and `.hero-image-wide` at 941px, so
-    both are emitted and CSS picks one -- same as production.
-    """
-    size = _dimensions(src)
-    ratio = ""
-    if size:
-        width, height = size
-        ratio = f'<div aria-hidden="true" style="padding-top:{height / width * 100}%"></div>'
-    return (
-        f'<div class="gatsby-image-wrapper {html.escape(class_name, quote=True)}">'
-        f"{ratio}"
-        f'<img src="{html.escape(src, quote=True)}" alt="{html.escape(alt, quote=True)}" '
-        'decoding="async" loading="eager"></div>'
-    )
 
 
 # --------------------------------------------------------------------------

@@ -1,41 +1,45 @@
 """Items that live on their own site emit no page from the projector (full or incremental)."""
-import sys
 import unittest
-from pathlib import Path
 from types import SimpleNamespace
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "web"))
-
-try:
-    import projector
-    from solution_sites import EXTERNAL_SITES
-    IMPORT_ERROR = None
-except (ImportError, SystemExit) as error:
-    projector = None
-    IMPORT_ERROR = error
+import hooks
+import support
+from solution_sites import EXTERNAL_SITES
 
 
 def summary(section, stem):
     return SimpleNamespace(section=section, output_path=f"{section}/{stem}.mdx", front_matter={"title": stem})
 
 
-@unittest.skipIf(projector is None, f"projector unavailable: {IMPORT_ERROR}")
 class ExternalSolutionItems(unittest.TestCase):
-    def setUp(self):
-        self.projector = projector.AnthusProjector.__new__(projector.AnthusProjector)
-
-    def test_the_four_items_have_no_page_path(self):
+    def test_the_four_items_are_left_out_of_the_site(self):
         for slug in EXTERNAL_SITES:
-            self.assertEqual(self.projector.item_page_paths(summary("platform", slug)), (), slug)
+            self.assertFalse(hooks.item_filter(summary("platform", slug)), slug)
 
-    def test_item_pages_renders_nothing_for_them(self):
+    def test_other_platform_items_and_articles_stay_in_the_site(self):
+        self.assertTrue(hooks.item_filter(summary("platform", "biblicus")))
+        self.assertTrue(hooks.item_filter(summary("articles", "x")))
+
+    def test_the_projected_item_pages_follow_the_filter(self):
+        files = support.project_fixture().files
         for slug in EXTERNAL_SITES:
-            item = SimpleNamespace(summary=summary("platform", slug))
-            self.assertEqual(self.projector.item_pages(item, site=None), {}, slug)
+            self.assertNotIn(f"platform/{slug}/index.html", files, slug)
+        self.assertIn("platform/biblicus/index.html", files)
+        self.assertIn("platform/auritus/index.html", files)
+        self.assertIn("articles/plain-article/index.html", files)
 
-    def test_other_platform_items_and_articles_keep_their_page(self):
-        self.assertEqual(self.projector.item_page_paths(summary("platform", "biblicus")), ("platform/biblicus/index.html",))
-        self.assertEqual(self.projector.item_page_paths(summary("articles", "x")), ("articles/x/index.html",))
+    def test_an_incremental_projection_of_one_of_them_writes_no_page(self):
+        import tempfile
+
+        from papyrus_content.projection.engine import project
+
+        out = tempfile.mkdtemp(prefix="anthus-external-", dir=support.os.environ.get("ANTHUS_BUILD_DIR"))
+        context = support.make_context(support.FIXTURE_CONTENT, support.Path(out), keep_state=True)
+        report = project(context, "file:platform/primus.md")
+        self.assertTrue(report.ok, report.errors)
+        self.assertFalse([key for key in report.written if "platform/primus/" in key])
+        report = project(context, "file:platform/biblicus.md")
+        self.assertIn("platform/biblicus/index.html", report.written)
 
 
 if __name__ == "__main__":

@@ -4,11 +4,11 @@
   "repository": "https://github.com/AnthusAI/Anth.us-web",
   "brand": "anth-us",
   "frontend": "markus-static",
-  "papyrusVersion": "5.5.0",
+  "papyrusVersion": "5.7.0",
   "cms": {
     "staging": true,
     "stagingPreview": {
-      "buildCommand": "rm -rf web/dist-papyrus web/staging && cd web && PAPYRUS_ROOT=\"$PWD/../.amplify-cache/papyrus-src\" python3 build_via_papyrus.py",
+      "buildCommand": "export PAPYRUS_SITE_ENV=guarded PAPYRUS_SITE_PUBLIC_URL=\"https://$AWS_BRANCH.$AWS_APP_ID.amplifyapp.com\" && rm -rf web/dist-papyrus && papyrus ops content project --all --from-dir content-export --static-dir web --out web/dist-papyrus --bucket \"${PAPYRUS_SITE_BUCKET:?PAPYRUS_SITE_BUCKET names the site bucket whose image renditions the preview reads}\"",
       "baseDirectory": "web/dist-papyrus"
     },
     "cognitoDomainPrefix": "papyrus-anth-us-cms",

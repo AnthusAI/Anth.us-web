@@ -26,7 +26,6 @@ sys.path.insert(0, str(ROOT / "web"))
 
 import anthus_dom  # noqa: E402
 import arcade_pictograms  # noqa: E402
-import site_css  # noqa: E402
 
 OUT = ROOT / "web" / "assets" / "site" / "pictograms"
 PUPPETEER = Path(os.environ.get("PUPPETEER_DIR", Path.home() / "Projects/Pilobol.us/node_modules/puppeteer"))
@@ -99,7 +98,7 @@ def main(argv: list[str]) -> int:
     if unknown:
         sys.exit(f"unknown pictogram(s): {', '.join(unknown)}")
     OUT.mkdir(parents=True, exist_ok=True)
-    css = site_css.stylesheet_bytes().decode()
+    css = (ROOT / "web" / "css" / "site-theme.css").read_text(encoding="utf-8")
     jobs = []
     with tempfile.TemporaryDirectory() as tmp:
         for name in names:

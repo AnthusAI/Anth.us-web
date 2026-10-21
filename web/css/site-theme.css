@@ -1,3 +1,4 @@
+/* ---- arcade.css ---- */
 /*
  * Anth.us site stylesheet: "Arcade, corporate".
  *
@@ -1055,3 +1056,43 @@ article .heading a.btn--ghost { color: var(--ink); }
   .inquiry button.btn > span { width: 100%; }
   .inquiry button.btn > span { white-space: normal; text-align: center; }
 }
+
+/* ---- arcade-pictograms.css ---- */
+/* Arcade pictograms (DESIGN.md §6). Motion lives in the SVG itself (SMIL). */
+.px{
+  --px-ink:var(--ink,#1b1426);--px-pink:var(--pink,#dc5497);--px-blue:var(--blue,#0389d7);
+  --px-dim:var(--line,#d6e6f2);--px-bg:var(--bg,#fbfdff);
+  --px-ink-2:var(--ink-2,#4a4157);
+  margin:0;display:block;
+}
+@media (prefers-color-scheme:dark){
+  .px{
+    --px-ink:var(--ink,#f3eef8);--px-pink:var(--pink,#ff57b4);--px-blue:var(--blue,#3fb2f7);
+    --px-dim:var(--line,#2e2540);--px-bg:var(--bg,#0e0b16);--px-ink-2:var(--ink-2,#b9aec8);
+  }
+}
+.px .pk{fill:var(--px-ink)}
+.px .pp{fill:var(--px-pink)}
+.px .pb{fill:var(--px-blue)}
+.px .pd{fill:var(--px-dim)}
+.px .pg{fill:var(--px-bg)}
+.px__svg{display:block;width:100%;height:auto;shape-rendering:crispEdges}
+.px__t{font-family:"Jersey 10",ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;font-weight:400}
+
+.px__cap{margin-top:.75rem;color:var(--px-ink-2);font-size:.9375rem;line-height:1.5}
+.px__cap p{margin:0}
+.px__lg{list-style:none;margin:0 0 .5rem;padding:0;display:flex;flex-wrap:wrap;gap:.35rem 1.1rem;
+  font-family:"Jersey 10",ui-monospace,monospace;text-transform:uppercase;letter-spacing:.08em;
+  font-size:1.05rem;line-height:1;color:var(--px-ink)}
+.px__lg li{display:inline-flex;align-items:center;gap:.4rem}
+.px__g{height:.95rem;width:auto;flex:none;display:block}
+
+.px__stage{display:block}
+.px--hl [data-v="tall"]{display:none}
+@media (max-width:40rem){
+  .px--hl [data-v="wide"]{display:none}
+  .px--hl [data-v="tall"]{display:block}
+}
+
+/* Motion is SMIL inside the SVG (web/arcade_pictograms.py): every length is an SVG user unit, so text zoom
+   cannot move a sprite off its track. assets/px-live.js pauses it off screen and drops it for reduced motion. */
