@@ -146,8 +146,8 @@ bucket served by CloudFront: `web/projector.py` renders pages from the stored it
 sets the image renditions made at upload (`assets/responsive/**`, the 1600 px copies under `assets/content/**`).
 The whole `web/` directory is bundled into the content-actions function as `site_static/`.
 
-* `web/site-state.json` (committed) holds the dimensions of every image; rewrite it with
-  `bin/make_site_state.py EXPORT CONTENT_ROOT web/site-state.json` when the set of images changes.
+* The projector keeps no list of images: it reads the rendition records (`assets/responsive/**/*.meta.json`) of
+  the site store through Papyrus's `RenditionCatalog`, so `PAPYRUS_SITE_BUCKET` must name the store.
 * `web/legacy-redirect-rules.json` is the redirect list the previous host (Amplify) served, frozen. The exact
   rules become key-value store entries; the pattern rules and the static-hosting behaviour (trailing slash,
   `.html`, the 404 page) live in `infra/edge/viewer-request.js`, the header rewriting in

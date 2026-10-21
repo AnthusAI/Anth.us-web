@@ -1,8 +1,8 @@
 """Anth.us as a Papyrus SiteProjector: render pages from stored item data, in process.
 
-Inputs next to this module: ``site-state.json`` (committed; rewritten by
-``bin/make_site_state.py`` when the set of images changes) and the optional
-``projector-config.json`` that pins the two cache-busting version tokens
+Inputs: the image rendition records of the site store (made when an image is uploaded, read through
+Papyrus's ``RenditionCatalog``; the site keeps no list of its images) and the optional
+``projector-config.json`` next to this module that pins the two cache-busting version tokens
 (``markus_pages``, ``generated_pages``). Without it both tokens are derived from the
 stylesheet, chrome scripts and site images (the parity test pins them to a reference build).
 
@@ -52,16 +52,8 @@ from anthus_content import Collections, ContentNode, ImageIndex, _slugify, stage
 from papyrus_content.markus_renderer import build as markus_build  # noqa: E402
 from papyrus_content.projection.projector import static_version  # noqa: E402
 from papyrus_content.projection.writers import request_paths_for_key  # noqa: E402
-from papyrus_content.markus_renderer import images as markus_images  # noqa: E402
 from papyrus_content.markus_renderer import shell as markus_shell  # noqa: E402
-from papyrus_content.markus_renderer.images import (  # noqa: E402
-    _SUFFIX_FOR_FORMAT,
-    ImageBuilder,
-    ImagePipelineError,
-    Rendition,
-    _GatsbyMeta,
-    gatsby_widths,
-)
+from papyrus_content.renditions import RenditionCatalog, S3RenditionStore, StoredRenditionImageBuilder  # noqa: E402
 
 CONTENT_ROOT = Path(os.environ["ANTHUS_BUILD_DIR"]) / "content-root-projector"
 REDIRECTS_DIRECTORY = MODULE_DIRECTORY / "content-redirects"
@@ -141,137 +133,6 @@ def convert_fragment_in_process(source, *, theme=None, markus_executable="markus
 
 
 markus_build.convert_fragment = convert_fragment_in_process
-
-
-class StoredMetadataImageBuilder(ImageBuilder):
-    """ImageBuilder that reads stored image metadata instead of decoding images."""
-
-    def __init__(self, pipeline, *, content_dir, out_dir, metadata, passthrough):
-        super().__init__(pipeline, content_dir=content_dir, out_dir=out_dir)
-        self._metadata = metadata
-        self._passthrough = passthrough
-
-    def _locate(self, src):
-        if src in self._metadata or src in self._passthrough:
-            return self.source_dir / src
-        return None
-
-    def _passthrough_href(self, src, path):
-        return f"{self.pipeline.out_subdir}/{Path(src).as_posix()}"
-
-    def _stored_size(self, path):
-        size = self._passthrough.get(path.relative_to(self.source_dir).as_posix())
-        return tuple(size) if size else None
-
-    def _raster_size(self, path):
-        return self._stored_size(path)
-
-    def _gatsby_renditions(self, src, path):
-        cached = self._gatsby.get(src)
-        if cached is not None:
-            return cached
-        entry = self._metadata.get(src)
-        if entry is None:
-            raise ImagePipelineError(f"No image metadata for {src!r}")
-        relative = Path(src)
-        href_directory = f"{self.pipeline.out_subdir}/{relative.parent.as_posix()}".rstrip("/.")
-        href_directory = href_directory if href_directory.endswith("/") else href_directory + "/"
-        intrinsic_width, intrinsic_height = entry["size"]
-        fallback_format = "png" if entry["alpha"] else "jpeg"
-        widths, display = gatsby_widths(intrinsic_width, max_width=self.pipeline.max_width)
-        formats = list(dict.fromkeys([*self._formats, fallback_format]))
-        renditions = []
-        for width in widths:
-            height = max(1, round(intrinsic_height * width / intrinsic_width))
-            for image_format in formats:
-                name = f"{relative.stem}-{width}{_SUFFIX_FOR_FORMAT[image_format]}"
-                renditions.append(Rendition(width=width, height=height, href=f"{href_directory}{name}", fmt=image_format))
-        if self.pipeline.placeholder == "blurred":
-            raise ImagePipelineError("blurred placeholders need pixels")
-        metadata = _GatsbyMeta(
-            renditions=renditions,
-            intrinsic=(intrinsic_width, intrinsic_height),
-            display_width=display,
-            fallback_fmt=fallback_format,
-            placeholder=None,
-        )
-        self._gatsby[src] = metadata
-        return metadata
-
-
-class StoredImageRecords:
-    """The rendition records the upload-time function keeps in the site store, for images the committed state predates."""
-
-    PREFIX = "assets/responsive/"
-    SUFFIX = ".meta.json"
-
-    def __init__(self, bucket: str, s3_client=None) -> None:
-        self._bucket = bucket
-        self._s3 = s3_client
-        self._records: dict[str, tuple[str, dict]] = {}
-
-    def _client(self):
-        if self._s3 is None:
-            import boto3
-
-            self._s3 = boto3.client("s3")
-        return self._s3
-
-    def _record_keys(self) -> dict[str, str]:
-        keys: dict[str, str] = {}
-        token = None
-        while True:
-            arguments = {"Bucket": self._bucket, "Prefix": self.PREFIX}
-            if token:
-                arguments["ContinuationToken"] = token
-            page = self._client().list_objects_v2(**arguments)
-            for entry in page.get("Contents", []):
-                if entry["Key"].endswith(self.SUFFIX):
-                    keys[entry["Key"]] = str(entry.get("ETag", ""))
-            if not page.get("IsTruncated"):
-                return keys
-            token = page.get("NextContinuationToken")
-
-    def unknown_records(self, known_record_keys: set[str]) -> list[dict]:
-        found = []
-        for key, etag in sorted(self._record_keys().items()):
-            if key in known_record_keys:
-                continue
-            cached = self._records.get(key)
-            if cached is None or cached[0] != etag:
-                body = self._client().get_object(Bucket=self._bucket, Key=key)["Body"].read()
-                cached = (etag, json.loads(body))
-                self._records[key] = cached
-            found.append(cached[1])
-        return found
-
-
-def add_stored_image_records(state: dict, records: list[dict]) -> None:
-    """Extend the committed image state with images only the site store knows (uploaded after the state was written)."""
-    image_state = state["images"]
-    known = set(image_state["by_relpath"])
-    for record in records:
-        source = PurePosixPath(record["source"]).as_posix()
-        if source in known:
-            continue
-        known.add(source)
-        image_state["by_relpath"].append(source)
-        image_state["by_basename"].setdefault(PurePosixPath(source).name, source)
-        size = record.get("size")
-        if record.get("kind") == "gatsby":
-            state["gatsby"][source] = {"size": list(size), "alpha": record.get("fallbackFormat") == "png"}
-        elif size:
-            state["passthrough"][source] = list(size)
-        if size:
-            state["dimensions"]["/assets/content/" + source] = list(size)
-
-
-def stored_record_keys_of_state(state: dict) -> set[str]:
-    from papyrus_content.markus_renderer.images import ImagePipeline
-    from papyrus_content.renditions import meta_key
-
-    pipeline = ImagePipeline()
-    return {meta_key(pipeline, source) for source in state["images"]["by_relpath"]}
 
 
 def node_for(summary) -> ContentNode:
@@ -410,30 +271,29 @@ class Snapshot:
 
 
 class AnthusProjector:
-    def __init__(
-        self, state: dict, config: dict, stored_images: StoredImageRecords | None = None, public_data_settings=None
-    ) -> None:
-        self._state = state
+    def __init__(self, config: dict, catalog: RenditionCatalog, public_data_settings=None) -> None:
         self._config = config
-        self._stored_images = stored_images
+        self._catalog = catalog
+        self._records: list[dict] | None = None
         self._snapshots: list[Snapshot] = []
         self.public_data_settings = public_data_settings
 
+    def image_records(self) -> list[dict]:
+        """The rendition records of the site store, read once per projector: the images the site has."""
+        if self._records is None:
+            self._records = self._catalog.all_records()
+        return self._records
+
     def build_image_index(self) -> ImageIndex:
-        if self._stored_images is not None:
-            add_stored_image_records(
-                self._state, self._stored_images.unknown_records(stored_record_keys_of_state(self._state))
-            )
-        images = ImageIndex(content_root=CONTENT_ROOT, site_assets=site_build.SITE_ASSETS)
-        image_state = self._state["images"]
-        for relative in image_state["by_relpath"]:
-            images.by_relpath[relative] = CONTENT_ROOT / relative
-        for name, relative in image_state["by_basename"].items():
-            images.by_basename[name] = CONTENT_ROOT / relative
-        for name, relative in image_state["site_by_name"].items():
-            images.site_by_name[name] = site_build.SITE_ASSETS / relative
+        images = ImageIndex.from_sources(
+            [record["source"] for record in self.image_records()],
+            content_root=CONTENT_ROOT,
+            site_assets=site_build.SITE_ASSETS,
+        )
         dom.set_asset_roots({"/assets/content/": CONTENT_ROOT, "/assets/site/": site_build.SITE_ASSETS})
-        dom._DIMENSION_CACHE.update({key: tuple(value) for key, value in self._state["dimensions"].items()})
+        dom._DIMENSION_CACHE.update(
+            {"/assets/content/" + record["source"]: tuple(record["size"]) for record in self.image_records() if record["size"]}
+        )
         return images
 
     @staticmethod
@@ -483,14 +343,7 @@ class AnthusProjector:
         stem = markus_build.slugify(node.slug)
         href = f"{directory}/{stem}.html"
         staged = site_build.STAGING / directory / f"{node.slug}.md"
-        builder = StoredMetadataImageBuilder(
-            site_build.IMAGES,
-            content_dir=site_build.STAGING,
-            out_dir=site_build.DIST,
-            metadata=self._state["gatsby"],
-            passthrough=self._state["passthrough"],
-        )
-        markus_images._svg_dimensions = builder._stored_size
+        builder = StoredRenditionImageBuilder(site_build.IMAGES, self._catalog)
         fragment = markus_build.render_fragment(
             staged,
             theme=None,
@@ -597,11 +450,12 @@ def default_projector_config() -> dict:
 
 
 def create_projector() -> AnthusProjector:
-    state = json.loads((MODULE_DIRECTORY / "site-state.json").read_text(encoding="utf-8"))
     config_path = MODULE_DIRECTORY / "projector-config.json"
     config = json.loads(config_path.read_text(encoding="utf-8")) if config_path.is_file() else default_projector_config()
     bucket = (os.environ.get("PAPYRUS_SITE_BUCKET") or "").strip()
-    return AnthusProjector(state, config, StoredImageRecords(bucket) if bucket else None, public_data_settings_of_site())
+    if not bucket:
+        raise RuntimeError("PAPYRUS_SITE_BUCKET is required: the image rendition records are read from the site store.")
+    return AnthusProjector(config, RenditionCatalog(S3RenditionStore(bucket), site_build.IMAGES), public_data_settings_of_site())
 
 
 def public_data_settings_of_site():

@@ -289,11 +289,27 @@ class ImageIndex:
             # First writer wins so a deterministic file is chosen when two
             # directories hold the same basename.
             index.by_basename.setdefault(path.name, path)
-        if site_assets.is_dir():
-            for path in site_assets.rglob("*"):
-                if path.is_file() and path.suffix.lower() in _IMAGE_SUFFIXES:
-                    index.site_by_name.setdefault(path.name, path)
+        index._add_site_assets()
         return index
+
+    @classmethod
+    def from_sources(cls, sources, *, content_root: Path, site_assets: Path) -> "ImageIndex":
+        """The index of a site whose images are known by their source paths (the rendition records of its site store).
+
+        ``by_basename`` takes the first of the sorted sources for a basename that two directories share.
+        """
+        index = cls(content_root=content_root, site_assets=site_assets)
+        for source in sorted(sources):
+            index.by_relpath[source] = content_root / source
+            index.by_basename.setdefault(Path(source).name, content_root / source)
+        index._add_site_assets()
+        return index
+
+    def _add_site_assets(self) -> None:
+        if self.site_assets.is_dir():
+            for path in sorted(self.site_assets.rglob("*")):
+                if path.is_file() and path.suffix.lower() in _IMAGE_SUFFIXES:
+                    self.site_by_name.setdefault(path.name, path)
 
     def resolve_name(self, name: str) -> str | None:
         name = (name or "").strip()
