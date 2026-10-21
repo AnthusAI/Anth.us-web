@@ -4,6 +4,7 @@
   "repository": "https://github.com/AnthusAI/Anth.us-Papyrus",
   "brand": "anth-us",
   "frontend": "markus-static",
+  "aws": { "profile": "papyrus-production", "accountId": "712236451410", "region": "us-east-1" },
   "papyrusVersion": "1.0.0-next.41",
   "cms": {
     "staging": true,
