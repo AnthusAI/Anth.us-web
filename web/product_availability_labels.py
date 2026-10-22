@@ -8,6 +8,8 @@ PRODUCT_AVAILABILITY_LABEL_BY_NAME: dict[str, str] = {
     "Primus": "Early access",
     "Tactus": "Beta",
     "Babulus": "Planned",
+    # The hosted Cyclotron lab is invite-only. Delete this line at general availability.
+    "Cyclotron": "Early access",
 }
 
 
