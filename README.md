@@ -72,3 +72,7 @@ PYTHONPATH=$PAPYRUS_ROOT/src:$PAPYRUS_ROOT python3 -m pytest tests
 
 `PAPYRUS_SITE_BUCKET` names the site store whose image rendition records the projector reads. The deploy is a merge to
 `main` (AGENTS.md, "Hosting").
+
+## Publication doctrine
+
+`corpora/papyrus-publication-doctrine.yml` mirrors the production doctrine records edited at `/newsroom/administration/policies`. Ryan approved it on 2026-10-21. It is the doctrine the relevance classifier criteria derive from. Nothing in the build reads this file; it is here for version control.
