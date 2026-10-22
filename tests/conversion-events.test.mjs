@@ -117,6 +117,9 @@ function buildAnchor({href, text, ancestors = [], origin = 'https://anth.us'}) {
   const url = new URL(href, origin);
   const anchor = {
     textContent: text, href: url.toString(), origin: url.origin, pathname: url.pathname, search: url.search,
+    protocol: url.protocol, hostname: url.hostname, attributes: {},
+    setAttribute(name, value) { anchor.attributes[name] = String(value); },
+    getAttribute(name) { return name in anchor.attributes ? anchor.attributes[name] : null; },
     ancestors, id: '',
     closest(selector) {
       if (selector === 'a[href]') return anchor;
@@ -135,12 +138,12 @@ function buildAnchor({href, text, ancestors = [], origin = 'https://anth.us'}) {
 
 const ancestor = (selector, element = {id: ''}) => ({selector, element});
 
-function buildListenerHarness({withGtag = true} = {}) {
+function buildListenerHarness({withGtag = true, pageSearch = ''} = {}) {
   const listeners = {};
   const analyticsCalls = [];
   const context = {
     document: {addEventListener(type, handler) { listeners[type] = handler; }},
-    window: {location: {origin: 'https://anth.us'}},
+    window: {location: {origin: 'https://anth.us', search: pageSearch}},
     URL,
   };
   if (withGtag) context.window.gtag = (...args) => analyticsCalls.push(JSON.parse(JSON.stringify(args)));
@@ -151,7 +154,7 @@ function buildListenerHarness({withGtag = true} = {}) {
 function attributeLinks(anchors, pathname = '/ai-solutions/') {
   const context = {
     document: {querySelector() { return null; }, querySelectorAll() { return anchors; }, addEventListener() {}},
-    location: {pathname, origin: 'https://anth.us'}, URL, window: {addEventListener() {}},
+    location: {pathname, origin: 'https://anth.us', search: ''}, URL, window: {addEventListener() {}},
   };
   vm.runInNewContext(navigationSource, context);
 }
@@ -228,4 +231,87 @@ test('site navigation leaves a link that already names its source alone', () => 
   const query = new URL(anchor.href).searchParams;
   assert.equal(query.get('from'), '/custom/');
   assert.equal(query.get('cta'), 'custom');
+});
+
+const PRODUCT_CASES = [
+  {href: 'https://primus.anth.us', text: 'Visit Primus', ancestors: [ancestor('.card')], location: 'solution-card', url: 'primus.anth.us/'},
+  {href: 'https://cyclotron.anth.us', text: 'Visit Cyclotron', ancestors: [ancestor('.card')], location: 'solution-card', url: 'cyclotron.anth.us/'},
+  {href: 'https://chattic.us', text: 'Visit Chatticus', ancestors: [ancestor('.card')], location: 'solution-card', url: 'chattic.us/'},
+  {href: 'https://p.apyr.us', text: 'Visit Papyrus', ancestors: [ancestor('.card')], location: 'solution-card', url: 'p.apyr.us/'},
+  {href: 'https://aurit.us', text: 'Visit Auritus', ancestors: [ancestor('.card')], location: 'solution-card', url: 'aurit.us/'},
+  {href: 'https://primus.anth.us', text: 'Primus', ancestors: [ancestor('.site-footer')], location: 'footer', url: 'primus.anth.us/'},
+  {href: 'https://cyclotron.anth.us/beta', text: 'Join the beta →', ancestors: [ancestor('.hero')], location: 'hero', url: 'cyclotron.anth.us/beta'},
+  {href: 'https://example.com/signup', text: 'Join the beta', ancestors: [ancestor('.cta-band')], location: 'band', url: 'example.com/signup'},
+  {href: 'https://github.com/AnthusAI/Humanus', text: 'Visit Humanus', ancestors: [ancestor('.card')], location: 'solution-card', url: 'github.com/AnthusAI/Humanus'},
+];
+
+test('cta_click fires for external product calls to action with the destination host and path', () => {
+  const anchors = PRODUCT_CASES.map(entry => buildAnchor(entry));
+  attributeLinks(anchors, '/ai-solutions/');
+  const harness = buildListenerHarness();
+  anchors.forEach(anchor => harness.click(anchor));
+  assert.equal(harness.analyticsCalls.length, PRODUCT_CASES.length);
+  PRODUCT_CASES.forEach((entry, index) => {
+    const [verb, eventName, parameters] = harness.analyticsCalls[index];
+    assert.equal(verb, 'event');
+    assert.equal(eventName, 'cta_click');
+    assert.deepEqual(parameters, {
+      cta_text: entry.text.replace(/\s*→$/, ''), cta_location: entry.location, link_url: entry.url, transport_type: 'beacon',
+    });
+  });
+});
+
+test('external cta_click never carries a query string, fragment or scheme in link_url', () => {
+  const anchor = buildAnchor({href: 'https://primus.anth.us/pricing?utm_source=x&email=a@example.com#top', text: 'Visit Primus', ancestors: [ancestor('.hero')]});
+  attributeLinks([anchor]);
+  const harness = buildListenerHarness();
+  harness.click(anchor);
+  harness.auxclick(anchor);
+  assert.equal(harness.analyticsCalls.length, 2);
+  for (const [, , parameters] of harness.analyticsCalls) assert.equal(parameters.link_url, 'primus.anth.us/pricing');
+});
+
+test('external cta_location comes from the clicked element, not from a cta parameter left by an earlier click', () => {
+  const engage = buildAnchor({href: '/engage/', text: 'Tell us the problem →', ancestors: [ancestor('.hero')]});
+  const product = buildAnchor({href: 'https://primus.anth.us/?cta=hero', text: 'Visit Primus', ancestors: [ancestor('.site-footer')]});
+  attributeLinks([engage, product], '/');
+  const harness = buildListenerHarness({pageSearch: '?cta=hero&from=/'});
+  harness.click(engage);
+  harness.click(product);
+  assert.equal(harness.analyticsCalls[0][2].cta_location, 'hero');
+  assert.equal(harness.analyticsCalls[1][2].cta_location, 'footer');
+});
+
+test('external product links on the engage page are annotated too, and the page query is ignored', () => {
+  const product = buildAnchor({href: 'https://primus.anth.us', text: 'Visit Primus', ancestors: [ancestor('.card')]});
+  attributeLinks([product], '/engage/');
+  const harness = buildListenerHarness({pageSearch: '?cta=hero&solution=Primus'});
+  harness.click(product);
+  assert.equal(harness.analyticsCalls[0][2].cta_location, 'solution-card');
+});
+
+test('an external link nobody annotated reports the neutral location page', () => {
+  const harness = buildListenerHarness();
+  harness.click(buildAnchor({href: 'https://primus.anth.us', text: 'Visit Primus'}));
+  assert.equal(harness.analyticsCalls[0][2].cta_location, 'page');
+});
+
+test('other outbound links (GitHub, LinkedIn, mailto) send nothing', () => {
+  const harness = buildListenerHarness();
+  harness.click(buildAnchor({href: 'https://github.com/AnthusAI', text: 'GitHub', ancestors: [ancestor('.site-footer')]}));
+  harness.click(buildAnchor({href: 'https://www.linkedin.com/in/ryanalynporter/', text: 'LinkedIn', ancestors: [ancestor('.site-footer')]}));
+  harness.click(buildAnchor({href: 'https://www.anth.us/about/', text: 'About', ancestors: [ancestor('.site-footer')]}));
+  harness.click(buildAnchor({href: 'mailto:info@example.com', text: 'Visit us', ancestors: []}));
+  assert.deepEqual(harness.analyticsCalls, []);
+});
+
+test('site navigation records the location on engage and outbound links only', () => {
+  const engage = buildAnchor({href: '/engage/', text: 'Go', ancestors: [ancestor('.cta-band')]});
+  const outbound = buildAnchor({href: 'https://primus.anth.us', text: 'Visit Primus', ancestors: [ancestor('.card')]});
+  const internal = buildAnchor({href: '/about/', text: 'About', ancestors: [ancestor('.card')]});
+  attributeLinks([engage, outbound, internal]);
+  assert.equal(engage.getAttribute('data-cta-location'), 'band');
+  assert.equal(outbound.getAttribute('data-cta-location'), 'solution-card');
+  assert.equal(internal.getAttribute('data-cta-location'), null);
+  assert.equal(new URL(outbound.href).search, '');
 });

@@ -40,6 +40,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import arcade_pictograms
+import product_availability_labels
 import solution_marks
 from solution_sites import EXTERNAL_SITES
 
@@ -254,6 +255,7 @@ def _footer_html(note: str = "") -> str:
     products = "".join(
         '<li class="site-footer__product">'
         f'<a class="site-footer__pname" href="{html.escape(url, quote=True)}" rel="noopener">{html.escape(name)}{solution_marks.mark(name)}</a>'
+        f"{product_availability_labels.availability_chip_markup(name)}"
         f"<p>{html.escape(line)}</p>"
         + (f'<a class="site-footer__also" href="{page}">On anth.us</a>' if page else "")
         + "</li>"
@@ -261,7 +263,7 @@ def _footer_html(note: str = "") -> str:
     )
     noopener = ' rel="noopener"'
     supporting = "".join(
-        f'<li><a href="{html.escape(href, quote=True)}"{noopener if ext else ""}>{html.escape(name)}</a></li>'
+        f'<li><a href="{html.escape(href, quote=True)}"{noopener if ext else ""}>{html.escape(name)}</a>{product_availability_labels.availability_chip_markup(name)}</li>'
         for name, href, _line, ext in SUPPORTING
     )
     return (

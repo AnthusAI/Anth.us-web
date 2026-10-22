@@ -21,7 +21,25 @@
 <div class="section__body"><ul class="grid grid--2"><li class="card notch  card--static"><h3>Open source</h3>
 <p>The code is public on GitHub. Run it yourself.</p>
 <p>Cyclotron, Chatticus, Papyrus and Auritus are open source, and so are the technologies under them: Kanbus, Tactus, Biblicus, Primus and Markus. Each solution has its own site with the repository and a quickstart.</p>
-<div class="card__links"><a href="https://cyclotron.anth.us/">Cyclotron</a><a href="https://aurit.us">Auritus</a><a href="https://p.apyr.us">Papyrus</a><a href="/ai-solutions/">All the solutions</a></div>
+<div class="card__links"><a href="https://cyclotron.anth.us/">Cyclotron</a>
+::endraw
+
+::include{kind="block" name="availability-chip" product="Cyclotron"}
+
+::raw
+<a href="https://aurit.us">Auritus</a>
+::endraw
+
+::include{kind="block" name="availability-chip" product="Auritus"}
+
+::raw
+<a href="https://p.apyr.us">Papyrus</a>
+::endraw
+
+::include{kind="block" name="availability-chip" product="Papyrus"}
+
+::raw
+<a href="/ai-solutions/">All the solutions</a></div>
 </li>
 <li class="card notch  card--static"><h3>We build and run it with you</h3>
 <p>We deploy it in your AWS account, integrate it with your systems, and operate it. Then we either keep running it with you or hand it off.</p>
@@ -40,7 +58,19 @@
 <p>We take a high-volume judgment call your team already makes (a score, a flag, a routing decision) and turn it into a classifier with confidence gating: the model handles the clear cases and routes the rest to your reviewers.</p>
 <p>We’ve run this pattern for a call-center QA operation across years of production, hundreds of models, and millions of interactions, with expert feedback compounding into a data flywheel the whole time. You get that architecture, sized to your judgment task.</p>
 <p>The loop itself is now open source as Cyclotron: a cyclotron is one AI decision that learns from your team’s corrections.</p>
-<div class="card__links"><a href="https://primus.anth.us">Primus</a><a href="https://cyclotron.anth.us/">Cyclotron</a><a href="https://cyclotron.anth.us/services">We build it into your product and run it</a></div>
+<div class="card__links"><a href="https://primus.anth.us">Primus</a>
+::endraw
+
+::include{kind="block" name="availability-chip" product="Primus"}
+
+::raw
+<a href="https://cyclotron.anth.us/">Cyclotron</a>
+::endraw
+
+::include{kind="block" name="availability-chip" product="Cyclotron"}
+
+::raw
+<a href="https://cyclotron.anth.us/services">We build it into your product and run it</a></div>
 </li>
 <li class="card notch  card--static"><h3>Factory-run software project</h3>
 <p>We build your software the way we build our own: work tracked as Kanbus issues in the repository, agents doing the implementation, and a human approval trail on every merge.</p>

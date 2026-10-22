@@ -1,6 +1,25 @@
 (() => {
   const form = document.getElementById('engage-inquiry');
-  if (!form || !globalThis.crypto?.randomUUID) return;
+  if (!form) return;
+  if (!globalThis.crypto?.randomUUID) {
+    // The submit button stays disabled without an idempotency key, so say so and offer email instead of
+    // leaving a button that silently does nothing.
+    const unsupportedError = form.querySelector('[data-error]');
+    const address = form.dataset.fallbackEmail || '';
+    if (unsupportedError) {
+      if (address) {
+        const mailLink = document.createElement('a');
+        mailLink.href = 'mailto:' + address;
+        mailLink.textContent = address;
+        unsupportedError.textContent = 'This form can’t run in your browser. Please email ';
+        unsupportedError.append(mailLink, ' instead.');
+      } else {
+        unsupportedError.textContent = 'This form can’t run in your browser. Please try another browser.';
+      }
+    }
+    form.dataset.state = 'unsupported';
+    return;
+  }
   // Time since the form was rendered, sent as the optional `elapsed_ms` intake field. Prospectus
   // only uses it as a weak spam signal after the note is stored; it never changes the reply.
   const clock = () => (typeof globalThis.performance?.now === 'function' ? globalThis.performance.now() : Date.now());
