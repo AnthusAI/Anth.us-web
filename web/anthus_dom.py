@@ -195,6 +195,8 @@ FOOTER_COLUMNS = (
             ("About", "/about/", False),
             ("Ryan Porter", "/ryan/", False),
             ("Contact", "/engage/", False),
+            ("Privacy", "/privacy/", False),
+            ("Cookie settings", "#", False),
         ),
     ),
     (
@@ -226,6 +228,9 @@ FOOTER_COLUMNS = (
 
 
 def _footer_link(label: str, href: str, external: bool) -> str:
+    if label == "Cookie settings":
+        # Papyrus's consent script unhides this and reopens the banner; without JS it never shows.
+        return '<li><a href="#" data-papyrus-consent-reopen hidden>Cookie settings</a></li>'
     rel = ' target="_blank" rel="noreferrer"' if external else ""
     return f'<li><a href="{html.escape(href, quote=True)}"{rel}>{html.escape(label)}</a></li>'
 
@@ -672,6 +677,10 @@ PAGE_ACTION_CLASSES = frozenset(
 )
 
 
+#: The consent banner (Papyrus `consent_mode`) carries its own `<style>` in the page head, so these are styled.
+CONSENT_BANNER_CLASSES = frozenset({"papyrus-consent", "papyrus-consent-actions", "papyrus-consent-choice"})
+
+
 def assert_no_markus_classes(html_text: str, where: str) -> None:
     """Guard: a `markus-*` class in the output is an unstyled element.
 
@@ -683,7 +692,7 @@ def assert_no_markus_classes(html_text: str, where: str) -> None:
         {
             value
             for value in re.findall(r'class="([^"]*(?:markus|papyrus)-[^"]*)"', html_text)
-            if not set(value.split()) <= PAGE_ACTION_CLASSES
+            if not set(value.split()) <= (PAGE_ACTION_CLASSES | CONSENT_BANNER_CLASSES)
         }
     )
     if leaked:

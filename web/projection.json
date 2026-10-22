@@ -191,7 +191,14 @@
     "same_title_template": "{title}",
     "asset_root": "/",
     "ga_measurement_id": "G-31SC26SDGX",
-    "ga_owner_opt_out": true
+    "ga_owner_opt_out": true,
+    "consent_mode": {
+      "privacy_policy_url": "/privacy/",
+      "banner_heading": "Cookies and analytics",
+      "banner_message": "We use cookies to measure how this site is used and, if you agree, for advertising. You can accept all, reject all, and change your choice at any time.",
+      "accept_label": "Accept all",
+      "reject_label": "Reject all"
+    }
   },
   "citations": true,
   "hooks": "hooks.py",
@@ -231,6 +238,13 @@
       "title": "Engage Anthus",
       "description": "What an Anthus engagement looks like: bring any problem you think AI might solve, and we scope a first month with a record you can inspect. Classifier labs, factory-run software, and newsrooms are three examples.",
       "source": "pages/engage.md"
+    },
+    {
+      "id": "privacy",
+      "path": "privacy",
+      "title": "Privacy Policy",
+      "description": "How anth.us handles your information: the contact form, analytics and cookies, hosting, and your choices and rights.",
+      "source": "pages/privacy.md"
     },
     {
       "id": "decision-models",
