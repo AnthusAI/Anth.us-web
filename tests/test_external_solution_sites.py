@@ -1,21 +1,12 @@
 """Solutions with their own site: no page, a 301 to the site, links rewritten."""
-import json
-import sys
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "web"))
-
-try:
-    import build_via_papyrus as build  # first: puts Papyrus on sys.path
-    import anthus_urls
-    from anthus_content import Collections, ContentNode
-    from solution_sites import EXTERNAL_SITES
-    IMPORT_ERROR = None
-except (ImportError, SystemExit) as error:
-    build = None
-    IMPORT_ERROR = error
+import anthus_urls
+import links
+import support
+from anthus_content import Collections, ContentNode
+from solution_sites import EXTERNAL_SITES
 
 
 def platform_node(slug):
@@ -23,7 +14,6 @@ def platform_node(slug):
                        front_matter={"title": slug.title(), "state": "published"}, rel_dir="platform")
 
 
-@unittest.skipIf(build is None, f"build module unavailable: {IMPORT_ERROR}")
 class ExternalSolutionSites(unittest.TestCase):
     def setUp(self):
         nodes = [platform_node(s) for s in (*EXTERNAL_SITES, "biblicus")]
@@ -45,10 +35,48 @@ class ExternalSolutionSites(unittest.TestCase):
                         [r["source"] for r in rules].index("/<*>"))
 
     def test_links_to_the_old_pages_point_at_the_site(self):
-        build._SITE_URLS = self.urls
+        mapping = links.UrlMap.__new__(links.UrlMap)
+        mapping.urls, mapping.unresolved = self.urls, {}
         for slug, site in EXTERNAL_SITES.items():
-            self.assertEqual(build._absolutize(f"/platform/{slug}/", base_dir="articles"), site + "/")
-        self.assertEqual(build._absolutize("/platform/biblicus/", base_dir="articles"), "/platform/biblicus/")
+            self.assertEqual(mapping.absolutize(f"/platform/{slug}/", base_dir="articles"), site + "/")
+        self.assertEqual(mapping.absolutize("/platform/biblicus/", base_dir="articles"), "/platform/biblicus/")
+
+
+class ProjectedExternalSolutionSites(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.projection = support.project_fixture()
+
+    def test_the_projection_has_no_page_for_them_but_biblicus_keeps_its_page(self):
+        files = self.projection.files
+        for slug in EXTERNAL_SITES:
+            self.assertNotIn(f"platform/{slug}/index.html", files, slug)
+        self.assertIn("platform/biblicus/index.html", files)
+        sitemap = self.projection.text("sitemap-0.xml")
+        for slug in EXTERNAL_SITES:
+            self.assertNotIn(f"/platform/{slug}/", sitemap)
+        self.assertIn("/platform/biblicus/", sitemap)
+
+    def test_the_redirect_store_sends_each_old_page_to_its_site(self):
+        for slug, site in EXTERNAL_SITES.items():
+            self.assertEqual(self.projection.redirects[f"/platform/{slug}/"], site, slug)
+            self.assertEqual(self.projection.redirects[f"/platform/{slug}/index.html"], site, slug)
+        self.assertNotIn("/platform/biblicus/", self.projection.redirects)
+        self.assertNotIn("/<*>", self.projection.redirects)  # the catch-all 404 belongs to the edge function
+
+    def test_links_to_the_old_pages_point_at_the_site_in_a_projected_article(self):
+        anchors = support.anchors(self.projection.main("/articles/call-criteria/"))
+        self.assertIn(EXTERNAL_SITES["primus"] + "/", anchors)
+        self.assertIn(EXTERNAL_SITES["chatticus"] + "/", anchors)
+        self.assertIn("/platform/biblicus/", anchors)
+        self.assertNotIn("/platform/primus/", anchors)
+        self.assertNotIn("/platform/chatticus/", anchors)
+
+    def test_the_platform_index_does_not_list_them_as_pages(self):
+        lines = self.projection.main("/platform/")
+        self.assertNotIn('href="/platform/primus/"', lines)
+        self.assertNotIn('href="/platform/kanbus/"', lines)
+        self.assertIn('href="/platform/biblicus/"', lines)
 
 
 if __name__ == "__main__":

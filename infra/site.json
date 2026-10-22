@@ -4,11 +4,13 @@
   "repository": "https://github.com/AnthusAI/Anth.us-web",
   "brand": "anth-us",
   "frontend": "markus-static",
-  "papyrusVersion": "1.19.0",
+  "aws": { "profile": "papyrus-production", "accountId": "712236451410", "region": "us-east-1" },
+  "papyrusVersion": "5.23.0",
   "cms": {
+    "siteOrigin": "https://newsroom.anth.us",
     "staging": true,
     "stagingPreview": {
-      "buildCommand": "rm -rf web/dist-papyrus web/staging && cd web && PAPYRUS_ROOT=\"$PWD/../.amplify-cache/papyrus-src\" python3 build_via_papyrus.py",
+      "buildCommand": "export PAPYRUS_SITE_ENV=guarded PAPYRUS_SITE_PUBLIC_URL=\"https://$AWS_BRANCH.$AWS_APP_ID.amplifyapp.com\" && rm -rf web/dist-papyrus && papyrus ops content project --all --from-dir content-export --static-dir web --out web/dist-papyrus --bucket \"${PAPYRUS_SITE_BUCKET:?PAPYRUS_SITE_BUCKET names the site bucket whose image renditions the preview reads}\"",
       "baseDirectory": "web/dist-papyrus"
     },
     "cognitoDomainPrefix": "papyrus-anth-us-cms",
@@ -20,7 +22,7 @@
       "PAPYRUS_ENABLE_SLACK": "false",
       "PAPYRUS_ENABLE_INBOUND_EMAIL": "false",
       "PAPYRUS_ENABLE_STORAGE_BACKUPS": "false",
-      "PAPYRUS_OAUTH_REDIRECT_URLS": "http://localhost:3001/"
+      "PAPYRUS_OAUTH_REDIRECT_URLS": "http://localhost:3001/,https://newsroom-staging.anth.us/"
     }
   },
   "github": {
@@ -28,6 +30,8 @@
     "repo": "Anth.us-web",
     "branches": [
       "main"
-    ]
+    ],
+    "ownerId": 152415604,
+    "repoId": 1403145090
   }
 }

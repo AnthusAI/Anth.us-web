@@ -1,40 +1,44 @@
-"""{{pictogram <name>}} in an article body embeds the animated pictogram (anthus_mdx)."""
+"""{{pictogram <name>}} in an article body embeds the animated pictogram (web/source_text.py, the ``source`` hook)."""
+import re
 
-import os
-import sys
-import unittest
-from pathlib import Path
+import pytest
 
-ROOT = Path(__file__).resolve().parent.parent
-PAPYRUS = os.environ.get("PAPYRUS_ROOT", str(ROOT.parent / "Papyrus"))
-sys.path[:0] = [str(ROOT / "web"), str(Path(PAPYRUS) / "src")]
-
-try:
-    from anthus_mdx import normalize_body
-except ImportError:  # pragma: no cover - needs a Papyrus checkout
-    normalize_body = None
+import arcade_pictograms
+import source_text
+import support
+from papyrus_content.markus_renderer.transforms import block_sentinel
 
 
-def _norm(body):
-    return normalize_body(body, resolve_image_name=lambda n: None, resolve_image_path=lambda p: None)[0]
+def _clean(body):
+    return source_text.clean(body)
 
 
-@unittest.skipIf(normalize_body is None, "needs PAPYRUS_ROOT")
-class BodyPictogramTest(unittest.TestCase):
-    def test_token_becomes_a_sentinel_not_text(self):
-        out = _norm("Intro.\n\n{{pictogram relocate}}\n\nAfter.\n")
-        self.assertNotIn("{{pictogram", out)
-        self.assertIn("Intro.", out)
-        self.assertIn("After.", out)
-
-    def test_unknown_name_fails(self):
-        with self.assertRaises(KeyError):
-            _norm("{{pictogram no-such-thing}}\n")
-
-    def test_token_inside_code_is_left_alone(self):
-        out = _norm("```\n{{pictogram relocate}}\n```\n")
-        self.assertIn("{{pictogram relocate}}", out)
+def test_token_becomes_a_sentinel_not_text():
+    out = _clean("Intro.\n\n{{pictogram relocate}}\n\nAfter.\n")
+    assert "{{pictogram" not in out
+    assert "Intro." in out and "After." in out
+    expected = block_sentinel('<div class="body-px">' + arcade_pictograms.render("relocate") + "</div>")
+    assert expected in out
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_unknown_name_fails():
+    with pytest.raises(KeyError):
+        _clean("{{pictogram no-such-thing}}\n")
+
+
+def test_token_inside_code_is_left_alone():
+    out = _clean("```\n{{pictogram relocate}}\n```\n")
+    assert "{{pictogram relocate}}" in out
+
+
+def test_the_projected_article_carries_the_figure_once_and_the_code_sample_verbatim():
+    page = support.project_fixture().page("/articles/pictured-article/")
+    assert page.count('data-px="relocate"') == 1
+    assert '<div class="body-px">' in page
+    assert "{{pictogram relocate}}" in page  # the fenced sample
+    assert "{{pictogram" not in re.sub(r"<code.*?</code>|<pre.*?</pre>", "", page, flags=re.S)
+
+
+def test_a_venue_article_embeds_its_system_pictogram():
+    page = support.project_fixture().page("/articles/venue-driver/")
+    assert 'data-px="venue-system"' in page

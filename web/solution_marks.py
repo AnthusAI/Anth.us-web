@@ -114,6 +114,7 @@ _MARKS: dict[str, tuple[str, str, str]] = {
 #: Raster marks (a 126px source is too detailed to trace honestly): name -> (class, site asset, width, height).
 _IMG_MARKS: dict[str, tuple[str, str, int, int]] = {
     "Venue Driver": ("sm--venue-driver", "/assets/site/venue-driver-logo.png", 119, 105),
+    "Auritus": ("sm--auritus", "/assets/site/auritus-announcer.png", 200, 197),
 }
 
 

@@ -1,23 +1,15 @@
 """Pages folded into Venue Driver: no page, listings exclude them, 301s, link rewrite, projector skip."""
-import sys
+import re
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "web"))
-
-try:
-    import build_via_papyrus as build  # first: puts Papyrus on sys.path
-    import anthus_pages
-    import anthus_urls
-    import projector
-    from anthus_content import Collections, ContentNode
-    from solution_sites import FOLDED_INTO
-    IMPORT_ERROR = None
-except (ImportError, SystemExit) as error:
-    build = None
-    IMPORT_ERROR = error
+import anthus_urls
+import hooks
+import links
+import support
+from anthus_content import Collections, ContentNode
+from solution_sites import FOLDED_INTO
 
 TARGET = "/articles/venue-driver/"
 
@@ -28,7 +20,6 @@ def node(slug, tags=("solutions", "engagement"), authored=None, rel_dir="solutio
     return ContentNode(slug=slug, source=Path(f"{rel_dir}/{stem or slug}.mdx"), front_matter=front, rel_dir=rel_dir)
 
 
-@unittest.skipIf(build is None, f"build module unavailable: {IMPORT_ERROR}")
 class FoldedPages(unittest.TestCase):
     def setUp(self):
         self.folded = [node(s) for s in FOLDED_INTO]
@@ -43,8 +34,6 @@ class FoldedPages(unittest.TestCase):
         self.assertEqual({n.slug for n in self.c.blog}, kept)
         self.assertEqual({n.slug for n in self.c.solutions}, kept)
         self.assertEqual({n.slug for n in self.c.tags["solutions"]}, kept)
-        page = anthus_pages.ai_solutions_page(self.c.blog)
-        self.assertNotIn("Ticket-Driver", page.replace(" ", "-"))
         self.assertEqual(len(self.c.folded), len(self.folded))
 
     def test_every_url_shape_redirects_permanently_to_venue_driver(self):
@@ -59,31 +48,76 @@ class FoldedPages(unittest.TestCase):
         self.assertLess(order.index("/blog/ticket-driver/"), order.index("/blog/<slug>/"))
 
     def test_links_in_bodies_are_rewritten(self):
-        build._SITE_URLS = self.urls
+        mapping = links.UrlMap.__new__(links.UrlMap)  # the map of a fixed set of pages, without a site
+        mapping.urls, mapping.unresolved = self.urls, {}
         for url in ("/blog/store-driver/", "/solutions/Paytronix/", "/articles/marketo/", "/vault"):
-            self.assertEqual(build._absolutize(url, base_dir="articles"), TARGET, url)
-        self.assertEqual(build._absolutize("/blog/call-criteria/", base_dir="articles"), "/articles/call-criteria/")
+            self.assertEqual(mapping.absolutize(url, base_dir="articles"), TARGET, url)
+        self.assertEqual(mapping.absolutize("/blog/call-criteria/", base_dir="articles"), "/articles/call-criteria/")
 
-    def test_projector_skips_them(self):
-        proj = projector.AnthusProjector.__new__(projector.AnthusProjector)
+    def test_the_hooks_skip_them(self):
         for slug in FOLDED_INTO:
             summary = SimpleNamespace(section="articles", output_path=f"articles/{slug}.mdx", front_matter={"title": slug})
-            self.assertEqual(proj.item_page_paths(summary), (), slug)
-            self.assertEqual(proj.item_pages(SimpleNamespace(summary=summary), site=None), {}, slug)
+            self.assertFalse(hooks.item_filter(summary), slug)
         keep = SimpleNamespace(section="articles", output_path="articles/venue-driver.mdx", front_matter={"title": "v"})
-        self.assertEqual(proj.item_page_paths(keep), ("articles/venue-driver/index.html",))
+        self.assertTrue(hooks.item_filter(keep))
 
 
-if __name__ == "__main__":
-    unittest.main()
+class ProjectedFoldedPages(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.projection = support.project_fixture()
+
+    def test_the_projection_has_no_page_for_a_folded_item_and_keeps_its_target(self):
+        files = self.projection.files
+        self.assertNotIn("articles/ticket-driver/index.html", files)
+        self.assertNotIn("articles/paytronix/index.html", files)
+        self.assertNotIn("articles/Paytronix/index.html", files)
+        self.assertIn("articles/venue-driver/index.html", files)
+
+    def test_they_are_in_no_listing_tag_page_sitemap_or_search_data(self):
+        projection = self.projection
+        for path in ("/ai-solutions/", "/", "/ryan/", "/tags/solutions/", "/tags/engagement/", "/articles/"):
+            html = projection.page(path)
+            self.assertNotIn("Ticket Driver", html, path)
+            self.assertNotIn("ticket-driver", html, path)
+            self.assertNotIn("Paytronix", html, path)
+        for key in ("sitemap-0.xml", "_data/search-index.json", "_data/latest.json"):
+            self.assertNotIn("ticket-driver", projection.text(key), key)
+            self.assertNotIn("aytronix", projection.text(key), key)
+        engagement = projection.page("/tags/engagement/")
+        self.assertIn("Venue Driver", engagement)
+        self.assertIn("Call Criteria", engagement)
+
+    def test_every_url_shape_of_every_folded_slug_is_in_the_redirect_store(self):
+        redirects = self.projection.redirects
+        for slug in FOLDED_INTO:
+            for shape in (f"/articles/{slug}/", f"/blog/{slug}/", f"/solutions/{slug}/", f"/{slug}/"):
+                for source in (shape, shape + "index.html"):
+                    self.assertEqual(redirects.get(source), TARGET, source)
+        for source in ("/articles/Paytronix/", "/solutions/Paytronix/", "/blog/Paytronix/index.html"):
+            self.assertEqual(redirects[source], TARGET, source)
+
+    def test_body_links_to_folded_items_point_at_venue_driver(self):
+        anchors = support.anchors(self.projection.main("/articles/call-criteria/"))
+        self.assertEqual(anchors.count(TARGET), 3)  # the guide itself, ticket-driver and Paytronix
+        for href in anchors:
+            self.assertNotIn("ticket-driver", href)
+            self.assertNotIn("Paytronix", href)
+        self.assertIn("/articles/plain-article/", anchors)  # an ordinary article is rewritten to its page, not folded
+
+    def test_redirects_exist_for_folded_items_that_are_not_in_the_corpus_at_all(self):
+        self.assertEqual(self.projection.redirects["/blog/vault/"], TARGET)
+        self.assertEqual(self.projection.redirects["/solutions/ticketing-analysis/"], TARGET)
 
 
 class FoldedRedirectsWithoutNodesTest(unittest.TestCase):
     """Unpublished folded items have no node, yet their old URLs must still redirect."""
 
     def test_rules_come_from_the_mapping(self):
-        import anthus_urls
-        from solution_sites import FOLDED_INTO
         source = open(anthus_urls.__file__, encoding="utf-8").read()
         self.assertIn("for slug, target in FOLDED_INTO.items()", source)
         self.assertIn("vault", FOLDED_INTO)
+
+
+if __name__ == "__main__":
+    unittest.main()

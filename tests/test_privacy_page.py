@@ -1,103 +1,112 @@
-"""The /privacy/ page: rendered by anthus_pages, linked from the footer, registered in the build and projector.
+"""The /privacy/ page and the consent banner ship together (anthus-web43f).
 
-The policy is grounded in what the site does (GA4, the Prospectus contact form, AWS hosting, Google Fonts).
-Details the repository cannot supply stay as visible bracketed placeholders rather than invented values.
+The policy describes the banner as live, so these tests pin the two to each other: the page text, the footer
+links, the Papyrus ``consent_mode`` configuration and the order of the gtag consent defaults in the page head.
 """
+import json
 import re
-import sys
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'web'))
-import anthus_dom
-import anthus_pages
-import anthus_urls
 import inquiry_form
+import support
 
-try:
-    import build_via_papyrus as build
-    BUILD_ERROR = None
-except (ImportError, SystemExit) as error:
-    build = None
-    BUILD_ERROR = error
+WEB = Path(__file__).resolve().parents[1] / "web"
+PROJECTION = json.loads((WEB / "projection.json").read_text())
+CONSENT = PROJECTION["chrome"]["consent_mode"]
 
-PAGE = anthus_pages.privacy_page()
-TEXT = re.sub(r'<[^>]+>', ' ', PAGE)
+PRODUCTION = support.project_fixture("production")
+GUARDED = support.project_fixture("guarded")
+PAGE = PRODUCTION.page("/privacy/")
+BODY = re.search(r"<main.*?</main>", PAGE, re.S).group(0)
+TEXT = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", BODY))
 
 
 class PrivacyPageTests(unittest.TestCase):
     def test_page_has_one_h1_and_the_expected_sections(self):
-        self.assertEqual(PAGE.count('<h1>'), 1)
-        self.assertIn('Privacy policy', PAGE)
-        for heading in ('Who we are', 'What we collect', 'Cookies and similar technologies', 'How long we keep it',
-                        'Sharing and service providers', 'International transfers', 'Your rights', 'Children',
-                        'Changes to this policy'):
-            self.assertIn(heading, PAGE)
-
-    def test_effective_date_is_shown(self):
-        self.assertIn('2026-10-19', TEXT)
+        self.assertEqual(BODY.count("<h1>"), 1)
+        self.assertIn("Privacy policy", BODY)
+        for heading in ("Who we are", "What we collect", "Cookies and similar technologies", "How long we keep it",
+                        "Sharing and service providers", "International transfers", "Your rights", "Children",
+                        "Changes to this policy"):
+            self.assertIn(heading, BODY)
 
     def test_names_the_operator_and_its_privacy_contact(self):
-        self.assertIn('Endymion Corporation', TEXT)
-        self.assertIn('PO Box 398795, Miami Beach, FL 33139', TEXT)
-        self.assertIn('<a href="mailto:info@anth.us">info@anth.us</a>', PAGE)
-        self.assertEqual(set(re.findall(r'[\w.+-]+@[\w-]+\.[\w.]+', TEXT)), {'info@anth.us'})
-        self.assertNotIn('Ryan to supply', PAGE)
+        self.assertIn("Endymion Corporation, PO Box 398795, Miami Beach, FL 33139", TEXT)
+        self.assertIn('<a href="mailto:info@anth.us">info@anth.us</a>', BODY)
+        self.assertEqual(set(re.findall(r"[\w.+-]+@[\w-]+\.[\w.]+", TEXT)), {"info@anth.us"})
 
-    def test_no_draft_wording_on_the_rendered_page(self):
-        for word in ('draft', 'todo', 'tbd', 'lorem', 'placeholder'):
+    def test_no_draft_wording_and_no_google_form(self):
+        for word in ("draft", "todo", "tbd", "lorem", "placeholder"):
             self.assertNotIn(word, TEXT.lower())
-
-    def test_no_google_form_references(self):
-        for needle in ('docs.google.com', 'forms.gle', '1FAIpQLS', 'Google Form'):
+        for needle in ("docs.google.com", "forms.gle", "1FAIpQLS", "Google Form"):
             self.assertNotIn(needle, PAGE)
 
-    def test_covers_what_the_site_actually_does(self):
+    def test_describes_the_banner_and_the_stored_choice(self):
+        for needle in ("G-31SC26SDGX", "Cookies and analytics", "Reject all", "Accept all", "Cookie settings",
+                       "about six months", "European Economic Area, the United Kingdom or Switzerland",
+                       "advertising stays off until you accept it", "We do not currently run advertising"):
+            self.assertIn(needle, TEXT)
+        # about six months is the stored choice: keep the page and the Papyrus setting in step (183 days)
+        self.assertEqual(CONSENT.get("retention_days", 183), 183)
+
+    def test_describes_the_contact_form_as_it_works(self):
         shipped = inquiry_form.read_config()
-        # The policy restates the approved contact-v1 notice; fail if the notice changes and the policy does not.
-        self.assertEqual(shipped['notice_version'], 'contact-v1')
-        for phrase in ('never sold', 'mailing list', 'until you ask us to delete them'):
-            self.assertIn(phrase, shipped['privacy_notice'])
-        for needle in ('Google Analytics 4', 'Google Fonts', 'Amazon Web Services', 'contact form', 'utm_campaign',
-                       'about six months', 'Cookie settings', 'supervisory authority', 'withdraw your consent',
-                       'We never sell them', 'kept until you ask us to delete them'):
+        self.assertEqual(shipped["notice_version"], "contact-v1")  # the policy restates this notice
+        for phrase in ("never sold", "mailing list", "until you ask us to delete them"):
+            self.assertIn(phrase, shipped["privacy_notice"])
+        for needle in ("We never sell them", "kept until you ask us to delete them", "utm_campaign",
+                       "hidden field", "how long the form was open", "scores it for spam",
+                       "Prospectus", "Amazon Web Services", "Google Fonts"):
             self.assertIn(needle, TEXT)
 
-    def test_advertising_is_described_as_possible_future_use_only_with_consent(self):
-        self.assertIn('We do not currently run advertising', TEXT)
-        self.assertIn('only after you accept advertising cookies', TEXT)
-
-    def test_metadata_is_registered(self):
-        self.assertEqual(anthus_pages.PAGE_META['/privacy/']['title'], 'Privacy Policy | Anthus')
-        self.assertTrue(anthus_pages.PAGE_META['/privacy/']['description'])
-
-    def test_url_and_projection_ownership(self):
-        self.assertIn('privacy', anthus_urls.STANDALONE_PAGES)
-        self.assertIn('privacy', anthus_urls.RESERVED_SEGMENTS)
-        projector_source = (Path(__file__).resolve().parents[1] / 'web' / 'projector.py').read_text()
-        self.assertIn('"privacy"', projector_source)
+    def test_page_is_registered_and_linked(self):
+        page = next(entry for entry in PROJECTION["pages"] if entry["id"] == "privacy")
+        self.assertEqual(page["path"], "privacy")
+        self.assertEqual(page["source"], "pages/privacy.md")
+        self.assertTrue(PRODUCTION.has_page("/privacy/"))
+        self.assertIn("<title>Privacy Policy | Anthus</title>", PAGE)
 
 
-class FooterLinkTests(unittest.TestCase):
-    def test_footer_links_to_privacy_on_every_page(self):
-        self.assertIn('<li><a href="/privacy/">Privacy</a></li>', anthus_dom.FOOTER_HTML)
-        envelope = anthus_dom.render_envelope(fragment='<p>x</p>', route='/privacy/', scripts='')
-        self.assertIn('href="/privacy/"', envelope)
+class ConsentBannerTests(unittest.TestCase):
+    def test_banner_wording_is_the_approved_wording(self):
+        self.assertEqual(CONSENT["privacy_policy_url"], "/privacy/")
+        self.assertIn('<h2 id="papyrus-consent-heading">Cookies and analytics</h2>', PAGE)
+        self.assertIn("We use cookies to measure how this site is used and, if you agree, for advertising. "
+                      "You can accept all, reject all, and change your choice at any time.", PAGE)
+        self.assertRegex(PAGE, r'data-papyrus-consent-choice="reject">Reject all</button>')
+        self.assertRegex(PAGE, r'data-papyrus-consent-choice="accept">Accept all</button>')
+        self.assertIn('href="/privacy/"', re.search(r'id="papyrus-consent-message">.*?</p>', PAGE, re.S).group(0))
+
+    def test_consent_defaults_come_before_the_tag_loads_and_before_config(self):
+        # An EEA, UK or Swiss visitor starts denied; everyone else starts with analytics only; both before gtag.js.
+        strict = PAGE.index("gtag('consent','default',{ad_storage:'denied'")
+        self.assertIn("region:[", PAGE[strict:strict + 600])
+        self.assertIn('"DE"', PAGE[strict:strict + 600])
+        self.assertIn('"GB"', PAGE[strict:strict + 600])
+        self.assertIn('"CH"', PAGE[strict:strict + 600])
+        elsewhere = PAGE.index("analytics_storage:'granted'")
+        for name in ("ad_storage", "ad_user_data", "ad_personalization"):
+            self.assertIn(f"{name}:'denied'", PAGE[elsewhere - 120:elsewhere + 30])
+        loads = PAGE.index("googletagmanager.com/gtag/js?id=G-31SC26SDGX")
+        configures = PAGE.index("gtag('config'")
+        self.assertLess(strict, elsewhere)
+        self.assertLess(elsewhere, loads)
+        self.assertLess(loads, configures)
+
+    def test_every_page_has_the_banner_and_the_footer_links(self):
+        for path in ("/", "/engage/", "/privacy/", "/about/"):
+            page = PRODUCTION.page(path)
+            self.assertEqual(page.count('id="papyrus-consent-banner"'), 1, path)
+            footer = re.search(r'<footer class="site-footer".*?</footer>', page, re.S).group(0)
+            self.assertIn('<li><a href="/privacy/">Privacy</a></li>', footer, path)
+            self.assertIn('<a href="#" data-papyrus-consent-reopen hidden>Cookie settings</a>', footer, path)
+
+    def test_a_guarded_build_loads_no_analytics_and_no_banner(self):
+        page = GUARDED.page("/privacy/")
+        self.assertNotIn("googletagmanager", page)
+        self.assertNotIn("papyrus-consent-banner", page)
 
 
-@unittest.skipIf(build is None, f'build module unavailable: {BUILD_ERROR}')
-class BuildRegistrationTests(unittest.TestCase):
-    def test_build_generates_privacy_html_with_meta(self):
-        from anthus_content import Collections
-        build.GENERATED.clear()
-        build._PAGE_META.clear()
-        build._ARTICLE_LD.clear()
-        build.generate_pages(Collections.from_nodes([]), object())
-        title, fragment = build.GENERATED['privacy.html']
-        self.assertEqual(title, 'Privacy Policy')
-        self.assertIn('Privacy policy', fragment)
-        self.assertIn('privacy.html', build._PAGE_META)
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -1,104 +1,123 @@
-"""Guard tests (PPY-f1f0a8 / PPY-0ba000). Stdlib only: python3 tests/test_site_env.py"""
-import sys
-import tempfile
+"""The environment guard and the head, sitemap and robots output of Papyrus core, as the Anth.us projection ships them
+(PPY-f1f0a8, PPY-e329c3).
+
+Production is decided by ``site.productionUrl`` in web/projection.json and the two variables Papyrus reads
+(``PAPYRUS_SITE_PUBLIC_URL``, ``PAPYRUS_SITE_ENV``); a guarded build is noindex, disallows crawling, has no
+analytics script and carries a staging note in the footer.
+"""
+import json
+import re
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "web"))
-import site_env as se  # noqa: E402
+import anthus_dom
+import support
+from papyrus_content.projection.standard.config import standard_settings_from_mapping
+from papyrus_content.projection.standard.environment import resolve_environment
+
+WEB = Path(__file__).resolve().parent.parent / "web"
+SETTINGS = standard_settings_from_mapping(json.loads((WEB / "projection.json").read_text(encoding="utf-8")))
+STAGING = "https://staging.example.com"
 
 
-def page(env: se.SiteEnv, path_url: str = "/", *, canonical=None) -> str:
-    canonical = canonical if canonical is not None else env.origin + path_url
-    return (
-        f'<html><head><title>t</title><link rel="canonical" href="{canonical}">\n'
-        f'<meta property="og:url" content="{canonical}">\n'
-        + se.head_extras(env)
-        + f"</head><body>x{se.footer_note(env)}</body></html>"
-    )
-
-
-def make_dist(env: se.SiteEnv, root: Path) -> None:
-    for rel, url in (("index.html", "/"), ("about/index.html", "/about/"), ("404.html", "/404.html")):
-        p = root / rel
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(page(env, url), encoding="utf-8")
-    se.write_site_files(env, root, [env.origin + "/", env.origin + "/about/"])
+def resolve(**environ):
+    env = {}
+    if "env" in environ:
+        env["PAPYRUS_SITE_ENV"] = environ["env"]
+    if "url" in environ:
+        env["PAPYRUS_SITE_PUBLIC_URL"] = environ["url"]
+    return resolve_environment(SETTINGS, env)
 
 
 class Resolve(unittest.TestCase):
+    def test_the_production_origin_is_anth_us(self):
+        self.assertEqual(SETTINGS.identity.production_url, "https://anth.us")
+        self.assertTrue(SETTINGS.guard)
+
     def test_matrix(self):
-        r = se.resolve
-        self.assertEqual(r({}).mode, "guarded")
-        self.assertEqual(r({"SITE_ENV": "production"}).mode, "production")
-        self.assertEqual(r({"SITE_ENV": "production", "AWS_BRANCH": "main"}).mode, "production")
-        x = r({"SITE_ENV": "production", "AWS_BRANCH": "feature-x", "AWS_APP_ID": "d1"})
-        self.assertEqual((x.mode, bool(x.warnings)), ("guarded", True))
-        self.assertEqual(x.origin, "https://feature-x.d1.amplifyapp.com")
-        for bad in ("Production", "prod", "yes"):
-            e = r({"SITE_ENV": bad})
-            self.assertEqual((e.mode, bool(e.warnings)), ("guarded", True), bad)
-        self.assertEqual(r({"AWS_BRANCH": "main"}).mode, "guarded")  # branch alone is not enough
-        self.assertEqual(r({"SITE_ENV": "production"}).origin, "https://anth.us")
-        self.assertEqual(r({"ANTHUS_SITE_ORIGIN": "https://s.example/"}).origin, "https://s.example")
-        self.assertEqual(r({}).origin, se.LOCAL_FALLBACK_ORIGIN)
-        self.assertTrue(r({"SITE_ENV": "production"}).analytics_enabled)
-        self.assertFalse(r({}).analytics_enabled)
-        # production ignores an origin override
-        self.assertEqual(r({"SITE_ENV": "production", "ANTHUS_SITE_ORIGIN": "https://x.y"}).origin, "https://anth.us")
+        self.assertTrue(resolve(env="production").production)
+        self.assertEqual(resolve(env="production").origin, "https://anth.us")
+        self.assertTrue(resolve(url="https://anth.us/").production)  # the public URL is the production origin
+        self.assertEqual(resolve(url="https://anth.us/").origin, "https://anth.us")
+        for guarded in (resolve(url=STAGING), resolve(url="staging.example.com"), resolve(url="https://feature-x.d1.amplifyapp.com/")):
+            self.assertFalse(guarded.production, guarded)
+            self.assertTrue(guarded.guarded)
+        self.assertEqual(resolve(url="staging.example.com").origin, STAGING)
+        # an explicit value other than "production" is guarded, whatever the origin says (fail safe)
+        for bad in ("guarded", "prod", "yes", "staging"):
+            self.assertTrue(resolve(env=bad, url="https://anth.us").guarded, bad)
+        # and an explicit "production" is production on an origin of its own
+        self.assertTrue(resolve(env="production", url=STAGING).production)
+        self.assertEqual(resolve(env="production", url=STAGING).origin, STAGING)
+
+    def test_a_site_with_no_variables_at_all_is_the_production_site(self):
+        # The projector of the production pipeline sets neither; the guard exists to catch a *different* origin.
+        self.assertTrue(resolve().production)
+        self.assertEqual(resolve().origin, "https://anth.us")
 
 
-class Assertions(unittest.TestCase):
-    G = se.resolve({"ANTHUS_SITE_ORIGIN": "https://staging.example.com"})
-    P = se.resolve({"SITE_ENV": "production"})
+class ProjectedOutput(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.production = support.project_fixture("production")
+        cls.guarded = support.project_fixture("guarded")
 
-    def run_case(self, env, mutate=None):
-        with tempfile.TemporaryDirectory() as d:
-            root = Path(d)
-            make_dist(env, root)
-            if mutate:
-                mutate(root)
-            return se.assert_dist(env, root)
+    @staticmethod
+    def head(html):
+        return html[: html.index("</head>")]
 
-    def fails(self, env, mutate, needle):
-        with self.assertRaises(se.GuardError) as cm:
-            self.run_case(env, mutate)
-        self.assertIn(needle, str(cm.exception))
+    def test_production_head(self):
+        head = self.head(self.production.page("/about/"))
+        self.assertIn('<link rel="canonical" href="https://anth.us/about/">', head)
+        self.assertIn('<meta property="og:image" content="https://anth.us/assets/site/share-card.png">', head)
+        self.assertIn('<meta name="twitter:creator" content="@RyanAlynPorter">', head)
+        self.assertIn('<link rel="sitemap" type="application/xml" href="/sitemap-index.xml">', head)
+        self.assertNotIn('name="robots"', head)
+        self.assertIn('<link rel="alternate" type="application/rss+xml" title="Anthus" href="/feed.xml">', head)  # feeds are advertised
+        self.assertIn('<link rel="alternate" type="application/atom+xml" title="Anthus" href="/atom.xml">', head)
+        self.assertIn("googletagmanager.com/gtag/js?id=G-31SC26SDGX", head)  # analytics is on in production
+        self.assertIn("noindex, nofollow", self.head(self.production.page("/articles/draft-article/")))  # a draft page
+        self.assertNotIn("noindex", self.head(self.production.page("/articles/plain-article/")))
 
-    def edit(self, rel, fn):
-        def m(root):
-            p = root / rel
-            p.write_text(fn(p.read_text()), encoding="utf-8")
-        return m
+    def test_guarded_head_is_noindex_on_its_own_origin_with_no_analytics(self):
+        for path in ("/about/", "/articles/plain-article/", "/articles/draft-article/", "/"):
+            head = self.head(self.guarded.page(path))
+            self.assertIn('<meta name="robots" content="noindex, nofollow">', head, path)
+            self.assertIn(f'href="{STAGING}{path}"', head, path)
+            self.assertNotIn("https://anth.us", head, path)
+            self.assertNotIn("googletagmanager", head, path)
+            self.assertNotIn("gtag(", self.guarded.page(path), path)
+        self.assertIn("noindex", self.guarded.text("404.html"))
 
-    def test_clean_builds_pass(self):
-        self.assertEqual(self.run_case(self.G), 3)
-        self.assertEqual(self.run_case(self.P), 3)
+    def test_article_json_ld_keeps_the_plain_headline(self):
+        head = self.head(self.production.page("/articles/call-criteria/"))
+        self.assertIn('<meta property="og:title" content="Call Criteria | Anthus">', head)
+        self.assertIn('"headline":"Call Criteria"', head)
+        self.assertIn('"publisher":{"@type":"Organization","name":"Anthus AI Solutions"}', head)
+        self.assertIn('"author":[{"@type":"Person","name":"Ryan Porter"}]', head)
+        self.assertIn('<meta property="article:published_time" content="2023-10-01">', head)
+        self.assertNotIn("ld+json", self.head(self.production.page("/articles/draft-article/")))  # a draft is no article for search
 
-    def test_guarded_violations(self):
-        self.fails(self.G, self.edit("about/index.html", lambda t: t.replace(se.NOINDEX_META, "")), "noindex robots meta missing")
-        self.fails(self.G, self.edit("index.html", lambda t: t.replace(se.STAGING_NOTE_MARKER, "x")), "staging note missing")
-        self.fails(self.G, lambda r: (r / "robots.txt").write_text("User-agent: *\nAllow: /\n"), "guarded robots.txt")
-        self.fails(self.G, self.edit("index.html", lambda t: t.replace("</head>", '<script src="https://www.googletagmanager.com/gtag/js"></script></head>')), "analytics present")
+    def test_site_files(self):
+        self.assertEqual(self.production.text("robots.txt"), "User-agent: *\nAllow: /\nSitemap: https://anth.us/sitemap-index.xml\n")
+        self.assertEqual(self.guarded.text("robots.txt"), "User-agent: *\nDisallow: /\n")
+        self.assertIn("<loc>https://anth.us/sitemap-0.xml</loc>", self.production.text("sitemap-index.xml"))
+        locations = re.findall(r"<loc>([^<]+)</loc>", self.production.text("sitemap-0.xml"))
+        self.assertEqual(locations, sorted(locations))
+        self.assertIn("https://anth.us/", locations)
+        self.assertIn("<lastmod>", self.production.text("sitemap-0.xml"))
+        self.assertNotIn("https://anth.us", self.guarded.text("sitemap-index.xml"))
+        self.assertNotIn("https://anth.us", self.guarded.text("sitemap-0.xml"))
+        self.assertTrue(all(url.startswith(STAGING) for url in re.findall(r"<loc>([^<]+)</loc>", self.guarded.text("sitemap-0.xml"))))
 
-    def test_production_violations(self):
-        self.fails(self.P, self.edit("index.html", lambda t: t.replace("</head>", se.NOINDEX_META + "</head>")), "noindex robots meta present")
-        self.fails(self.P, self.edit("about/index.html", lambda t: t.replace("</body>", se.STAGING_NOTE_HTML + "</body>")), "staging note present")
-        self.fails(self.P, self.edit("index.html", lambda t: t.replace("https://anth.us/", "https://staging.example.com/", 1)), "canonical")
-        self.fails(self.P, lambda r: (r / "robots.txt").write_text("User-agent: *\nDisallow: /\n"), "production robots.txt")
-        wrong = se.SiteEnv(True, "https://example.com")
-        with self.assertRaises(se.GuardError):
-            self.run_case(wrong)
-        with self.assertRaises(se.GuardError):  # guarded must not claim the production origin
-            self.run_case(se.SiteEnv(False, se.PRODUCTION_ORIGIN))
-
-    def test_sitemap_violations(self):
-        self.fails(self.G, lambda r: (r / "sitemap.xml").write_text("<x/>"), "sitemap.xml must not")
-        self.fails(self.G, lambda r: (r / "sitemap-0.xml").write_text("<urlset"), "not valid XML")
-        self.fails(self.G, self.edit("sitemap-0.xml", lambda t: t.replace("/about/", "/nope/")), "no file nope/index.html")
-        self.fails(self.G, self.edit("sitemap-0.xml", lambda t: t.replace("</urlset>", "<url><loc>https://staging.example.com/404.html</loc></url></urlset>")), "404")
-        self.fails(self.G, self.edit("sitemap-index.xml", lambda t: t.replace("sitemap-0", "sitemap-9")), "sitemap-index.xml locs")
-        self.fails(self.G, self.edit("about/index.html", lambda t: t.replace(se.SITEMAP_LINK, "")), "sitemap <link> missing")
+    def test_staging_note_only_when_guarded(self):
+        marker = "Staging preview of the Papyrus/Markus port of anth.us"
+        self.assertIn(marker, anthus_dom.STAGING_NOTE_HTML)
+        for path in ("/", "/articles/call-criteria/", "/ai-solutions/"):
+            self.assertNotIn(marker, self.production.page(path), path)
+            self.assertIn(marker, self.guarded.page(path), path)
+        self.assertIn(marker, self.guarded.text("404.html"))
+        self.assertNotIn(marker, self.production.text("404.html"))
 
 
 if __name__ == "__main__":

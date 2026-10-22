@@ -58,18 +58,14 @@ Amplify rule semantics, measured against the staging app rather than assumed:
 
 from __future__ import annotations
 
-import os
 import re
 from dataclasses import dataclass, field
 from urllib.parse import quote, unquote
 
 from solution_sites import EXTERNAL_SITES, FOLDED_INTO
 
-#: ``directory`` emits ``/articles/<slug>/``; ``html`` emits
-#: ``/articles/<slug>.html``. This is the only place the shape is decided.
-URL_STYLE = (os.environ.get("ANTHUS_URL_STYLE") or "directory").strip().lower()
-if URL_STYLE not in ("directory", "html"):
-    raise SystemExit(f"ANTHUS_URL_STYLE must be 'directory' or 'html', got {URL_STYLE!r}")
+#: Pages are served as ``/articles/<slug>/`` (a directory index); only the 404 page keeps its file name.
+URL_STYLE = "directory"
 
 #: Pages that keep their literal filename whatever the style. Amplify's error
 #: document is configured by name, and a request that lands on it must not be
