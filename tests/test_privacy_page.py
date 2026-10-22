@@ -50,6 +50,13 @@ class PrivacyPageTests(unittest.TestCase):
         # about six months is the stored choice: keep the page and the Papyrus setting in step (183 days)
         self.assertEqual(CONSENT.get("retention_days", 183), 183)
 
+    def test_scope_covers_the_product_sites_that_link_here(self):
+        for needle in ("Anthus product sites whose pages link to this policy: currently cyclotron.anth.us",
+                       "The same Google Analytics property is used on anth.us and on the product sites",
+                       "tell the sites apart by hostname", "on each site covered by this policy",
+                       "covered by that policy instead"):
+            self.assertIn(needle, TEXT)
+
     def test_describes_the_contact_form_as_it_works(self):
         shipped = inquiry_form.read_config()
         self.assertEqual(shipped["notice_version"], "contact-v1")  # the policy restates this notice
