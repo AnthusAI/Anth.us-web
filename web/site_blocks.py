@@ -120,6 +120,7 @@ BLOCKS = {
     "supporting-cards": lambda attributes, page: supporting_cards(),
     "further-reading": lambda attributes, page: further_reading(page),
     "platform-lines": lambda attributes, page: platform_lines(page),
+    "availability-chip": lambda attributes, page: product_availability_labels.availability_chip_markup(attributes["product"]),
     "inquiry-form": lambda attributes, page: inquiry_form.render(),
 }
 

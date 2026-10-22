@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import fs from 'node:fs';
 const source = fs.readFileSync(new URL('../web/static-root/engage-inquiry.js', import.meta.url), 'utf8');
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-function setup(responses, fallbackEmail, clock) {
+function setup(responses, fallbackEmail, clock, {withoutRandomUuid = false} = {}) {
   const button = {disabled: true}, receipt = {};
   const error = {parts: [], append(...nodes) { this.parts.push(...nodes); }};
   const fields = {name:'Test Person',email:'person@example.test',company:'',message:'A synthetic pilot',website:''};
@@ -16,7 +16,7 @@ function setup(responses, fallbackEmail, clock) {
   const calls = [];
   let ids = 0;
   const context = {document:{getElementById(){return form;}, createElement(tag){return {tag};}},
-    crypto:{randomUUID(){return `00000000-0000-4000-8000-${String(++ids).padStart(12,'0')}`;}},
+    crypto: withoutRandomUuid ? {} : {randomUUID(){return `00000000-0000-4000-8000-${String(++ids).padStart(12,'0')}`;}},
     location:{search:'?utm_source=site&utm_campaign=pilot&email=private&from=secret'},
     URLSearchParams, AbortSignal, FormData: class {get(key){return fields[key];}},
     ...(clock ? {performance: {now: () => clock.now}} : {}),
@@ -159,4 +159,21 @@ test('elapsed_ms is capped at one day and never negative', async () => {
   clock.now = 0;
   await skewed.send();
   assert.equal(JSON.parse(skewed.calls[0].body).elapsed_ms, 0);
+});
+
+test('without crypto.randomUUID the page shows the email fallback instead of a silently disabled button', () => {
+  const app = setup([], 'info@example.com', undefined, {withoutRandomUuid: true});
+  assert.equal(app.button.disabled, true);
+  assert.equal(app.form.dataset.state, 'unsupported');
+  assert.match(app.error.textContent, /can’t run in your browser/);
+  assert.equal(app.error.parts.length, 2);
+  assert.equal(app.error.parts[0].href, 'mailto:info@example.com');
+  assert.equal(app.error.parts[0].textContent, 'info@example.com');
+  assert.deepEqual(app.calls, []);
+});
+
+test('without crypto.randomUUID and without a fallback address the message still explains the problem', () => {
+  const app = setup([], undefined, undefined, {withoutRandomUuid: true});
+  assert.match(app.error.textContent, /try another browser/);
+  assert.equal(app.error.parts.length, 0);
 });

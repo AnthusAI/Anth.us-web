@@ -789,6 +789,9 @@ a.chip:hover { border-color: var(--pink); color: var(--pink-deep); }
   font-weight: 400; letter-spacing: 0.04em; text-transform: uppercase; line-height: 1.2; padding: 0.2rem 0.5rem;
   color: var(--ink-2); background: var(--panel-2); border: 1px solid var(--line); clip-path: var(--clip-3);
 }
+.site-footer .availability-chip { color: var(--footer-ink-2); background: transparent; border-color: var(--footer-ink-2); margin-left: 0.5rem; }
+.card__links .availability-chip { align-self: center; margin-left: -0.65rem; } /* sits beside the link before it, not a gap away */
+.site-footer__product .availability-chip { margin-left: 0.7rem; }
 .chip small { font-family: var(--font-mono); color: var(--ink-2); margin-left: 0.4rem; }
 .acard__meta a { color: inherit; text-decoration: none; position: relative; z-index: 2; }
 .acard__meta a:hover { color: var(--pink-deep); text-decoration: underline; }
