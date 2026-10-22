@@ -4,7 +4,7 @@
   "repository": "https://github.com/AnthusAI/Anth.us-web",
   "brand": "anth-us",
   "frontend": "markus-static",
-  "papyrusVersion": "5.13.0",
+  "papyrusVersion": "5.19.1",
   "cms": {
     "staging": true,
     "stagingPreview": {
