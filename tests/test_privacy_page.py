@@ -51,7 +51,7 @@ class PrivacyPageTests(unittest.TestCase):
         self.assertEqual(CONSENT.get("retention_days", 183), 183)
 
     def test_scope_covers_the_product_sites_that_link_here(self):
-        for needle in ("Anthus product sites whose pages link to this policy: currently cyclotron.anth.us",
+        for needle in ("Anthus product sites whose pages link to this policy: currently cyclotron.anth.us, markus.anth.us, tactus.anth.us, threat-intelligence.anth.us and pilobol.us",
                        "The same Google Analytics property is used on anth.us and on the product sites",
                        "tell the sites apart by hostname", "on each site covered by this policy",
                        "covered by that policy instead"):
