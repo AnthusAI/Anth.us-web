@@ -91,7 +91,9 @@ suite, open a pull request into `main`. Content changes (articles, platform page
 
 **Bump the Papyrus pin.** Edit the six places listed in README ("How a change reaches production"), run `npm install` in
 the root and in `infra/`, `npx papyrus-app sync`, `npx tsc --noEmit`, the pytest suite against the new
-`papyrus-newsroom[markus]==X`, then open a pull request titled `chore: bump Papyrus to X`. The merge deploys. Releases
+`papyrus-newsroom[markus]==X`, then open a pull request titled `chore: bump Papyrus to X`. The merge deploys.
+(Before bumping past 5.23.0: Papyrus 5.29+ changed `entry.authors` to structured objects; a compatibility release that
+restores plain names is in progress. Bump to that release or later, not to 5.29.x before it.) Releases
 come from Papyrus `feat:` and `fix:` commits on its `main`; `chore:` and `docs:` do not release.
 
 **Deploy.** Merge to `main`. Watch it: `gh run list --workflow "CI and deploy"`, then
@@ -205,9 +207,10 @@ is one of the participating publications (with `p-apyr-us` and `threat-intellige
 5. Verify in the site's newsroom at Administration, Monitoring (`/newsroom/administration/monitoring`, read-only), and in
    References for pending items with a Cyclotron provenance Message.
 
-Not verified from this repository (outside the allowed read-only checks): the stored router configuration and the router
-role's grants for anth.us. The AppSync API of anth.us was recreated in the 2026-10-19 backend rebuild, so confirm the
-`appsyncEndpoint` in the stored configuration is the current one (`data.url` in the deployed `amplify_outputs.json`).
+Verified 2026-10-23 (router side, read-only): the deployed papyrus-monitoring stack's `AnthUsApiId` is the live
+AppSync API tagged `amplify:app-id d7s858igkyct5` (this app), so the router's anth.us grants point at the post-rebuild
+API, and the router has delivered to anth.us since 2026-10-21. Re-check this after any backend rebuild: a rebuild
+recreates the AppSync API, and the stored `appsyncEndpoint` must match `data.url` in the deployed `amplify_outputs.json`.
 
 ## Review requests
 
@@ -307,8 +310,8 @@ Hierarchy: initiative, epic, task, sub-task; stories hold Gherkin, not implement
   `generate_lead` as a key event, register custom dimensions, Google Ads conversions blocked, LinkedIn Insight behind consent),
   the Cognitive Debt section story, Search Console verification, and audit bugs filed 2026-10-20 (including a P1 about a
   draft body on a live article). The board can lag the code; run `kbs list` for the truth.
-* **Known gaps:** `develop` is about 80 commits behind `main` and its README is stale; the router configuration for anth.us
-  after the backend rebuild is unverified (see above); cleanup of old resources retained from the rebuild is pending; reader
+* **Known gaps:** `develop` is about 80 commits behind `main` and its README is stale; the router configuration was
+  re-verified after the backend rebuild (2026-10-23) and must be re-checked after any future rebuild; cleanup of old resources retained from the rebuild is pending; reader
   steering, the newsletter plugin, procedures, automations, review requests and the Notification Center are not part of the
   site today.
 
