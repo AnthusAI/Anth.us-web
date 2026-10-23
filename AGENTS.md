@@ -92,8 +92,9 @@ suite, open a pull request into `main`. Content changes (articles, platform page
 **Bump the Papyrus pin.** Edit the six places listed in README ("How a change reaches production"), run `npm install` in
 the root and in `infra/`, `npx papyrus-app sync`, `npx tsc --noEmit`, the pytest suite against the new
 `papyrus-newsroom[markus]==X`, then open a pull request titled `chore: bump Papyrus to X`. The merge deploys.
-(Before bumping past 5.23.0: Papyrus 5.29+ changed `entry.authors` to structured objects; a compatibility release that
-restores plain names is in progress. Bump to that release or later, not to 5.29.x before it.) Releases
+(Before bumping past 5.23.0: Papyrus 5.29-5.32 changed `entry.authors` to structured objects; 5.33.0 restores plain
+names, with the structured form in `entry.author_details`. Bump to 5.33.0 or later, which also brings the reconcile
+plugin-page guard and `--allow-deletions` protection; skip 5.29-5.32.) Releases
 come from Papyrus `feat:` and `fix:` commits on its `main`; `chore:` and `docs:` do not release.
 
 **Deploy.** Merge to `main`. Watch it: `gh run list --workflow "CI and deploy"`, then
