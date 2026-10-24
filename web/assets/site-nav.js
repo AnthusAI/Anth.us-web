@@ -35,8 +35,9 @@
  * (`?solution=<name>`).
  *
  * Every Engage link and every link that leaves the site also gets `data-cta-location`, computed from where
- * the element sits in this page. The analytics listener (conversion-events.js) reads it, so a product
- * call to action reports its own location and never a `cta=` value carried in from an earlier click. */
+ * the element sits in this page. Papyrus's shared GA4 listener (markus_renderer/analytics_events.py)
+ * sends the call-to-action click event for any link carrying it, with this value as `cta_location`, so a product call to action reports
+ * its own location and never a `cta=` value carried in from an earlier click. This site sends no such event itself. */
 (function () {
   "use strict";
   var onEngagePage = /^\/engage\//.test(location.pathname);

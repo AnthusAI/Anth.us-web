@@ -177,7 +177,6 @@
   "chrome": {
     "scripts": [
       "assets/site-nav.js",
-      "assets/conversion-events.js",
       "assets/px-live.js",
       "assets/drafts.js"
     ],

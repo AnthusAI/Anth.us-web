@@ -73,7 +73,7 @@ Each part is described for how it applies to anth.us; the engine docs are the au
 | Shared relevance Cyclotron | One standing Cyclotron decides include or exclude per publication; output `anth-us-relevance`. Doctrine in `corpora/papyrus-publication-doctrine.yml` mirrors the production records | [steering-and-relevance](https://github.com/AnthusAI/Papyrus/blob/main/docs/steering-and-relevance.md), [cyclotron-priming](https://github.com/AnthusAI/Papyrus/blob/main/docs/cyclotron-priming.md) |
 | Procedure runner and Tactus procedures | The engine runs a site's published Tactus procedures in the cloud. **This repository registers none.** | [procedure-runner](https://github.com/AnthusAI/Papyrus/blob/main/docs/procedure-runner.md), [newsroom-procedures-runbook](https://github.com/AnthusAI/Papyrus/blob/main/docs/newsroom-procedures-runbook.md) |
 | Knowledge run (cloud and local) | **Not configured for anth.us.** The corpus section list is `corpora/anth-us-newsroom-sections.yml` | [knowledge-workstation-run](https://github.com/AnthusAI/Papyrus/blob/main/docs/knowledge-workstation-run.md), [knowledge-cloud-run](https://github.com/AnthusAI/Papyrus/blob/main/docs/knowledge-cloud-run.md) |
-| Automations | The `Automation` record model exists in every site's API; none are defined for anth.us. The `papyrus automations` command is newer than the 5.23.0 pin | [automations](https://github.com/AnthusAI/Papyrus/blob/main/docs/automations.md) |
+| Automations | The `Automation` record model exists in every site's API; none are defined for anth.us. Papyrus 5.35.0 ships the `papyrus automations` command | [automations](https://github.com/AnthusAI/Papyrus/blob/main/docs/automations.md) |
 | Review requests and the Notification Center | **Planned, not built.** Papyrus stories "Human review points" and "CMS console Notification Center" are open on its board | (no doc yet; Papyrus board) |
 | GA4 and consent | Built and live. See "GA4 and consent" below | [site-hosting, "Analytics"](https://github.com/AnthusAI/Papyrus/blob/main/docs/site-hosting.md#analytics-google-analytics-4) |
 | Engage form | `web/inquiry-config.json` is its only configuration: endpoint, notice version `contact-v1`, approved notice text, and a fallback address. It is bundled with `web/` into the projector Lambda; Next build variables do not configure it | [public-forms](https://github.com/AnthusAI/Papyrus/blob/main/docs/public-forms.md) |
@@ -92,9 +92,8 @@ suite, open a pull request into `main`. Content changes (articles, platform page
 **Bump the Papyrus pin.** Edit the six places listed in README ("How a change reaches production"), run `npm install` in
 the root and in `infra/`, `npx papyrus-app sync`, `npx tsc --noEmit`, the pytest suite against the new
 `papyrus-newsroom[markus]==X`, then open a pull request titled `chore: bump Papyrus to X`. The merge deploys.
-(Before bumping past 5.23.0: Papyrus 5.29-5.32 changed `entry.authors` to structured objects; 5.33.0 restores plain
-names, with the structured form in `entry.author_details`. Bump to 5.33.0 or later, which also brings the reconcile
-plugin-page guard and `--allow-deletions` protection; skip 5.29-5.32.) Releases
+(Papyrus 5.29-5.32 changed `entry.authors` to structured objects; 5.33.0 restores plain names, with the structured form
+in `entry.author_details`. Never pin 5.29-5.32.) Releases
 come from Papyrus `feat:` and `fix:` commits on its `main`; `chore:` and `docs:` do not release.
 
 **Deploy.** Merge to `main`. Watch it: `gh run list --workflow "CI and deploy"`, then
@@ -115,8 +114,7 @@ save answered `live: false`, or the `DeployRenderDrift` alarm fired):
    `papyrus-production`; exits 1 on drift, writes nothing, takes no lease).
 3. Only if the report is what you expect, `papyrus ops content project --reconcile --static-dir web --bucket <site bucket>`
    from a clean, up-to-date checkout of `main`. A stale `web/` makes the projector look like it no longer places a section; the
-   deletion guard then refuses and exits 2. Fix the checkout; do not pass `--allow-deletions`. (The guard and that flag arrived
-   in Papyrus v5.27.0; the 5.23.0 pin has neither, so on the pin only the dry run protects you. Always dry-run first.)
+   deletion guard then refuses and exits 2. Fix the checkout; do not pass `--allow-deletions`. (The guard and that flag are in the 5.35.0 pin; still dry-run first.)
 4. `project --all` re-renders everything and deletes nothing; use it after a deploy that failed to render. Pages written
    by a run use the `web/` of the checkout that ran it.
 
@@ -131,7 +129,7 @@ live data, takes no lease), or `bin/project_export_locally.py` (README).
 [procedure-runner](https://github.com/AnthusAI/Papyrus/blob/main/docs/procedure-runner.md). The router starts procedures from
 `procedureTriggers` in its configuration, which is Papyrus-owned.
 
-**Create an automation.** Needs a Papyrus release newer than the 5.23.0 pin that has `papyrus automations`; the command
+**Create an automation.** Uses `papyrus automations` (in the 5.35.0 pin); the command
 shape is in [automations](https://github.com/AnthusAI/Papyrus/blob/main/docs/automations.md). The record starts nothing by itself.
 
 **Start a new Papyrus site.** Use this repository as the model: `infra/site.json`, `papyrus.config.ts`, `web/projection.json`,
@@ -158,10 +156,13 @@ privacy policy. It exists so Ryan can run Google Ads; `analytics_only` must stay
   raising `policy_version` re-prompts everyone. `ads_data_redaction` is on and `url_passthrough` is off.
 * **Reopen.** The footer "Cookie settings" link (`web/anthus_dom.py`) carries `data-papyrus-consent-reopen`.
 * **Owner opt-out.** `?notrack=1` once per browser stops counting it (`ga-disable-G-31SC26SDGX`); `?notrack=0` undoes it.
-* **Events.** `web/assets/conversion-events.js` sends `cta_click` for engage links and product calls to action
-  (`data-cta-location` is set by `web/assets/site-nav.js`); `web/static-root/engage-inquiry.js` sends `generate_lead` when
-  the form endpoint answers 2xx. Address redaction is Papyrus's. Event table: Papyrus site-hosting, "Events and address
-  redaction".
+* **Events.** `cta_click` comes only from Papyrus's shared listener (`markus_renderer/analytics_events.py`, 5.28+): it fires
+  once for any link carrying `data-cta-location` (and for `anth.us/engage` links, using their `cta` value), with
+  `cta_text`, `cta_location`, `link_url` (host and path) and `transport_type: beacon`. `web/assets/site-nav.js` sets
+  `data-cta-location` on every engage link and every off-site `http(s)` link, so GitHub and LinkedIn links also report
+  `cta_click`. **anth.us must not send its own `cta_click`**: the retired `web/assets/conversion-events.js` did, and the
+  two sent every engage and product click twice. `web/static-root/engage-inquiry.js` sends `generate_lead` when the form
+  endpoint answers 2xx. Address redaction is Papyrus's. Event table: Papyrus site-hosting, "Events and address redaction".
 * **Privacy page.** `web/pages/privacy.md` (`/privacy/`) ships with the banner and describes the same behaviour. Change the
   banner wording, the policy and `policy_version` together.
 * **Verify (all read-only; run 2026-10-23).**
@@ -169,7 +170,8 @@ privacy policy. It exists so Ryan can run Google Ads; `analytics_only` must stay
   default with `analytics_storage:'granted'`, then the `update` using the same value for all four signals;
   `curl -s https://anth.us/ | grep -c "G-31SC26SDGX"`; `python3 bin/check-guards.py https://anth.us --expect production`;
   `python -m pytest -q tests/test_privacy_page.py tests/test_conversion_events.py tests/test_site_env.py`; and
-  `node --test tests/conversion-events.test.mjs`. Live data checks (GA4 DebugView, key events, custom dimensions, Google Ads
+  `node --test tests/conversion-events.test.mjs` (`test_conversion_events.py` runs Papyrus's rendered script against
+  `site-nav.js` and asserts one `cta_click` per click). Live data checks (GA4 DebugView, key events, custom dimensions, Google Ads
   conversions) are open board cards under the conversion-tracking epic.
 * Guarded builds (local, review, the CMS `staging` branch) never load analytics.
 
@@ -300,13 +302,13 @@ Hierarchy: initiative, epic, task, sub-task; stories hold Gherkin, not implement
 ## Current state (2026-10-23)
 
 * **Live:** the arcade-redesign site on the S3 projection since 2026-10-13; the CMS backend was rebuilt on 2026-10-19 after the
-  console reconnect (same app id, new data stores) and content was re-imported. Papyrus pinned at 5.23.0 (newer releases
-  exist). Merge-driven deploy through Actions and OIDC is in use: Amplify job 39 (the #121 merge) succeeded. The consent
+  console reconnect (same app id, new data stores) and content was re-imported. Papyrus pinned at 5.35.0 once PR #124
+  merges (production still runs the previous pin until then). Merge-driven deploy through Actions and OIDC is in use: Amplify job 39 (the #121 merge) succeeded. The consent
   banner and `/privacy/` shipped together on 2026-10-22; every call to action reports to GA4; the engage form posts to
   Prospectus with an email fallback; Cyclotron is labelled "Early access".
 * **Checked today:** distribution `E3UMOOJRMY7FK7` is `Deployed`, aliases `anth.us` and `www.anth.us`; `main` auto-build off;
   `staging` auto-build on with no jobs; edge stack `UPDATE_COMPLETE`; `check-guards.py` and `check-404.py` pass; local
-  tests: 189 passed (with Papyrus v5.23.0 on `PYTHONPATH`), 47 + 13 node tests passed, `npm run build` succeeded.
+  tests: 189 passed (with Papyrus v5.23.0 on `PYTHONPATH`, before the 5.35.0 bump), 47 + 13 node tests passed, `npm run build` succeeded.
 * **In progress on the board (develop):** the conversion tracking and consent epic (verify events in GA4 DebugView, mark
   `generate_lead` as a key event, register custom dimensions, Google Ads conversions blocked, LinkedIn Insight behind consent),
   the Cognitive Debt section story, Search Console verification, and audit bugs filed 2026-10-20 (including a P1 about a
