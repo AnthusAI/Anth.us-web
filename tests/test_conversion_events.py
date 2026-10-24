@@ -1,6 +1,13 @@
-"""The GA4 conversion events are wired site-wide and every engage call to action is a plain link the listener can see."""
+"""GA4 call-to-action events come from Papyrus's shared listener, once per click; every engage call to action is a plain link.
+
+Behaviour (Gherkin):
+  Given a page rendered with Papyrus's GA4 events script and the site's own scripts
+  When a visitor clicks an engage link, a product link or an outbound link
+  Then exactly one cta_click is sent, with the cta_text, the cta_location of the element and the destination host and path
+"""
 import json
 import re
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -8,7 +15,8 @@ import anthus_dom
 import support
 
 REPOSITORY = Path(__file__).resolve().parents[1]
-LISTENER_NAME = "conversion-events.js"
+RETIRED_LISTENER_NAME = "conversion-events.js"
+HARNESS = REPOSITORY / "tests" / "cta_click_harness.mjs"
 ENGAGE_LINK = re.compile(r'<a\b[^>]*href="/engage/(?:\?[^"#]*)?(?:#[\w-]+)?"')
 PAGES = ("/", "/about/", "/ai-solutions/", "/ryan/", "/decision-models/", "/benchmarks/", "/platform/", "/articles/", "/articles/call-criteria/", "/platform/biblicus/")
 
@@ -19,15 +27,44 @@ def part(html, start, end):
 
 
 class ConversionEventWiringTests(unittest.TestCase):
-    def test_the_listener_is_loaded_site_wide_the_way_the_other_chrome_scripts_are(self):
+    def test_the_site_sends_no_cta_click_of_its_own_so_papyrus_is_the_only_sender(self):
         settings = json.loads((REPOSITORY / "web" / "projection.json").read_text(encoding="utf-8"))
-        self.assertIn(f"assets/{LISTENER_NAME}", settings["chrome"]["scripts"])
-        self.assertTrue((REPOSITORY / "web" / "assets" / LISTENER_NAME).is_file())
+        self.assertNotIn(f"assets/{RETIRED_LISTENER_NAME}", settings["chrome"]["scripts"])
+        self.assertFalse((REPOSITORY / "web" / "assets" / RETIRED_LISTENER_NAME).exists())
+        for script in (REPOSITORY / "web").rglob("*.js"):
+            self.assertNotIn("cta_click", script.read_text(encoding="utf-8"), script.name)
         projection = support.project_fixture()
-        self.assertIn(f"assets/{LISTENER_NAME}", projection.files)
+        self.assertNotIn(RETIRED_LISTENER_NAME, "".join(projection.page(path) for path in (*PAGES, "/engage/")))
         for path in (*PAGES, "/engage/"):
-            self.assertRegex(projection.page(path), rf'<script src="/assets/{re.escape(LISTENER_NAME)}\?v=[0-9a-f]+"></script>', path)
-        self.assertRegex(projection.text("404.html"), rf'/assets/{re.escape(LISTENER_NAME)}')
+            self.assertIn("window.papyrusAnalytics", projection.page(path), path)
+
+    def test_each_click_on_an_engage_product_or_outbound_link_sends_exactly_one_cta_click(self):
+        page = support.project_fixture().page("/ai-solutions/")
+        events_script = next(s for s in re.findall(r"<script>(.*?)</script>", page, re.S) if "window.papyrusAnalytics" in s)
+        links = [
+            {"href": "/engage/", "text": "START A PROJECT →", "within": [".site-header"]},
+            {"href": "/engage/?solution=Cyclotron", "text": "Work with us on Cyclotron", "within": [".card"]},
+            {"href": "https://chattic.us", "text": "Visit Chatticus", "within": [".card"]},
+            {"href": "https://primus.anth.us/pricing?utm=x#top", "text": "Visit Primus", "within": [".hero"]},
+            {"href": "https://github.com/AnthusAI", "text": "GitHub", "within": [".site-footer"]},
+        ]
+        completed = subprocess.run(
+            ["node", str(HARNESS)], capture_output=True, text=True, check=True,
+            input=json.dumps({"navigationSource": (REPOSITORY / "web" / "assets" / "site-nav.js").read_text(encoding="utf-8"),
+                              "eventsScript": events_script, "pathname": "/ai-solutions/", "links": links}),
+        )
+        expected = [
+            ("START A PROJECT", "header", "anth.us/engage/"),
+            ("Work with us on Cyclotron", "solution-card", "anth.us/engage/"),
+            ("Visit Chatticus", "solution-card", "chattic.us/"),
+            ("Visit Primus", "hero", "primus.anth.us/pricing"),
+            ("GitHub", "footer", "github.com/AnthusAI"),
+        ]
+        results = json.loads(completed.stdout)
+        for (text, place, url), events in zip(expected, results, strict=True):
+            self.assertEqual(
+                events, [{"verb": "event", "name": "cta_click",
+                          "parameters": {"cta_text": text, "cta_location": place, "link_url": url, "transport_type": "beacon"}}], text)
 
     def test_the_header_footer_hero_band_and_article_calls_to_action_are_engage_links(self):
         projection = support.project_fixture()
