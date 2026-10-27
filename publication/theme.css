@@ -1,4 +1,21 @@
+@font-face { font-family: "Jersey 25"; src: url("./fonts/Jersey25-Regular.ttf") format("truetype"); font-weight: 400 900; font-display: swap; }
+
 /* Anth.us newsroom: the newspaper-gothic Kanbus theme as shipped (cool paper, ink blue, Libre Franklin).
-   Colour and type come from the --kb-theme-* tokens bundled with @anthusai/papyrus. Override a token here,
-   scoped like `:root[data-site-brand="anth-us"] [data-kanbus-theme] { --kb-theme-accent: ... }`, to retune it.
-   Light and dark follow the editor's mode setting; the theme's dark palette is complete. */
+   Colour and type come from the --kb-theme-* tokens (see components/newsroom-theme.css); this file only
+   carries the brand mark. Override a token here, scoped like
+   `:root[data-site-brand="anth-us"] [data-kanbus-theme] { --kb-theme-accent: ... }`, to retune the theme.
+   Light and dark both follow the editor's mode setting; the theme's dark palette is complete. */
+:root[data-site-brand="anth-us"] .newsroom-organizer .organizer-brand {
+  --logo-tile: #f9c9e1;
+  --logo-glyph: #1b1426;
+  display: block;
+}
+:root[data-site-brand="anth-us"] .newsroom-organizer .organizer-brand-logo {
+  display: block;
+  height: 36px;
+  width: auto;
+  overflow: visible;
+}
+:root[data-site-brand="anth-us"] .newsroom-organizer .anth-us-logo-tile { fill: var(--logo-tile); }
+:root[data-site-brand="anth-us"] .newsroom-organizer .anth-us-logo-a { fill: var(--logo-glyph); }
+:root[data-site-brand="anth-us"] .newsroom-organizer .anth-us-logo-word { fill: var(--kb-theme-ink); }
