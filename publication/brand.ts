@@ -1,6 +1,6 @@
 import type { SiteBrand } from "@anthusai/papyrus/lib/site-brand";
 import { ANTH_US_THEME_PACK_TOKENS } from "@anthusai/papyrus/lib/site-stack";
-import { AnthUsLogo } from "./logo";
+import { AnthUsLogo, AnthUsLogoCompact } from "./logo";
 
 export const anthUsBrand: SiteBrand = {
   id: "anth-us",
@@ -20,7 +20,7 @@ export const anthUsBrand: SiteBrand = {
   mastheadSource: "brand",
   sectionLinkStrategy: "route",
   kanbusTheme: "newspaper-gothic",
-  components: { NewsroomLogo: AnthUsLogo },
+  components: { NewsroomLogo: AnthUsLogo, NewsroomLogoCompact: AnthUsLogoCompact },
   themePack: "anth-us",
   themeTokens: ANTH_US_THEME_PACK_TOKENS,
   renderer: { kind: "markus" },
