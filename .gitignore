@@ -89,6 +89,7 @@ next-env.d.ts
 /app/\[year\]/\[month\]/\[day\]/section/\[sectionKey\]/page.tsx
 /app/api/media/\[...path\]/route.ts
 /app/articles/\[slug\]/page.tsx
+/app/api/newsroom/chat/\[...path\]/route.ts
 /app/newsroom/\[section\]/\[...selection\]/page.tsx
 /app/newsroom/\[section\]/page.tsx
 /app/newsroom/articles/\[id\]/page.tsx
