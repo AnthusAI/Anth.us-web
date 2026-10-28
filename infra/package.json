@@ -6,7 +6,7 @@
     "synth": "papyrus-infra synth --site site.json"
   },
   "dependencies": {
-    "@anthusai/papyrus": "5.52.0",
+    "@anthusai/papyrus": "5.53.0",
     "aws-cdk-lib": "^2.257.0",
     "constructs": "^10.4.2"
   }
