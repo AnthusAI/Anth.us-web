@@ -34,7 +34,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m pip install "papyrus-newsroom[markus]==5.53.1" pytest
+      - run: python -m pip install "papyrus-newsroom[markus]==5.54.0" pytest
       # test_projector_incremental needs a `procedures` package that is not in this repository.
       - run: python -m pytest -q tests --ignore=tests/test_projector_incremental.py
       - run: node --test tests/*.test.mjs
