@@ -45,7 +45,7 @@ npx tsc --noEmit                          # typecheck
 npm run build                             # papyrus-app sync && next build (the newsroom app; works with the stub)
 
 python3 -m venv ~/.venvs/anthus-web && . ~/.venvs/anthus-web/bin/activate     # keep the venv outside the repo
-pip install "papyrus-newsroom[markus]==5.61.0" pytest
+pip install "papyrus-newsroom[markus]==5.61.1" pytest
 python -m pytest -q tests --ignore=tests/test_projector_incremental.py        # what CI runs
 node --test tests/*.test.mjs tests/edge/*.test.mjs                            # browser scripts and the edge functions
 ```
@@ -53,7 +53,7 @@ node --test tests/*.test.mjs tests/edge/*.test.mjs                            # 
 The full suite, including `tests/test_projector_incremental.py`, needs the Papyrus source tree at the pinned tag:
 
 ```bash
-git clone --branch v5.61.0 https://github.com/AnthusAI/Papyrus ../Papyrus      # or any checkout of that tag
+git clone --branch v5.61.1 https://github.com/AnthusAI/Papyrus ../Papyrus      # or any checkout of that tag
 PYTHONPATH=../Papyrus/src:../Papyrus python -m pytest -q tests
 ```
 
