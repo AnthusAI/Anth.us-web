@@ -302,8 +302,8 @@ Hierarchy: initiative, epic, task, sub-task; stories hold Gherkin, not implement
 ## Current state (2026-10-23)
 
 * **Live:** the arcade-redesign site on the S3 projection since 2026-10-13; the CMS backend was rebuilt on 2026-10-19 after the
-  console reconnect (same app id, new data stores) and content was re-imported. Papyrus pinned at 5.56.0 (PR #124 is the 5.42.1 bump;
-  the 5.56.0 bump deploys on merge). Merge-driven deploy through Actions and OIDC is in use: Amplify job 39 (the #121 merge) succeeded. The consent
+  console reconnect (same app id, new data stores) and content was re-imported. Papyrus pinned at 5.58.0 (PR #124 is the 5.42.1 bump;
+  the 5.58.0 bump deploys on merge). Merge-driven deploy through Actions and OIDC is in use: Amplify job 39 (the #121 merge) succeeded. The consent
   banner and `/privacy/` shipped together on 2026-10-22; every call to action reports to GA4; the engage form posts to
   Prospectus with an email fallback; Cyclotron is labelled "Early access".
 * **Checked today:** distribution `E3UMOOJRMY7FK7` is `Deployed`, aliases `anth.us` and `www.anth.us`; `main` auto-build off;
