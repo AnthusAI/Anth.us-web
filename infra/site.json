@@ -5,7 +5,7 @@
   "brand": "anth-us",
   "frontend": "markus-static",
   "aws": { "profile": "papyrus-production", "accountId": "712236451410", "region": "us-east-1" },
-  "papyrusVersion": "5.58.0",
+  "papyrusVersion": "5.59.0",
   "cms": {
     "siteOrigin": "https://newsroom.anth.us",
     "staging": true,
