@@ -62,6 +62,7 @@ MENU_LINKS = (
     ("Research", "/research/", "Experiments on how decision models behave, with the numbers."),
     ("Benchmarks", "/benchmarks/", "Public leaderboards for decision models: bias and reasoning depth."),
     ("Articles", "/blog/", "Long-form pieces on classifiers, agents, and the economics of AI."),
+    ("Newsroom", "/newsroom/", "What we are reading and what Cyclotron recommends, with the stories that follow."),
     ("About", "/about/", "Who we are, and the track record since 2007."),
 )
 CTA_LINK = ("Start a project", "/engage/#tell-us")

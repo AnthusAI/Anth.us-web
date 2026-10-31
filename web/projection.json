@@ -101,6 +101,20 @@
     "pageSuffix": ", page {page}",
     "tagTitle": "Articles tagged with: {tag}"
   },
+  "homePage": {
+    "references": {
+      "corpus": "knowledge-corpus-anth-us",
+      "fields": "all",
+      "defaultCount": 6
+    },
+    "threads": {
+      "enabled": false
+    },
+    "freshness": {
+      "debounceSeconds": 300,
+      "purge": false
+    }
+  },
   "collections": [
     {
       "id": "articles",
@@ -210,6 +224,13 @@
     "breadcrumbs": false
   },
   "pages": [
+    {
+      "id": "newsroom",
+      "path": "newsroom",
+      "title": "Inside the newsroom",
+      "description": "What the Anthus newsroom is reading and recommending, as it happens: accepted References, what Cyclotron recommends, and the stories that come from them.",
+      "source": "pages/newsroom.md"
+    },
     {
       "id": "about",
       "path": "about",
