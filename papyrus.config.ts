@@ -34,6 +34,7 @@ export default defineSite({
       reprojectOnDeploy: true,
     },
     stagingBuild: { enabled: true },
+    plugins: [{ name: "home-page" }],
     features: {
       consoleResponder: false,
       inboundEmail: false,

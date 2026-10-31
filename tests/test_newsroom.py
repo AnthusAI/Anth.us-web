@@ -25,6 +25,8 @@ INCLUDE_LINES = (
     '::include{kind="references" select="confident" count="6" card="row"}',
     '::include{kind="references" select="recommended" count="6" card="row" empty="Nothing is waiting for review right now."}',
 )
+THREADS_INCLUDE_LINE = '::include{kind="threads" select="recent" count="6" layout="list" empty="No conversations yet."}'
+
 STYLESHEET_LINK = re.compile(r'<link rel="stylesheet" href="/css/papyrus-home-page\.css\?v=[0-9a-f]+">\n?')
 ASSET_VERSION = re.compile(r"\?v=[0-9a-f]{12}|__markusAssetVersion = \"[0-9a-f]{12}\"")
 NAV_ITEM = re.compile(r'<li><a href="/newsroom/"[^>]*>Newsroom</a></li>')
@@ -97,6 +99,45 @@ class NewsroomSection(unittest.TestCase):
     def test_the_page_carries_no_identity_shaped_text(self):
         for key in ("newsroom/index.html", "newsroom/index.md"):
             self.assertEqual(re.findall(r"[\w.+-]+@[\w-]+\.[\w.]+", self.populated.text(key)), [], key)
+
+
+class ConversationsSection(unittest.TestCase):
+    """Feature: The Anth.us newsroom page shows conversations.
+
+    A visitor reading the newsroom sees the most recent public conversations under section 06. Each shows what it is
+    about, how many messages it holds and the latest message, written by a public handle or the Editor label, and no
+    page or data file carries an email address, a subject or a UUID.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.populated = project(WEB, SNAPSHOT_DIRECTORY)
+        cls.empty = project(WEB, None)
+
+    def test_a_public_thread_appears_in_the_conversations_section(self):
+        main = self.populated.main("/newsroom/")
+        self.assertIn("<span>06</span>", main)
+        self.assertEqual(re.findall(r'class="home-page-threads" data-layout="(\w+)"', main), ["list"])
+        self.assertIn("Is this source worth keeping?", main)
+        self.assertIn("2 messages", main)
+        self.assertIn("by fixturehandle", main)
+        self.assertIn("Yes, the method section holds up.", main)
+
+    def test_the_markdown_twin_keeps_the_threads_include_line(self):
+        self.assertIn(THREADS_INCLUDE_LINE, self.populated.text("newsroom/index.md"))
+
+    def test_without_threads_the_section_says_there_are_no_conversations_yet(self):
+        main = self.empty.main("/newsroom/")
+        self.assertIn("No conversations yet.", main)
+        self.assertNotIn("home-page-thread\"", main)
+
+    def test_no_email_sub_or_uuid_appears_on_the_page_or_in_the_data_files(self):
+        shaped = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+        texts = [self.populated.text("newsroom/index.html"), self.populated.text("newsroom/index.md")]
+        texts += [path.read_text(encoding="utf-8") for path in SNAPSHOT_DIRECTORY.rglob("threads*.json")]
+        texts += [path.read_text(encoding="utf-8") for path in (SNAPSHOT_DIRECTORY / "threads").glob("*.json")]
+        for text in texts:
+            self.assertEqual(shaped.findall(text), [])
 
 
 class NavigationLink(unittest.TestCase):

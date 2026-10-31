@@ -1,0 +1,9 @@
+{
+ "key": "aaaaaaaaaaa1",
+ "title": "Is this source worth keeping?",
+ "anchor": {"kind": "reference", "key": "000000000001", "title": "Fixture anchored source"},
+ "messages": [
+  {"key": "bbbbbbbbbbb1", "at": "2026-10-30T11:00:00.000Z", "edited": false, "text": "Does the method section hold up?", "author": {"label": "Editor"}},
+  {"key": "bbbbbbbbbbb2", "at": "2026-10-30T12:00:00.000Z", "edited": false, "text": "Yes, the method section holds up.", "author": {"handle": "fixturehandle"}}
+ ]
+}
