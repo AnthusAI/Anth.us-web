@@ -23,6 +23,7 @@ EXPECTED_HTML = {
     "decision-models/index.html",
     "engage/index.html",
     "index.html",
+    "newsroom/index.html",
     "platform/index.html",
     "posts/index.html",
     "privacy/index.html",
@@ -33,7 +34,7 @@ EXPECTED_HTML = {
 }
 AUTHORED_ONLY = {
     "404.html", "about/index.html", "ai-solutions/index.html", "benchmarks/index.html", "decision-models/index.html",
-    "engage/index.html", "index.html", "platform/index.html", "privacy/index.html", "ryan/index.html",
+    "engage/index.html", "index.html", "newsroom/index.html", "platform/index.html", "privacy/index.html", "ryan/index.html",
 }
 
 
