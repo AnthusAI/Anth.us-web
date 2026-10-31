@@ -9,7 +9,7 @@
     "accountId": "712236451410",
     "region": "us-east-1"
   },
-  "papyrusVersion": "5.64.0",
+  "papyrusVersion": "5.65.0",
   "cms": {
     "siteOrigin": "https://newsroom.anth.us",
     "staging": true,
