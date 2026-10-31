@@ -86,6 +86,13 @@ class NewsroomSection(unittest.TestCase):
         self.assertIn("% confidence", main)
         self.assertIn("Recommended by Cyclotron, not yet accepted", main)
 
+    def test_the_story_blocks_show_articles_never_posts(self):
+        # Ryan, 2026-10-31: "The newest story" must be the newest article even when a post is newer. Both story
+        # blocks read the site's own articles collection, which leaves out the posts tag.
+        main = self.populated.main("/newsroom/")
+        for title in ("Post One", "Post Two", "Post Three"):
+            self.assertNotIn(f">{title}<", main, title)
+
     def test_a_reference_appears_once_on_the_page(self):
         main = self.populated.main("/newsroom/")
         for number in range(1, 13):
