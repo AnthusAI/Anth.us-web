@@ -14,7 +14,7 @@
 <div class="section__body">
 ::endraw
 
-::include{kind="listing" sections="articles" count="1" card="text" layout="bare" tag="ul" class="grid grid--list"}
+::include{kind="listing" collection="articles" count="1" card="text" layout="bare" tag="ul" class="grid grid--list"}
 
 ::raw
 </div>
@@ -40,7 +40,7 @@
 <div class="section__body">
 ::endraw
 
-::include{kind="listing" sections="articles" skip="1" count="4" card="mini" layout="bare" tag="ul" class="mini-grid"}
+::include{kind="listing" collection="articles" skip="1" count="4" card="mini" layout="bare" tag="ul" class="mini-grid"}
 
 ::raw
 <p class="more"><a href="/blog/">All articles</a></p>
