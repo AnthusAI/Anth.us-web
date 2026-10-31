@@ -4,7 +4,11 @@
   "repository": "https://github.com/AnthusAI/Anth.us-web",
   "brand": "anth-us",
   "frontend": "markus-static",
-  "aws": { "profile": "papyrus-production", "accountId": "712236451410", "region": "us-east-1" },
+  "aws": {
+    "profile": "papyrus-production",
+    "accountId": "712236451410",
+    "region": "us-east-1"
+  },
   "papyrusVersion": "5.62.0",
   "cms": {
     "siteOrigin": "https://newsroom.anth.us",
@@ -23,7 +27,8 @@
       "PAPYRUS_ENABLE_INBOUND_EMAIL": "false",
       "PAPYRUS_ENABLE_STORAGE_BACKUPS": "false",
       "PAPYRUS_OAUTH_REDIRECT_URLS": "http://localhost:3001/,https://newsroom-staging.anth.us/"
-    }
+    },
+    "cliRemoteLogin": true
   },
   "github": {
     "owner": "AnthusAI",
