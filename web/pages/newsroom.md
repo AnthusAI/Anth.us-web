@@ -73,4 +73,17 @@
 </div>
 </div>
 </section>
+<section class="section"><div class="container section__grid"><header class="section__head"><p class="eyebrow"><span>06</span> <span>/</span> <span>Conversations</span></p>
+<h2>What we are discussing.</h2>
+<p class="lead">Comments on public sources and published stories, most recently active first. Authors appear under a public handle or as the Editor.</p>
+</header>
+<div class="section__body">
+::endraw
+
+::include{kind="threads" select="recent" count="6" layout="list" empty="No conversations yet."}
+
+::raw
+</div>
+</div>
+</section>
 ::endraw

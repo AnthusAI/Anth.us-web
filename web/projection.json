@@ -108,7 +108,9 @@
       "defaultCount": 6
     },
     "threads": {
-      "enabled": false
+      "enabled": true,
+      "authors": "handle",
+      "anonymousLabel": "Editor"
     },
     "freshness": {
       "debounceSeconds": 300,
