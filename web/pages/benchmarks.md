@@ -30,8 +30,8 @@
 </div>
 </section>
 <section class="section section--band cta-band"><div class="container cta-band__in"><div><p class="eyebrow">PRESS START</p>
-<h2>We do this for clients, at scale.</h2>
-<p class="lead">Anthus has run this kind of loop in production for years: reviewers correct the model and say why, the explanation becomes policy, and the system gets more trustworthy month over month across hundreds of scorecards and millions of interactions. Bring us the judgment task and we’ll run it on Primus with your reviewers in the loop, and hand you a scorecard you can inspect after the first month.</p>
+<h2>We’ll run this for you.</h2>
+<p class="lead">Anthus ran this kind of loop in production for years: reviewers corrected the model and said why, the explanation became policy, and the system got more trustworthy month over month across hundreds of scorecards and millions of interactions. Bring us the judgment task and we’ll run it on Primus with your reviewers in the loop, and hand you a scorecard you can inspect after the first month.</p>
 </div>
 <div class="btn-row"><a class="btn" href="/engage/"><span>See how an engagement works &rarr;</span></a></div>
 </div>

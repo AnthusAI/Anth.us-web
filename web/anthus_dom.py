@@ -735,9 +735,9 @@ def _joined(entries: list[str], css: str) -> str:
 
 #: Closing call to action on posts tagged `client-acquisition`.
 ENGAGE_CTA_HTML = (
-    '<aside class="engage-box notch"><h2>We do this for clients, at scale</h2>'
-    "<p>Anthus has run this kind of loop in production for years: reviewers correct the model and say why, "
-    "the explanation becomes policy, and the system gets more trustworthy month over month across "
+    '<aside class="engage-box notch"><h2>We&#x27;ll run this for you</h2>'
+    "<p>Anthus ran this kind of loop in production for years: reviewers corrected the model and said why, "
+    "the explanation became policy, and the system got more trustworthy month over month across "
     "hundreds of scorecards and millions of interactions. Bring us the judgment task "
     "and we&#x27;ll run it on Primus with your reviewers in the loop, and hand you a "
     "scorecard you can inspect after the first month.</p>"
