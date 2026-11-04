@@ -2,7 +2,7 @@
 > for current anth.us website changes. The GitHub default `develop` branch
 > contains older staging-era instructions; those are superseded by this notice.
 > Public delivery is S3 projection via CloudFront `DISTRIBUTION_ID`.
-> Merge-driven CMS/backend deployment: Amplify `AMPLIFY_APP_ID` (`anth-us-cms`),
+> Release-driven CMS/backend deployment (develop merged into main): Amplify `AMPLIFY_APP_ID` (`anth-us-cms`),
 > AWS profile `papyrus-production`, account `000000000000`, region `us-east-1`.
 > `AnthusAI/Anth.us` (Gatsby) is superseded. Never send website fixes there.
 > Do not promote unrelated historical develop changes as part of a website fix.
@@ -179,7 +179,7 @@ page into its own directory; see the comment above `_absolutize`.
 
 ## Deployment
 
-* The CMS app (Amplify) builds from `main`, and merging to `main` is the deploy.
+* The CMS app (Amplify) builds from `main`, and a release (`develop` merged into `main`) is the deploy. Merging into `develop` builds nothing.
   A backend deploy bundles `web/` (the projector, `web/projection.json`, static
   files) into the `content-actions` Lambda and, with
   `publication.reprojectOnDeploy: true`, renders the whole site inside AWS and
