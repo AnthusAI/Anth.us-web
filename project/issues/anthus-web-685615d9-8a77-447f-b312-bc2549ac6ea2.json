@@ -1,0 +1,35 @@
+{
+  "id": "anthus-web-685615d9-8a77-447f-b312-bc2549ac6ea2",
+  "title": "Publish short DeepSeek restrictions and model trust post",
+  "description": "Ryan requested exactly two short paragraphs linking the official DHS notice 2026-21447 and ProjectDiscovery controlled poisoned-model experiment, with newest Desktop screenshot as image. Publish through current Anth.us-web Papyrus CMS/S3 workflow; preserve content/markus-native-markup and existing drafts. Screenshot inspected: official notice only, no private UI. No infrastructure or permission changes.",
+  "type": "task",
+  "status": "closed",
+  "priority": 2,
+  "assignee": null,
+  "creator": null,
+  "parent": null,
+  "labels": [],
+  "dependencies": [],
+  "comments": [
+    {
+      "id": "32b82241-432e-4735-95d1-a3234200fc79",
+      "author": "home",
+      "text": "# Published Anth.us post\n\n- Live URL: https://anth.us/articles/deepseek-restrictions-inside-the-tools/\n- Title: DeepSeek restrictions reach inside the tools\n- Kanbus issue: anthus-web685 (anthus-web-685615d9-8a77-447f-b312-bc2549ac6ea2)\n- CMS Item: item-articles-deepseek-restrictions-inside-the-tools\n- PublishedItem: published-item-articles-deepseek-restrictions-inside-the-tools, version 1\n- Publication route: current AnthusAI/Anth.us-web Papyrus CMS saveItemDraft/publishItem mutations; S3 projection returned projected=true, live=true. No site deployment or Git content commit was needed.\n- Exact copy: deepseek-restrictions-inside-the-tools.md in this directory.\n- Screenshot: /Users/home/Desktop/Screenshot 2026-10-19 at 6.34.24 PM.png, selected by actual modification time (1792449270.5672517; 2026-10-19 18:34:30 UTC), 1294×1422 pixels, 269644 bytes.\n- Original screenshot SHA256: 21dd89db67534c1c82ba1622508aafed19342368fca61ddbf4e59effd40dcfb1. Rechecked unchanged after publication. Visual review confirmed only official notice, no unrelated private UI; no crop or image generation.\n- Uploaded image: media/images/posts/deepseek-dhs-notice-2026-10-19.png; descriptive alt text stored in body directive and MediaAsset.\n- Verified public image: https://anth.us/assets/responsive/images/posts/deepseek-dhs-notice-2026-10-19-1294.jpg (200 image/jpeg). Downloaded and visually inspected; automatic CMS renditions preserve the notice.\n- Verification: HTTP 200 for exact post URL; canonical exact match; exactly two article prose paragraphs matching authored text after markup removal; both requested source links; live Posts listing; all 3 pre-existing CMS drafts retain status and contentHash.\n- Source checks: official PDF downloaded and text extracted; appendix page 3 visually confirms Order #2026-01, original release July 24, 2026. Notice filed October 19, publication October 20. ProjectDiscovery experiment explicitly uses poisoned Qwen and production-looking dummy credentials.\n- Limatus scan using Anth.us profile: no unsupported-claim, repetition, or voice findings. Density skipped for short-post length as explicitly requested.\n- Evidence files: cms-draft-result.json, cms-publish-result.json, cms-media-result.json, image-renditions.json, verification.json, live-post.html, live-posts-index.html, live-post-image.png, limatus-diagnosis.json.\n- Existing Markus content submodule/branch, active Claude work, infrastructure, IAM and credentials were not changed. No PR or content commit; CMS publication is the normal content route. No remaining blocker.\n",
+      "created_at": "2026-10-19T22:42:52.713757Z",
+      "comment_type": "default"
+    },
+    {
+      "id": "8cfc9163-60ce-46f8-8061-d3b214be19e5",
+      "author": "home",
+      "text": "---\ntitle: \"DeepSeek restrictions reach inside the tools\"\nslug: \"deepseek-restrictions-inside-the-tools\"\ndate: \"2026-10-19\"\nauthors:\n  - name: Ryan Porter\n    url: /ryan\ntags:\n  - posts\nexcerpt: \"DHS's DeepSeek restrictions reach third-party tools, too. A separate poisoned-model experiment shows why knowing whose models are inside matters.\"\npreview_image: \"images/posts/deepseek-dhs-notice-2026-10-19.png\"\nimages:\n  - \"images/posts/deepseek-dhs-notice-2026-10-19.png\"\nstate: published\n---\n\n::image{src=\"images/posts/deepseek-dhs-notice-2026-10-19.png\" layout=\"center-small-image\" alt=\"Official DHS Federal Register notice, scheduled for October 20, 2026, with highlighted text covering DeepSeek, affiliates, and third-party products developed using DeepSeek implementations in federal civilian agency systems.\"}\n\nDHS's [newly public notice](https://public-inspection.federalregister.gov/2026-21447.pdf) describes its July 24 order excluding DeepSeek and affiliate products from federal civilian procurement and removing them from civilian agency systems—including third-party products and services developed using DeepSeek implementations. Filed October 19 for publication October 20, it's a federal civilian restriction, not a consumer ban. For tool buyers, the practical question is: whose models are inside?\n\nLocal tools raise that question, too. In [ProjectDiscovery's controlled experiment](https://projectdiscovery.io/research/how-abliterated-models-can-get-you-pwned), a deliberately poisoned Qwen model drove Codex CLI to send dummy credentials from a local `.env` file to a collector. That demonstrates a model supply-chain risk; it doesn't establish that DeepSeek or all abliterated models steal keys. Verify where your models came from and limit what their tools can read and send, even when the agent runs on your own machine.\n",
+      "created_at": "2026-10-19T22:44:08.028615Z",
+      "comment_type": "default"
+    }
+  ],
+  "created_at": "2026-10-19T22:40:24.180311Z",
+  "updated_at": "2026-10-19T22:44:08.028633Z",
+  "closed_at": "2026-10-19T22:42:52.731571Z",
+  "right_now_summary": null,
+  "right_now_updated_at": null,
+  "custom": {}
+}
