@@ -66,6 +66,7 @@ in Papyrus and bump the `@anthusai/papyrus` version (`package.json`, `infra/site
 - **Release** means merging `develop` into `main`, which deploys. Aim for once or twice a day, batching what is ready. An extra release needs Ryan's say-so.
 - Papyrus version bumps go to this site's `develop` and ship in this site's release. A Papyrus release can add a GSI and a deploy can add only one per table, so a site cannot skip a release that adds one.
 - Say "merged to develop" or "released" precisely.
+- Review over the network: the dev server runs on the M1 Mac and must be reachable from other machines, because Ryan usually reviews from an iPad or another computer. Bind all interfaces and give the Mac's LAN address (`ipconfig getifaddr en0`), never `localhost`: `python3 bin/dev-server.py --bind 0.0.0.0 --port 8080`, then `http://<LAN address>:8080`; `npm run dev -- --hostname 0.0.0.0` for the newsroom app. Do not write the address in the repository. Next 15.5 only warns about `allowedDevOrigins`; a future major version will require it, so add it then (no config change today).
 - Anth.us keeps its cautions: it is the live site, so nothing here changes the rule that `main` is production and that unrelated historical `develop` changes are not promoted in a release. Read the notice at the top before releasing, and sync `main` into `develop` first (the open main-into-develop pull request).
 
 ## Git workflow
