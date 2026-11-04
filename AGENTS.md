@@ -2,7 +2,7 @@
 > for current anth.us website changes. The GitHub default `develop` branch
 > contains older staging-era instructions; those are superseded by this notice.
 > Public delivery is S3 projection via CloudFront `DISTRIBUTION_ID`.
-> Merge-driven CMS/backend deployment: Amplify `AMPLIFY_APP_ID` (`anth-us-cms`),
+> Release-driven CMS/backend deployment (develop merged into main): Amplify `AMPLIFY_APP_ID` (`anth-us-cms`),
 > AWS profile `papyrus-production`, account `000000000000`, region `us-east-1`.
 > `AnthusAI/Anth.us` (Gatsby) is superseded. Never send website fixes there.
 > Do not promote unrelated historical develop changes as part of a website fix.
@@ -59,10 +59,20 @@ below and `Papyrus/docs/site-hosting.md`.
 If a renderer change is needed, do not fork or patch Papyrus from here. Fix it
 in Papyrus and bump the `@anthusai/papyrus` version (`package.json`, `infra/site.json`).
 
+## Development policy (Ryan, 2026-11-04)
+
+- Develop and verify on a local dev server: build the static site with `PAPYRUS_ROOT=/path/to/Papyrus python3 web/build_via_papyrus.py` and serve it with `python3 bin/dev-server.py --port 8080` (see Build below); `npm run dev` (port 3001) runs the newsroom app and needs a backend's `amplify_outputs.json`. Do not deploy to see whether something works.
+- **Merge** means merging a pull request into `develop`; that is where things are reviewed. `develop` builds nothing in Amplify.
+- **Release** means merging `develop` into `main`, which deploys. Aim for once or twice a day, batching what is ready. An extra release needs Ryan's say-so.
+- Papyrus version bumps go to this site's `develop` and ship in this site's release. A Papyrus release can add a GSI and a deploy can add only one per table, so a site cannot skip a release that adds one.
+- Say "merged to develop" or "released" precisely.
+- Anth.us keeps its cautions: it is the live site, so nothing here changes the rule that `main` is production and that unrelated historical `develop` changes are not promoted in a release. Read the notice at the top before releasing, and sync `main` into `develop` first (the open main-into-develop pull request).
+
 ## Git workflow
 
 GitFlow. `main` is the release branch, `develop` is integration. Implementation
-lands on `develop` via pull request from a `feature/` branch. Never force-push.
+lands on `develop` via pull request from a `feature/` branch (a merge, in the
+policy above); merging `develop` into `main` is a release. Never force-push.
 Never commit `web/staging/` or `web/dist-papyrus/` — both are generated and
 gitignored.
 
@@ -160,8 +170,8 @@ Production is the S3 projection described above. Facts for agents:
 
 * **Backend and deploys.** The CMS app builds from `main` (Amplify app
   `<siteId>-cms`, template `Papyrus/infra/amplify-app-shell`, config in
-  `infra/site.json` and `papyrus.config.ts`). Merging to `main` is the deploy:
-  the branch builds automatically, the backend deploy bundles `web/` into the
+  `infra/site.json` and `papyrus.config.ts`). The deploy is the release (`develop` merged into `main`);
+  merging into `develop` builds nothing. On a release the branch builds automatically, the backend deploy bundles `web/` into the
   `content-actions` Lambda, and `publication.reprojectOnDeploy: true` makes the
   deploy render every page inside AWS (`deploy-render` task, synchronous) and
   run a dry-run drift check. A render that fails fails the build; drift (orphan
@@ -182,7 +192,7 @@ Production is the S3 projection described above. Facts for agents:
   needed. `bin/check-404.py <base-url>` verifies it. A path without a trailing slash or ending in `.html` first gets
   a 301 to the directory-style URL.
 * **Rollback.** Content: restore the previous item version in the newsroom and
-  save. Site code: revert the PR on `main` (the deploy re-renders the site). Edge:
+  save. Site code: revert the PR on `main` (a release of the revert re-renders the site). Edge:
   update the edge stack with the previous template.
 * `customHttp.yml` and `bin/deploy-amplify.sh`, `bin/apply_custom_rules.py` are
   from the Amplify reader and do not affect the live site.
