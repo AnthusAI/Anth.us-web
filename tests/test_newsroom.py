@@ -20,12 +20,13 @@ from papyrus_content.projection.writers import LocalDirectoryWriter
 
 WEB = support.WEB
 SNAPSHOT_DIRECTORY = Path(__file__).resolve().parent / "fixtures" / "home-page" / "_data" / "home-page"
-INCLUDE_LINES = (
-    '::include{kind="references" select="recent" count="6" card="tile"}',
-    '::include{kind="references" select="confident" count="6" card="row"}',
-    '::include{kind="references" select="recommended" count="6" card="row" empty="Nothing is waiting for review right now."}',
+# Papyrus 5.87+ writes what an authored page shows into its Markdown twin instead of the raw include directives.
+TWIN_REFERENCE_LINES = (
+    "- [Fixture source number 8](https://example.org/posts/8)",
+    "- [Fixture source number 2](https://example.org/posts/2)",
+    "- [Fixture source number 9](https://example.net/posts/9) (Recommended by Cyclotron, not yet accepted)",
 )
-THREADS_INCLUDE_LINE = '::include{kind="threads" select="recent" count="6" layout="list" empty="No conversations yet."}'
+TWIN_THREAD_LINE = "- Is this source worth keeping? (2 messages)"
 
 STYLESHEET_LINK = re.compile(r'<link rel="stylesheet" href="/css/papyrus-home-page\.css\?v=[0-9a-f]+">\n?')
 ASSET_VERSION = re.compile(r"\?v=[0-9a-f]{12}|__markusAssetVersion = \"[0-9a-f]{12}\"")
@@ -73,10 +74,11 @@ class NewsroomSection(unittest.TestCase):
         self.assertIn("(https://anth.us/newsroom/index.md)", self.populated.text("llms.txt"))
         self.assertIn("<loc>https://anth.us/newsroom/</loc>", self.populated.text("sitemap-0.xml"))
 
-    def test_the_markdown_twin_keeps_the_three_references_include_lines(self):
+    def test_the_markdown_twin_lists_what_the_three_reference_grids_show(self):
         twin = self.populated.text("newsroom/index.md")
-        for line in INCLUDE_LINES:
+        for line in TWIN_REFERENCE_LINES:
             self.assertIn(line, twin)
+        self.assertNotIn("::include", twin)
 
     def test_the_page_mixes_story_listings_with_the_three_reference_grids(self):
         main = self.populated.main("/newsroom/")
@@ -130,8 +132,8 @@ class ConversationsSection(unittest.TestCase):
         self.assertIn("by fixturehandle", main)
         self.assertIn("Yes, the method section holds up.", main)
 
-    def test_the_markdown_twin_keeps_the_threads_include_line(self):
-        self.assertIn(THREADS_INCLUDE_LINE, self.populated.text("newsroom/index.md"))
+    def test_the_markdown_twin_lists_the_public_thread(self):
+        self.assertIn(TWIN_THREAD_LINE, self.populated.text("newsroom/index.md"))
 
     def test_without_threads_the_section_says_there_are_no_conversations_yet(self):
         main = self.empty.main("/newsroom/")
