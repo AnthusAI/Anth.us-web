@@ -1123,3 +1123,15 @@ article .heading a.btn--ghost { color: var(--ink); }
 .markus-actions-menu [role="menuitem"]:is(:hover, :focus-visible) { background: var(--panel-2); }
 .markus-actions-status { min-width: 6rem; font-size: .875rem; color: var(--ink-2); }
 .markus-actions-fallback { width: 100%; min-height: 6rem; }
+/* Icon form (projection.json pageActions.display "icons"): flat tones and rounded rectangles, no outlines. Core's own
+   icon rules set the sizes; these set the tones from the site tokens in Day and Night. Every icon button carries a text
+   name (aria-label and title), and the menu items spell their actions out in words. */
+.markus-page-actions-icons { gap: .25rem; --papyrus-action-bg: var(--panel-2); --papyrus-menu-bg: var(--panel-2); --papyrus-hover: color-mix(in srgb, var(--ink) 14%, var(--panel-2)); --papyrus-focus: var(--blue); }
+.markus-page-actions-icons :is(.markus-icon-action, .markus-actions-menu-button) { width: 2.75rem; height: 2.75rem; padding: 0; border: 0; border-radius: .75rem; background: var(--panel-2); color: var(--ink); }
+.markus-page-actions-icons :is(.markus-icon-action, .markus-actions-menu-button):hover,
+.markus-page-actions-icons .markus-actions-menu-button[aria-expanded="true"] { background: color-mix(in srgb, var(--ink) 14%, var(--panel-2)); color: var(--ink); border: 0; }
+.markus-page-actions-icons :is(a, button):focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.markus-page-actions-icons .markus-actions-menu [role="menu"] { width: min(18rem, 100%); min-width: 0; box-sizing: border-box; padding: .375rem; border: 0; border-radius: .75rem; background: var(--panel-2); box-shadow: 0 10px 28px rgba(14, 11, 22, .22); }
+.markus-page-actions-icons .markus-actions-menu [role="menuitem"] { padding: .75rem; border: 0; border-radius: .5rem; background: transparent; color: var(--ink); }
+.markus-page-actions-icons .markus-actions-menu [role="menuitem"]:is(:hover, :focus-visible) { background: color-mix(in srgb, var(--ink) 14%, var(--panel-2)); }
+.markus-page-actions-icons .markus-actions-menu [role="menuitem"]:focus-visible { outline: 3px solid var(--blue); outline-offset: -3px; }

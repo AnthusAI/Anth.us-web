@@ -299,6 +299,7 @@
   ],
   "theme": null,
   "pageActions": {
+    "display": "icons",
     "ai": [
       "chatgpt",
       "claude",
