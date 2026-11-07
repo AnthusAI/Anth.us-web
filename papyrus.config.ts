@@ -30,7 +30,9 @@ export default defineSite({
       kind: "s3-projection",
       staticDir: "web",
       edgeDistributionArn: "arn:aws:cloudfront::712236451410:distribution/E3UMOOJRMY7FK7",
-      cache: { htmlSMaxAgeSeconds: 60 },
+      // No purge on publish: CloudFront bills every invalidated path after the first 1,000 a month and the newsroom board alone purged about 80 times a day.
+      // Pages are eventually consistent instead: the edge keeps one for an hour. (Ryan, 2026-11-07.)
+      cache: { invalidation: "off", htmlSMaxAgeSeconds: 3600 },
       reprojectOnDeploy: true,
     },
     stagingBuild: { enabled: true },
