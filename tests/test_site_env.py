@@ -99,7 +99,10 @@ class ProjectedOutput(unittest.TestCase):
         self.assertNotIn("ld+json", self.head(self.production.page("/articles/draft-article/")))  # a draft is no article for search
 
     def test_site_files(self):
-        self.assertEqual(self.production.text("robots.txt"), "User-agent: *\nAllow: /\nSitemap: https://anth.us/sitemap-index.xml\n")
+        self.assertEqual(
+            self.production.text("robots.txt"),
+            "User-agent: *\nAllow: /\n\nUser-agent: Googlebot\nAllow: /\n\nUser-agent: Google-Extended\nAllow: /\n\nSitemap: https://anth.us/sitemap-index.xml\n",
+        )
         self.assertEqual(self.guarded.text("robots.txt"), "User-agent: *\nDisallow: /\n")
         self.assertIn("<loc>https://anth.us/sitemap-0.xml</loc>", self.production.text("sitemap-index.xml"))
         locations = re.findall(r"<loc>([^<]+)</loc>", self.production.text("sitemap-0.xml"))

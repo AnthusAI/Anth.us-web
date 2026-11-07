@@ -56,6 +56,17 @@
     "style": "index",
     "lastmod": true
   },
+  "robots": {
+    "extra": [
+      "",
+      "User-agent: Googlebot",
+      "Allow: /",
+      "",
+      "User-agent: Google-Extended",
+      "Allow: /",
+      ""
+    ]
+  },
   "feeds": {
     "formats": ["rss", "atom"],
     "count": 30,
