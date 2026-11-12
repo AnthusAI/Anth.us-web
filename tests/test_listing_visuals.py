@@ -70,9 +70,10 @@ class ProjectedListingVisuals(unittest.TestCase):
         self.assertIn('data-px="self-aligning"', card)
         self.assertNotIn("<img", card)
 
-    def test_a_preview_image_card_shows_the_listing_copy_of_the_image(self):
+    def test_a_preview_image_card_shows_the_listing_rendition_of_the_image(self):
+        # Papyrus 5.101.0: a card shows the rendition the article page shows, so a missing original cannot leave it coverless.
         card = card_of(self.projection.page("/ai-solutions/"), "Call Criteria")
-        self.assertRegex(card, r'<div class="acard__vis[^"]*"><img src="/assets/content/solutions/images/call-criteria-logo.png"')
+        self.assertRegex(card, r'<div class="acard__vis[^"]*"><img src="/assets/content/assets/responsive/solutions/images/call-criteria-logo-1200\.png"')
         self.assertIn('width="1200" height="630"', card)  # measured from the rendition record
 
     def test_a_card_without_a_visual_gets_the_letter_tile(self):
