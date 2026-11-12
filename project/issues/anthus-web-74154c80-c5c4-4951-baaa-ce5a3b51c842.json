@@ -10,9 +10,17 @@
   "parent": "anthus-web-539a152a-08c6-4dc3-98ac-16b0101ea8e6",
   "labels": [],
   "dependencies": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "16269748-d831-41e4-971d-e6099eb7c5fb",
+      "author": "home",
+      "text": "Update 2026-11-12: with web3f4 and Machines-on-Machines PR 230, also register event-scoped dimensions form_id, error_kind, promotion_id, promotion_name, creative_name and location_id (the promotion ones may already exist as built-in ecommerce dimensions: check first). Campaign source is a built-in dimension.",
+      "created_at": "2026-11-12T14:55:43.911794Z",
+      "comment_type": "default"
+    }
+  ],
   "created_at": "2026-10-19T21:05:22.012057Z",
-  "updated_at": "2026-10-19T21:06:17.277905Z",
+  "updated_at": "2026-11-12T14:55:43.912006Z",
   "closed_at": null,
   "agent": {
     "platform": "claude-code",
