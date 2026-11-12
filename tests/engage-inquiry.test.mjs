@@ -12,7 +12,7 @@ function setup(responses, fallbackEmail, clock, {withoutRandomUuid = false} = {}
   let submit;
   const form = {dataset:{endpoint:'https://intake.example.test/intake/demo',noticeVersion:'contact-v1',...(fallbackEmail ? {fallbackEmail} : {})},
     querySelector(s) { return s === 'button' ? button : s === '[data-error]' ? error : receipt; },
-    querySelectorAll() { return elements; }, addEventListener(_, handler) {submit=handler;}};
+    querySelectorAll() { return elements; }, addEventListener(type, handler) { if (type === "submit") submit = handler; }};
   const calls = [];
   let ids = 0;
   const context = {document:{getElementById(){return form;}, createElement(tag){return {tag};}},
