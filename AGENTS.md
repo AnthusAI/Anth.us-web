@@ -10,10 +10,10 @@ ships. This file is the map, the recipes and the rules. Paths starting `~/` are 
   [Papyrus](https://github.com/AnthusAI/Papyrus); this repository has no renderer. `main` is production. `develop` is stale
   and holds only the Kanbus board.
 * **Public site.** `anth.us` and `www.anth.us` are static pages in an S3 site bucket behind CloudFront
-  `E3UMOOJRMY7FK7`. Saving in the newsroom projects the page within seconds. Merging to `main` re-renders every page inside
+  `<distribution-id>`. Saving in the newsroom projects the page within seconds. Merging to `main` re-renders every page inside
   AWS. Details: README, "How a change reaches production".
-* **Account.** AWS profile `papyrus-production`, account `712236451410`, `us-east-1`. Amplify app `anth-us-cms`
-  (`d7s858igkyct5`). Use the AWS CLI and API only; do not drive the AWS console for this app.
+* **Account.** AWS profile `papyrus-production`, account `<account-id>`, `us-east-1`. Amplify app `anth-us-cms`
+  (`<amplify-app-id>`). Use the AWS CLI and API only; do not drive the AWS console for this app.
 * **Never touch** the old Gatsby site (`AnthusAI/Anth.us`) or its Amplify apps. Never change DNS, an Amplify domain
   association, a hosted zone or the edge stack from this repository: an edge change is a CloudFormation change set that Ryan
   approves.
@@ -97,7 +97,7 @@ in `entry.author_details`. Never pin 5.29-5.32.) Releases
 come from Papyrus `feat:` and `fix:` commits on its `main`; `chore:` and `docs:` do not release.
 
 **Deploy.** Merge to `main`. Watch it: `gh run list --workflow "CI and deploy"`, then
-`AWS_PROFILE=papyrus-production aws amplify list-jobs --app-id d7s858igkyct5 --branch-name main --max-items 3 --region us-east-1`.
+`AWS_PROFILE=papyrus-production aws amplify list-jobs --app-id <amplify-app-id> --branch-name main --max-items 3 --region us-east-1`.
 A render that fails fails the build; drift (orphan or stale pages) is reported in the Lambda log and the
 `Papyrus/Projection` `DeployRenderDrift` alarm, and nothing is deleted. Do not start a manual RELEASE job right after a
 merge: it hides the automatic one for the same commit. Do not run `ampx pipeline-deploy` locally.
@@ -211,7 +211,7 @@ is one of the participating publications (with `p-apyr-us` and `threat-intellige
    References for pending items with a Cyclotron provenance Message.
 
 Verified 2026-10-23 (router side, read-only): the deployed papyrus-monitoring stack's `AnthUsApiId` is the live
-AppSync API tagged `amplify:app-id d7s858igkyct5` (this app), so the router's anth.us grants point at the post-rebuild
+AppSync API tagged `amplify:app-id <amplify-app-id>` (this app), so the router's anth.us grants point at the post-rebuild
 API, and the router has delivered to anth.us since 2026-10-21. Re-check this after any backend rebuild: a rebuild
 recreates the AppSync API, and the stored `appsyncEndpoint` must match `data.url` in the deployed `amplify_outputs.json`.
 
@@ -306,7 +306,7 @@ Hierarchy: initiative, epic, task, sub-task; stories hold Gherkin, not implement
   the 5.67.0 bump deploys on merge). Merge-driven deploy through Actions and OIDC is in use: Amplify job 39 (the #121 merge) succeeded. The consent
   banner and `/privacy/` shipped together on 2026-10-22; every call to action reports to GA4; the engage form posts to
   Prospectus with an email fallback; Cyclotron is labelled "Early access".
-* **Checked today:** distribution `E3UMOOJRMY7FK7` is `Deployed`, aliases `anth.us` and `www.anth.us`; `main` auto-build off;
+* **Checked today:** distribution `<distribution-id>` is `Deployed`, aliases `anth.us` and `www.anth.us`; `main` auto-build off;
   `staging` auto-build on with no jobs; edge stack `UPDATE_COMPLETE`; `check-guards.py` and `check-404.py` pass; local
   tests: 189 passed (with Papyrus v5.23.0 on `PYTHONPATH`, before the 5.35.0 bump), 47 + 13 node tests passed, `npm run build` succeeded.
 * **In progress on the board (develop):** the conversion tracking and consent epic (verify events in GA4 DebugView, mark

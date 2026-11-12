@@ -23,8 +23,8 @@ If you are an agent, read [AGENTS.md](AGENTS.md) next. It has the map of the par
 | Piece | Value |
 | --- | --- |
 | AWS account | `papyrus-production` (profile name), id `712236451410`, region `us-east-1` |
-| Public site `anth.us`, `www.anth.us` | Static pages in a versioned S3 site bucket, behind CloudFront distribution `E3UMOOJRMY7FK7` (edge stack `papyrus-edge-anth-us`, pure S3 origin, 403 and 404 mapped to `/404.html`). DNS is the `anth.us` Route 53 zone in the same account |
-| CMS `newsroom.anth.us` | Amplify app `anth-us-cms`, id `d7s858igkyct5` (Next.js SSR, Gen2 backend), behind its own CloudFront distribution `E3JU5W0MDN96GU` |
+| Public site `anth.us`, `www.anth.us` | Static pages in a versioned S3 site bucket, behind CloudFront distribution `<distribution-id>` (edge stack `papyrus-edge-anth-us`, pure S3 origin, 403 and 404 mapped to `/404.html`). DNS is the `anth.us` Route 53 zone in the same account |
+| CMS `newsroom.anth.us` | Amplify app `anth-us-cms`, id `<amplify-app-id>` (Next.js SSR, Gen2 backend), behind its own CloudFront distribution `<distribution-id>` |
 | Amplify branches | `main` (production, auto-build **off**) and `staging` (auto-build on, draft preview, no jobs run so far) |
 | Backend stack | `amplify-app-shell-anth-us-cms`, configured by `infra/site.json` and `papyrus.config.ts` |
 | Analytics | Google Analytics 4, measurement id `G-31SC26SDGX` (public), with Consent Mode ([AGENTS.md](AGENTS.md#ga4-and-consent)) |
