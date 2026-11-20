@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "event_id": "e431f155-dade-4efd-9c86-7b8ff96ae5fa",
+  "issue_id": "anthus-web-3f4d250a-40ce-4095-afe0-4fc08edd53c0",
+  "event_type": "issue_created",
+  "occurred_at": "2026-11-12T14:55:36.207Z",
+  "actor_id": "home",
+  "payload": {
+    "title": "Measure the Engage funnel and keep campaign attribution to the lead",
+    "description": "Machines on Machines traffic reaches anth.us but the Engage funnel cannot be measured step by step, and the house-ad UTM tags are lost when the visitor moves from the landing page to Engage, so leads in Prospectus carry an empty campaign.\n\nScenario: Funnel events\n  Given a visitor on /engage/\n  When the form loads, they first type, they send a new note, and the intake accepts it\n  Then GA4 receives engage_view, lead_form_start, lead_form_submit and generate_lead, each with form_id, lead_source and solution only\n\nScenario: Failures are visible\n  Given the intake fails or refuses a note\n  Then GA4 receives lead_form_error with error_kind, and never the visitor text\n\nScenario: Campaign survives the hop\n  Given a visitor lands on /ai-solutions/?utm_source=machines-on-machines&utm_medium=house-ad&utm_campaign=busywork\n  When they follow an Engage link and send a note\n  Then the note campaign is utm_source machines-on-machines, utm_medium house-ad, utm_campaign busywork\n\nScenario: Referral without UTM\n  Given a visitor arrives from another site with no UTM tags\n  Then the note campaign is utm_source <referring host>, utm_medium referral",
+    "issue_type": "story",
+    "status": "open",
+    "priority": 2,
+    "assignee": null,
+    "parent": "anthus-web-539a152a-08c6-4dc3-98ac-16b0101ea8e6",
+    "labels": []
+  }
+}
