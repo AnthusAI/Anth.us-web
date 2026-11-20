@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "event_id": "d3046d5f-48d8-4be8-83bd-24b80d65cc5a",
+  "issue_id": "anthus-web-685615d9-8a77-447f-b312-bc2549ac6ea2",
+  "event_type": "comment_added",
+  "occurred_at": "2026-10-19T22:42:52.713Z",
+  "actor_id": "home",
+  "payload": {
+    "comment_id": "32b82241-432e-4735-95d1-a3234200fc79",
+    "comment_author": "home"
+  }
+}
