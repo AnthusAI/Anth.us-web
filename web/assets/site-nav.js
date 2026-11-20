@@ -72,3 +72,31 @@
     a.href = u.toString();
   }
 })();
+
+/* Where the visit came from, kept for the contact form. Ads and links from other sites usually land on a
+ * page other than Engage, and the Engage links above replace the address, so the UTM values would be gone
+ * by the time a visitor writes. The landing page's UTM values (or, without any, the referring site as
+ * `utm_source=<host>`, `utm_medium=referral`) go to sessionStorage under `anthus-campaign`; the Engage form
+ * sends them as the note's campaign. Only the first referral of a tab is kept; a later page with UTM values
+ * replaces it. Values the intake would refuse are never stored. Nothing here is sent anywhere by itself. */
+(function () {
+  "use strict";
+  var KEY = "anthus-campaign";
+  var NAMES = ["utm_source", "utm_medium", "utm_campaign"];
+  var VALUE = /^[\w .-]{1,120}$/;
+  try {
+    var store = window.sessionStorage;
+    if (!store) return;
+    var query = new URLSearchParams(location.search);
+    var found = {}, any = false;
+    NAMES.forEach(function (name) {
+      var value = query.get(name);
+      if (value && VALUE.test(value)) { found[name] = value; any = true; }
+    });
+    if (any) { store.setItem(KEY, JSON.stringify(found)); return; }
+    if (store.getItem(KEY) || !document.referrer) return;
+    var from = new URL(document.referrer);
+    if (/^https?:$/.test(from.protocol) && from.origin !== location.origin && VALUE.test(from.hostname))
+      store.setItem(KEY, JSON.stringify({utm_source: from.hostname, utm_medium: "referral"}));
+  } catch (e) {}
+})();

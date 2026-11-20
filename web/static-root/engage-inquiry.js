@@ -1,7 +1,32 @@
 (() => {
   const form = document.getElementById('engage-inquiry');
   if (!form) return;
+  const sourcePathPattern = /^[\w\/.-]{1,100}$/;
+  const sourceLocationPattern = /^[a-z0-9_-]{1,40}$/;
+  const solutionNamePattern = /^[\w .-]{1,60}$/;
+  function leadAttributionFromLocation() {
+    const query = new URLSearchParams(location.search);
+    const fromPage = query.get('from') || '';
+    const callToActionLocation = query.get('cta') || '';
+    const solution = query.get('solution') || '';
+    const pageSource = sourcePathPattern.test(fromPage) ? fromPage : '';
+    const locationSource = sourceLocationPattern.test(callToActionLocation) ? callToActionLocation : '';
+    const leadSource = pageSource || locationSource
+      ? (pageSource || 'direct') + (locationSource ? '#' + locationSource : '')
+      : 'direct';
+    const attribution = {form_id: 'engage-inquiry', lead_source: leadSource};
+    if (solutionNamePattern.test(solution)) attribution.solution = solution;
+    return attribution;
+  }
+  // Funnel events. Each carries only the form id, the lead source and the solution (or a failure kind),
+  // never anything the visitor typed. Analytics never changes what the visitor sees.
+  function track(name, params) {
+    if (typeof globalThis.gtag !== 'function') return;
+    try { globalThis.gtag('event', name, params); } catch {}
+  }
+  track('engage_view', leadAttributionFromLocation());
   if (!globalThis.crypto?.randomUUID) {
+    track('lead_form_error', {form_id: 'engage-inquiry', error_kind: 'unsupported'});
     // The submit button stays disabled without an idempotency key, so say so and offer email instead of
     // leaving a button that silently does nothing.
     const unsupportedError = form.querySelector('[data-error]');
@@ -52,29 +77,41 @@
     if (status === 403 || status === 404 || status === 415) return 'unavailable';
     return 'server';
   }
-  const sourcePathPattern = /^[\w\/.-]{1,100}$/;
-  const sourceLocationPattern = /^[a-z0-9_-]{1,40}$/;
-  const solutionNamePattern = /^[\w .-]{1,60}$/;
-  function leadAttributionFromLocation() {
-    const query = new URLSearchParams(location.search);
-    const fromPage = query.get('from') || '';
-    const callToActionLocation = query.get('cta') || '';
-    const solution = query.get('solution') || '';
-    const pageSource = sourcePathPattern.test(fromPage) ? fromPage : '';
-    const locationSource = sourceLocationPattern.test(callToActionLocation) ? callToActionLocation : '';
-    const leadSource = pageSource || locationSource
-      ? (pageSource || 'direct') + (locationSource ? '#' + locationSource : '')
-      : 'direct';
-    const attribution = {form_id: 'engage-inquiry', lead_source: leadSource};
-    if (solutionNamePattern.test(solution)) attribution.solution = solution;
-    return attribution;
-  }
   function reportLeadOnce(receiptId) {
     if (reportedReceipts.has(receiptId)) return;
     reportedReceipts.add(receiptId);
-    if (typeof globalThis.gtag !== 'function') return;
-    try { globalThis.gtag('event', 'generate_lead', leadAttributionFromLocation()); } catch {}
+    track('generate_lead', leadAttributionFromLocation());
   }
+  // The campaign sent with the note: the UTM values on this page's address, or else the ones site-nav.js
+  // kept for this browser tab when the visit landed on another anth.us page (an ad or a link from another
+  // site usually lands there, not here). Only values the intake accepts are sent, so a stored value can
+  // never make the intake refuse a note.
+  const campaignKeys = ['utm_source', 'utm_medium', 'utm_campaign'];
+  const campaignValuePattern = /^[\w .-]{1,120}$/;
+  function campaignFrom(read) {
+    const campaign = {};
+    for (const name of campaignKeys) {
+      const value = read(name);
+      if (typeof value === 'string' && campaignValuePattern.test(value)) campaign[name] = value;
+    }
+    return campaign;
+  }
+  function visitCampaign() {
+    const query = new URLSearchParams(location.search);
+    const fromAddress = campaignFrom(name => query.get(name));
+    if (Object.keys(fromAddress).length) return fromAddress;
+    try {
+      const stored = JSON.parse(globalThis.sessionStorage?.getItem('anthus-campaign') || 'null');
+      if (stored && typeof stored === 'object' && !Array.isArray(stored)) return campaignFrom(name => stored[name]);
+    } catch {}
+    return {};
+  }
+  let started = false;
+  form.addEventListener('input', event => {
+    if (started || event?.target?.name === 'website') return;
+    started = true;
+    track('lead_form_start', leadAttributionFromLocation());
+  });
   async function readJson(response) {
     try { return await response.json(); } catch { return {}; }
   }
@@ -92,18 +129,14 @@
     }
     form.dataset.state = 'error';
     button.disabled = false;
+    track('lead_form_error', {form_id: 'engage-inquiry', error_kind: detail ? 'validation' : kind});
   }
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
     if (sending) return;
     const fields = new FormData(form);
-    const campaign = {};
-    const query = new URLSearchParams(location.search);
-    for (const name of ['utm_source', 'utm_medium', 'utm_campaign']) {
-      const value = query.get(name);
-      if (value && /^[\w .-]{1,120}$/.test(value)) campaign[name] = value;
-    }
+    const campaign = visitCampaign();
     const data = JSON.stringify({
       name: String(fields.get('name') || ''), email: String(fields.get('email') || ''),
       company: String(fields.get('company') || ''), message: String(fields.get('message') || ''),
@@ -111,7 +144,10 @@
       marketing_opt_in: false, page_path: '/engage', campaign,
     });
     // A retry of the same note keeps its receipt and its first timing.
-    if (!pending || pending.data !== data) pending = {data, id: crypto.randomUUID(), elapsed: elapsedSinceRender()};
+    if (!pending || pending.data !== data) {
+      pending = {data, id: crypto.randomUUID(), elapsed: elapsedSinceRender()};
+      track('lead_form_submit', leadAttributionFromLocation());
+    }
     sending = true;
     form.dataset.state = 'sending';
     button.disabled = true;

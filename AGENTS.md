@@ -161,8 +161,13 @@ privacy policy. It exists so Ryan can run Google Ads; `analytics_only` must stay
   `cta_text`, `cta_location`, `link_url` (host and path) and `transport_type: beacon`. `web/assets/site-nav.js` sets
   `data-cta-location` on every engage link and every off-site `http(s)` link, so GitHub and LinkedIn links also report
   `cta_click`. **anth.us must not send its own `cta_click`**: the retired `web/assets/conversion-events.js` did, and the
-  two sent every engage and product click twice. `web/static-root/engage-inquiry.js` sends `generate_lead` when the form
-  endpoint answers 2xx. Address redaction is Papyrus's. Event table: Papyrus site-hosting, "Events and address redaction".
+  two sent every engage and product click twice. `web/static-root/engage-inquiry.js` sends the Engage funnel: `engage_view` when the form loads,
+  `lead_form_start` on the first typing (never for the hidden `website` field), `lead_form_submit` once per new note,
+  `lead_form_error` with `error_kind` (`network`, `server`, `rate`, `conflict`, `unavailable`, `validation`, `unsupported`)
+  and `generate_lead` when the endpoint answers 2xx with a receipt. All carry `form_id` and, except errors, `lead_source`
+  and `solution`; none carries anything the visitor typed. `web/assets/site-nav.js` keeps the landing page's UTM values (or
+  the referring host as `utm_medium=referral`) in sessionStorage `anthus-campaign` so the note's `campaign` survives the
+  hop to Engage. Key events (`lead_form_submit`, `generate_lead`) and custom dimensions are GA admin settings, not code. Address redaction is Papyrus's. Event table: Papyrus site-hosting, "Events and address redaction".
 * **Privacy page.** `web/pages/privacy.md` (`/privacy/`) ships with the banner and describes the same behaviour. Change the
   banner wording, the policy and `policy_version` together.
 * **Verify (all read-only; run 2026-10-23).**
