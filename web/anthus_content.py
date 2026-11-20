@@ -1,64 +1,38 @@
-"""Discover, classify, and stage Anth.us content for the Markus build.
+"""The content of Anth.us as the arcade templates see it: an item as a ``ContentNode``, the sets of nodes each page lists,
+and the image index. Nodes are made from the projection's item summaries (``site_support.node_for``), never from files.
 
-The content submodule (``content/anthus-site-content``) is the same repo the
-live Gatsby site renders from, and is treated as strictly read-only. This
-module reads it and writes a derived Markdown tree into ``web/staging/``
-(gitignored) laid out the way Papyrus's Markus renderer expects:
-
-    web/staging/
-      index.md              homepage
-      about.md              bespoke pages (depth 0, rendered standalone)
-      ai-solutions.md
-      ryan.md
-      404.md
-      articles/             blog corpus + archive index  (depth 1)
-      platform/             platform overview + products (depth 1)
-      posts/                paginated short-post listings (depth 1)
-      tags/                 one page per tag             (depth 1)
-      assets/content/…      referenced images, downscaled
-      assets/site/…         committed site-chrome images
-
-Routing note
-------------
-Gatsby serves every non-platform MDX node at ``/blog/<slug>/``; this build
-serves it at ``/articles/<slug>/``, which is both what Papyrus's
-``build_markus_site`` requires (the primary collection must live in
-``content/articles/``) and the namespace Anth.us is moving to. Every legacy URL
-shape 301s onto it. ``anthus_urls`` owns that map and the URL shape itself;
-nothing here concatenates a URL.
+Routing note: Gatsby served every non-platform MDX node at ``/blog/<slug>/``; this site serves it at ``/articles/<slug>/``
+and every legacy URL shape 301s onto it. ``anthus_urls`` owns that map and the URL shape itself.
 """
 
 from __future__ import annotations
 
 import re
-import shutil
 from dataclasses import dataclass, field
 from datetime import datetime
+from html import unescape
 from pathlib import Path
 
-import anthus_dom
-from papyrus_content.markus_renderer.transforms import block_sentinel
-from anthus_mdx import (
-    ConversionReport,
-    html_to_inline_markdown,
-    html_to_text,
-    html_to_text,
-    normalize_body,
-    split_front_matter,
-    staged_markdown,
-    write_if_changed,
-)
+from solution_sites import is_external, is_folded
+
+def html_to_text(value: str | None) -> str:
+    """Flatten an HTML-bearing scalar (``excerpt``, ``author``) to plain text.
+
+    Anth.us excerpts are stored as HTML (``<p>``, ``<ul>``, ``<a>``, ``<mark>``) because Gatsby injected them with
+    ``dangerouslySetInnerHTML``. Card blurbs and ``<meta>`` descriptions need the text, not the markup.
+    """
+    if not value:
+        return ""
+    text = re.sub(r"<li\b[^>]*>", " • ", value)
+    text = re.sub(r"</(p|div|ul|ol|li|h[1-6])>", " ", text)
+    text = re.sub(r"<br\s*/?>", " ", text)
+    text = re.sub(r"<[^>]+>", "", text)
+    return re.sub(r"\s+", " ", unescape(text)).strip()
+
 
 POSTS_PER_PAGE = 12  # matches gatsby-node.js
-DEFAULT_AUTHOR_MD = "[Ryan Porter](/ryan)"
 
 _IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".avif"}
-_MAX_IMAGE_WIDTH = 1600
-
-# Files the Gatsby config ignores; mirror that so review notes and image briefs
-# never become pages.
-_IGNORED_NAMES = re.compile(r"(?:README\.md|\.IMAGE\.(?:md|txt)|\.STYLE-NOTES\.(?:md|txt))$")
-
 
 @dataclass
 class ContentNode:
@@ -98,6 +72,11 @@ class ContentNode:
         return self.state == "published"
 
     @property
+    def draft(self) -> bool:
+        """`state: draft`: served, but noindexed and left out of every normal listing."""
+        return self.state == "draft"
+
+    @property
     def is_platform(self) -> bool:
         return (
             self.front_matter.get("content_type") == "platform-product"
@@ -131,6 +110,11 @@ class ContentNode:
         return parsed.strftime("%B %-d, %Y") if parsed != datetime.min else self.date_raw
 
     @property
+    def month_year_date(self) -> str:
+        parsed = self.date
+        return parsed.strftime("%B %Y") if parsed != datetime.min else self.date_raw
+
+    @property
     def author_names(self) -> list[str]:
         """Plain-text author names (the authored values may carry markup)."""
         return [
@@ -138,23 +122,6 @@ class ContentNode:
             for entry in (self.front_matter.get("authors") or [])
             if isinstance(entry, dict) and entry.get("author")
         ]
-
-    @property
-    def byline(self) -> str:
-        authors = self.front_matter.get("authors") or []
-        names = [
-            html_to_inline_markdown(entry.get("author"))
-            for entry in authors
-            if isinstance(entry, dict) and entry.get("author")
-        ]
-        names = [name for name in names if name]
-        if not names:
-            names = [DEFAULT_AUTHOR_MD]
-        if len(names) == 1:
-            return names[0]
-        if len(names) == 2:
-            return f"{names[0]} and {names[1]}"
-        return ", ".join(names[:-1]) + f", and {names[-1]}"
 
 
 def parse_date(raw: str) -> datetime:
@@ -173,53 +140,6 @@ def parse_date(raw: str) -> datetime:
     return datetime.min
 
 
-# --------------------------------------------------------------------------
-# Discovery
-# --------------------------------------------------------------------------
-
-
-def discover(content_root: Path) -> list[ContentNode]:
-    """Collect every MDX node in the content submodule.
-
-    Mirrors ``gatsby-source-filesystem``'s ignore list. Drafts living outside
-    the submodule (``Anth.us/src/drafts``) are not visible here by design —
-    they are not part of the content repo, so this port cannot and does not
-    publish them.
-    """
-    nodes: list[ContentNode] = []
-    for path in sorted(content_root.rglob("*.mdx")):
-        if ".git" in path.parts:
-            continue
-        if _IGNORED_NAMES.search(path.name):
-            continue
-        rel = path.relative_to(content_root)
-        rel_dir = rel.parts[0] if len(rel.parts) > 1 else ""
-        if rel_dir in {"images", "diagrams", "redirects", ".github"}:
-            continue
-        front_matter, _ = split_front_matter(path.read_text(encoding="utf-8"))
-        slug = str(front_matter.get("slug") or "").strip()
-        if not slug:
-            slug = path.stem
-        # Papyrus derives a page's URL slug from the staged FILE NAME
-        # (slugify(stem), Papyrus #89), never from front matter. This build
-        # stages each node as `<slug>.md`, so the front-matter `slug:` (which
-        # can carry capitals, e.g. `Paytronix`) must be normalized here to keep
-        # the staged name, internal links and redirects in agreement with what
-        # Papyrus renders. Not redundant with #89, which only covers file names
-        # (it agrees with `_slugify` on every file in the corpus). The authored
-        # spelling is kept for the redirect stub.
-        slug = _slugify(slug)
-        nodes.append(
-            ContentNode(
-                slug=slug,
-                source=path,
-                front_matter=front_matter,
-                rel_dir=rel_dir,
-            )
-        )
-    return nodes
-
-
 def _slugify(value: str) -> str:
     value = re.sub(r"[^a-zA-Z0-9]+", "-", value).strip("-").lower()
     return value or "untitled"
@@ -232,28 +152,11 @@ def _slugify(value: str) -> str:
 
 @dataclass
 class ImageIndex:
-    """Resolve authored image references to staged asset paths.
+    """Resolve the image an item names (``preview_image:``) to the URL of its listing copy.
 
-    Two lookup modes, because the content uses two conventions:
-
-    * ``<BlogImage name="x.png">`` gives a bare basename and relies on
-      Gatsby's ``allFile`` query to find it anywhere in the graph.
-    * ``<img src="../images/x.png">`` and ``preview_image:`` give a path,
-      sometimes relative to the MDX file and sometimes site-absolute
-      (``/assets/images/…``, ``/images/…``) pointing at files that live in the
-      **Anth.us** repo's ``static/`` directory rather than the content repo.
-      Those are vendored into ``web/assets/site/`` in this repo.
-
-    And two *output* modes, because there are now two image paths:
-
-    * ``content_src()`` returns a path **relative to the content submodule**,
-      which is what ``::image{}`` needs: Papyrus's ``ImagePipeline`` is pointed
-      at the submodule as its source root and generates the renditions itself,
-      so nothing has to be copied or pre-downscaled. Used for article bodies.
-    * ``resolve_name()`` / ``resolve_path()`` return a **staged asset URL**
-      (``/assets/content/…``) and record the file for ``stage()`` to copy.
-      Used for listing-card thumbnails and site chrome, which are emitted as
-      plain Markdown images by ``anthus_pages`` and are not responsive.
+    The images the site has are known by their rendition records (``HookSite.rendition_records``), not by files.
+    A path is looked up relative to the item first (items live at the content root, platform items one level
+    down), then by file name; site chrome (``assets/site``) is found by name too.
     """
 
     content_root: Path
@@ -261,25 +164,16 @@ class ImageIndex:
     by_relpath: dict[str, Path] = field(default_factory=dict)
     by_basename: dict[str, Path] = field(default_factory=dict)
     site_by_name: dict[str, Path] = field(default_factory=dict)
-    used: set[Path] = field(default_factory=set)
-    used_site: set[Path] = field(default_factory=set)
-    missing: set[str] = field(default_factory=set)
 
     @classmethod
-    def build(cls, content_root: Path, site_assets: Path) -> "ImageIndex":
+    def from_sources(cls, sources, *, content_root: Path, site_assets: Path) -> "ImageIndex":
+        """``by_basename`` takes the first of the sorted sources for a basename that two directories share."""
         index = cls(content_root=content_root, site_assets=site_assets)
-        for path in content_root.rglob("*"):
-            if ".git" in path.parts or not path.is_file():
-                continue
-            if path.suffix.lower() not in _IMAGE_SUFFIXES:
-                continue
-            rel = path.relative_to(content_root).as_posix()
-            index.by_relpath[rel] = path
-            # First writer wins so a deterministic file is chosen when two
-            # directories hold the same basename.
-            index.by_basename.setdefault(path.name, path)
+        for source in sorted(sources):
+            index.by_relpath[source] = content_root / source
+            index.by_basename.setdefault(Path(source).name, content_root / source)
         if site_assets.is_dir():
-            for path in site_assets.rglob("*"):
+            for path in sorted(site_assets.rglob("*")):
                 if path.is_file() and path.suffix.lower() in _IMAGE_SUFFIXES:
                     index.site_by_name.setdefault(path.name, path)
         return index
@@ -291,46 +185,10 @@ class ImageIndex:
         base = name.split("/")[-1]
         path = self.by_basename.get(base)
         if path:
-            self.used.add(path)
             return "/assets/content/" + path.relative_to(self.content_root).as_posix()
         site = self.site_by_name.get(base)
         if site:
-            self.used_site.add(site)
             return "/assets/site/" + site.relative_to(self.site_assets).as_posix()
-        self.missing.add(name)
-        return None
-
-    def content_src(self, src: str, *, relative_to: Path | None = None) -> str | None:
-        """A ``::image{src=}`` value: relative to the content submodule root.
-
-        Falls back to a staged ``/assets/site/…`` URL for the handful of
-        site-chrome images the content references by absolute path
-        (``<img src="/images/sqlbot-arch-1.png">``), which live in the Anth.us
-        repo rather than here and so have no path under the pipeline's source
-        root. ``anthus_mdx`` emits those as a plain ``:::figure`` instead.
-        """
-        src = (src or "").strip()
-        if not src:
-            return None
-        if src.startswith(("http://", "https://", "data:")):
-            return src
-        if relative_to is not None and not src.startswith("/"):
-            candidate = (relative_to.parent / src).resolve()
-            try:
-                rel = candidate.relative_to(self.content_root.resolve()).as_posix()
-            except ValueError:
-                rel = None
-            if rel and rel in self.by_relpath:
-                return rel
-        base = src.split("/")[-1]
-        path = self.by_basename.get(base)
-        if path:
-            return path.relative_to(self.content_root).as_posix()
-        site = self.site_by_name.get(base)
-        if site:
-            self.used_site.add(site)
-            return "/assets/site/" + site.relative_to(self.site_assets).as_posix()
-        self.missing.add(src)
         return None
 
     def resolve_path(self, src: str, *, relative_to: Path | None = None) -> str | None:
@@ -346,68 +204,8 @@ class ImageIndex:
             except ValueError:
                 rel = None
             if rel and rel in self.by_relpath:
-                self.used.add(self.by_relpath[rel])
                 return "/assets/content/" + rel
         return self.resolve_name(src)
-
-    # -- staging ----------------------------------------------------------
-
-    def stage(self, staging_assets: Path) -> tuple[int, int]:
-        """Copy only the referenced images, downscaled, into the staging tree.
-
-        Copying the whole content image tree would ship ~313 MB of originals,
-        most of them unreferenced, and serve multi-megabyte PNGs at thumbnail
-        size — Gatsby's sharp pipeline is what hid that today. Until the
-        responsive-image pipeline lands, cap the long edge at
-        ``_MAX_IMAGE_WIDTH`` and copy nothing that no page asks for.
-        """
-        copied = downscaled = 0
-        for path in sorted(self.used):
-            rel = path.relative_to(self.content_root).as_posix()
-            dest = staging_assets / "content" / rel
-            if _copy_image(path, dest):
-                downscaled += 1
-            copied += 1
-        for path in sorted(self.used_site):
-            rel = path.relative_to(self.site_assets).as_posix()
-            dest = staging_assets / "site" / rel
-            if _copy_image(path, dest):
-                downscaled += 1
-            copied += 1
-        return copied, downscaled
-
-
-def _copy_image(source: Path, dest: Path) -> bool:
-    """Copy one image, downscaling raster originals. Returns True if resized."""
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    if dest.is_file() and dest.stat().st_mtime >= source.stat().st_mtime:
-        return False
-    if source.suffix.lower() in {".svg", ".gif"}:
-        # SVG is resolution-independent; animated GIF frames do not survive a
-        # naive Pillow resize, so both are copied verbatim.
-        shutil.copy2(source, dest)
-        return False
-    try:
-        from PIL import Image
-    except ImportError:
-        shutil.copy2(source, dest)
-        return False
-    try:
-        with Image.open(source) as image:
-            if image.width <= _MAX_IMAGE_WIDTH:
-                shutil.copy2(source, dest)
-                return False
-            height = round(image.height * _MAX_IMAGE_WIDTH / image.width)
-            resized = image.resize((_MAX_IMAGE_WIDTH, height), Image.LANCZOS)
-            if resized.mode in {"P", "RGBA"} and dest.suffix.lower() in {".jpg", ".jpeg"}:
-                resized = resized.convert("RGB")
-            resized.save(dest)
-            return True
-    except Exception:
-        # A corrupt or exotic file must not fail the whole build; ship the
-        # original and let the size report show it.
-        shutil.copy2(source, dest)
-        return False
 
 
 # --------------------------------------------------------------------------
@@ -426,14 +224,24 @@ class Collections:
     posts: list[ContentNode]
     solutions: list[ContentNode]
     tags: dict[str, list[ContentNode]]
+    #: platform nodes that live on their own site: no page here, only redirects and link rewrites.
+    external_platform: list[ContentNode] = field(default_factory=list)
+    #: `state: draft` items (not platform): served and noindexed, listed only in the hidden review sections.
+    drafts: list[ContentNode] = field(default_factory=list)
+    #: items folded into another page (`solution_sites.FOLDED_INTO`): no page, redirects and link rewrites only.
+    folded: list[ContentNode] = field(default_factory=list)
 
     @classmethod
     def from_nodes(cls, nodes: list[ContentNode]) -> "Collections":
         # Date descending; ties in ascending filename order (what live production
         # shows, measured against its listings).
         by_date = sorted(sorted(nodes, key=lambda n: n.source.name), key=lambda n: n.date, reverse=True)
-        platform = [n for n in by_date if n.is_platform]
-        blog = [n for n in by_date if not n.is_platform]
+        every_platform = [n for n in by_date if n.is_platform]
+        platform = [n for n in every_platform if not is_external(n.slug)]
+        external_platform = [n for n in every_platform if is_external(n.slug)]
+        every_blog = [n for n in by_date if not n.is_platform]
+        folded = [n for n in every_blog if is_folded(n.slug)]
+        blog = [n for n in every_blog if not is_folded(n.slug)]
         # blog.jsx: published, tags nin [solutions, posts], not platform.
         articles = [
             n
@@ -443,9 +251,12 @@ class Collections:
         # posts-list.jsx: published and tagged posts.
         posts = [n for n in blog if n.published and "posts" in n.tags]
         # ai-solutions.js: tagged solutions (state not filtered, matching Gatsby).
-        solutions = [n for n in blog if "solutions" in n.tags]
+        solutions = [n for n in blog if "solutions" in n.tags and not n.draft]
+        drafts = [n for n in blog if n.draft]
         tags: dict[str, list[ContentNode]] = {}
         for node in blog:
+            if node.draft:
+                continue
             for tag in node.tags:
                 tags.setdefault(tag, []).append(node)
         platform.sort(
@@ -455,71 +266,14 @@ class Collections:
             )
         )
         return cls(
-            all_nodes=by_date,
+            all_nodes=[n for n in by_date if not is_folded(n.slug)],
             platform=platform,
             blog=blog,
             articles=articles,
             posts=posts,
             solutions=solutions,
             tags=tags,
+            external_platform=external_platform,
+            drafts=drafts,
+            folded=folded,
         )
-
-
-# --------------------------------------------------------------------------
-# Staging
-# --------------------------------------------------------------------------
-
-
-def stage_nodes(
-    nodes: list[ContentNode],
-    *,
-    staging: Path,
-    directory: str,
-    images: ImageIndex,
-) -> ConversionReport:
-    """Normalize and write one collection of MDX nodes into the staging tree."""
-    total = ConversionReport()
-    out_dir = staging / directory
-    out_dir.mkdir(parents=True, exist_ok=True)
-    for node in nodes:
-        front_matter, body = split_front_matter(node.source.read_text(encoding="utf-8"))
-        text, report = normalize_body(
-            body,
-            resolve_image_name=images.content_src,
-            resolve_image_path=lambda src, n=node: images.content_src(
-                src, relative_to=n.source
-            ),
-        )
-        total.merge(report)
-        front = {
-            "title": node.title,
-            "date": node.display_date,
-            # Native `citations:` from the converted corpus, plus anything
-            # lifted out of legacy `<Citation>` elements on an un-migrated
-            # branch. Read before `merge()`, which deliberately drops it.
-            "citations": {
-                **(front_matter.get("citations") or {}),
-                **report.citation_entries,
-            },
-        }
-        header = _article_header(node)
-        tail = (
-            "\n\n" + block_sentinel(anthus_dom.ENGAGE_CTA_HTML) + "\n"
-            if "client-acquisition" in node.tags
-            else ""
-        )
-        write_if_changed(
-            out_dir / f"{node.slug}.md", staged_markdown(front, header + text + tail)
-        )
-    return total
-
-
-def _article_header(node: ContentNode) -> str:
-    """The production `.heading` block, as a Papyrus block sentinel.
-
-    `blog-post.jsx` renders title, date, authors, assistants and (for anything
-    not published) the `.draft-overlay` watermark. The block is emitted by
-    `anthus_dom.ArticleHeading` and re-emitted verbatim by `FragmentTransform`
-    -- no Markus byline or DRAFT callout, which production does not have.
-    """
-    return block_sentinel(anthus_dom.article_heading(node).html()) + "\n\n"

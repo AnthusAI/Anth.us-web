@@ -58,16 +58,14 @@ Amplify rule semantics, measured against the staging app rather than assumed:
 
 from __future__ import annotations
 
-import os
 import re
 from dataclasses import dataclass, field
 from urllib.parse import quote, unquote
 
-#: ``directory`` emits ``/articles/<slug>/``; ``html`` emits
-#: ``/articles/<slug>.html``. This is the only place the shape is decided.
-URL_STYLE = (os.environ.get("ANTHUS_URL_STYLE") or "directory").strip().lower()
-if URL_STYLE not in ("directory", "html"):
-    raise SystemExit(f"ANTHUS_URL_STYLE must be 'directory' or 'html', got {URL_STYLE!r}")
+from solution_sites import EXTERNAL_SITES, FOLDED_INTO
+
+#: Pages are served as ``/articles/<slug>/`` (a directory index); only the 404 page keeps its file name.
+URL_STYLE = "directory"
 
 #: Pages that keep their literal filename whatever the style. Amplify's error
 #: document is configured by name, and a request that lands on it must not be
@@ -96,6 +94,7 @@ RESERVED_SEGMENTS = frozenset(
         "index.html",
         "platform",
         "posts",
+        "privacy",
         "reading",
         "research",
         "robots.txt",
@@ -130,6 +129,7 @@ STANDALONE_PAGES = (
     "404",
     "index",
     "engage",
+    "privacy",
     "reading",
     "research",
     "decision-models",
@@ -225,6 +225,10 @@ class SiteUrls:
     platform_by_path: dict[str, str] = field(default_factory=dict)
     #: authored tag, lowercased -> merged tag page slug.
     tag_by_name: dict[str, str] = field(default_factory=dict)
+    #: lowercased name or creator path -> site, for things that live on their own site.
+    external_by_name: dict[str, str] = field(default_factory=dict)
+    #: every spelling (slug, authored, creator path; lowercased and as authored) of a folded item -> target page.
+    folded_by_name: dict[str, str] = field(default_factory=dict)
     #: number of ``/posts/`` pages, so ``/posts/7/`` is not invented.
     posts_pages: int = 1
 
@@ -237,6 +241,10 @@ class SiteUrls:
             urls._add_article(node)
         for node in collections.platform:
             urls._add_platform(node)
+        for node in getattr(collections, "external_platform", []):
+            urls._add_external(node)
+        for node in getattr(collections, "folded", []):
+            urls._add_folded(node)
         for tag in collections.tags:
             urls.tag_by_name.setdefault(tag.strip().lower(), tag_slug(tag))
             urls.tag_names.setdefault(tag.strip(), tag_slug(tag))
@@ -281,6 +289,56 @@ class SiteUrls:
             retired_name = stub_page.parent.name
             self.article_by_name.setdefault(retired_name.lower(), target_slug)
             self.blog_names.setdefault(retired_name, target_slug)
+
+    def _add_external(self, node) -> None:
+        site = EXTERNAL_SITES[node.slug.lower()]
+        for name in (node.slug, node.authored_slug, slugify(node.authored_slug)):
+            if name:
+                self.external_by_name[name.lower()] = site
+        path = _creator_path(node)
+        if path is not None:
+            self.external_by_name[path] = site
+            self.external_by_name[path.lower()] = site
+
+    def _add_folded(self, node) -> None:
+        target = FOLDED_INTO[node.slug.lower()]
+        legacy = node.front_matter.get("redirect_from") or []
+        if isinstance(legacy, str):
+            legacy = [legacy]
+        names = [node.slug, node.authored_slug, slugify(node.authored_slug), *[str(o).strip() for o in legacy]]
+        path = _creator_path(node)
+        if path is not None:
+            names.append(path)
+        for name in names:
+            if name:
+                self.folded_by_name[name] = target
+                self.folded_by_name[name.lower()] = target
+
+    def folded_for(self, path: str) -> str | None:
+        """The page a folded item's old path now points at (`/articles/x/`, `/blog/x/`, `/solutions/x/`, `/x/`)."""
+        segments = [s for s in unquote(path or "").strip("/").split("/") if s]
+        if segments and segments[-1].endswith(".html"):
+            segments[-1] = segments[-1][: -len(".html")]
+            if segments[-1] == "index":
+                segments = segments[:-1]
+        if len(segments) == 2 and segments[0].lower() in ("articles", "blog", "solutions"):
+            return self.folded_by_name.get(segments[1].lower())
+        if len(segments) == 1:
+            return self.folded_by_name.get(segments[0].lower())
+        return None
+
+    def external_for(self, path: str) -> str | None:
+        """The site a site-absolute path points at when that thing has its own site."""
+        segments = [s for s in unquote(path or "").strip("/").split("/") if s]
+        if segments and segments[-1].endswith(".html"):
+            segments[-1] = segments[-1][: -len(".html")]
+            if segments[-1] == "index":
+                segments = segments[:-1]
+        if len(segments) == 2 and segments[0].lower() in ("platform", "solutions"):
+            return self.external_by_name.get(segments[1].lower())
+        if len(segments) == 1:
+            return self.external_by_name.get(segments[0].lower())
+        return None
 
     def _add_platform(self, node) -> None:
         for name in (node.slug, node.authored_slug, slugify(node.authored_slug)):
@@ -555,6 +613,28 @@ def legacy_rules(
         group = "blog tag" if href.startswith("tags/") else "blog alias"
         out.add(group, _source("blog", name), canonical(href), index_twin=True)
 
+    # 2b. Folded items: every URL shape they ever had goes to the page that absorbed them.
+    #     Before the generic pattern, or an exact rule would be shadowed by it.
+    folded_sources: set[str] = set()
+    # The mapping itself is the source of truth: once a folded item is unpublished in
+    # the CMS there is no node to learn its names from, but its old URLs still need
+    # their redirects. Seed every slug (and its title-cased spelling) from FOLDED_INTO.
+    folded_names = dict(urls.folded_by_name)
+    for slug, target in FOLDED_INTO.items():
+        for name in (slug, slug.title()):
+            folded_names.setdefault(name, target)
+            folded_names.setdefault(name.lower(), target)
+    for name, target in sorted(folded_names.items()):
+        shapes = [("articles", name), ("blog", name), ("solutions", name), (name,)]
+        if "/" in name:
+            shapes = [tuple(name.split("/")), ("articles", name.rsplit("/", 1)[-1]),
+                      ("blog", name.rsplit("/", 1)[-1])]
+        for segments in shapes:
+            source = _source(*segments)
+            if source not in folded_sources and source != target:
+                folded_sources.add(source)
+                out.add("folded into another page", source, target, index_twin=True)
+
     # 3. The generic article rule. One pattern for the whole corpus, so a new
     #    article needs no new rule as long as its slug is already normalized.
     out.add(
@@ -610,10 +690,22 @@ def legacy_rules(
     for rule in BENCHMARK_SUBDOMAIN_REDIRECT_RULES:
         out.add("benchmark subdomain", rule["source"], rule["target"])
 
+    # Solutions with their own site have no page here: the old URL goes to the site.
+    sources = {r["source"] for r in out.rules}
+    for slug, site in sorted(EXTERNAL_SITES.items()):
+        candidates = [f"/platform/{slug}/"] + [
+            _source(*path.split("/")) for path, mapped in sorted(urls.external_by_name.items())
+            if "/" in path and mapped == site
+        ]
+        for source in candidates:
+            if source not in sources:
+                sources.add(source)
+                out.add("external solution site", source, site, index_twin=True)
+
     # Plexus was renamed Primus: every URL the old name ever had on this site
     # (Gatsby /blog/ and /solutions/ shapes, current /articles/ and /platform/
     # shapes) goes to the new article. The old plexus.anth.us host is NOT
-    # redirected (hard cutover).
+    # redirected here (it is handled at the Amplify domain level).
     for old, new in RENAMED_PAGE_REDIRECTS:
         if not any(r["source"] == old for r in out.rules):
             out.add("plexus->primus rename", old, new, index_twin=True)
@@ -655,6 +747,8 @@ def _assert_index_twins(rules: list[dict], dist) -> None:
             continue
         if rule["target"] in sources or rule["target"] == rule["source"]:
             raise RuntimeError(f"index.html rule {rule['source']} chains into {rule['target']}")
+        if rule["target"].startswith("https://"):
+            continue
         if dist is None or "<" in rule["source"]:
             continue
         if (dist / unquote(rule["source"]).lstrip("/")).exists():
