@@ -1,11 +1,10 @@
-"""Content redirect stubs become legacy names: python3 tests/test_content_redirect_stubs.py"""
-import sys
+"""Content redirect stubs become legacy names (web/content-redirects, read by links.UrlMap)."""
 import tempfile
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "web"))
-import anthus_urls as urls  # noqa: E402
+import anthus_urls as urls
+import support
 
 
 def write_stub(redirect_stubs_directory: Path, name: str, target_path: str) -> None:
@@ -48,6 +47,20 @@ class ContentRedirectStubs(unittest.TestCase):
         site_urls = self.site_urls_with_one_article()
         site_urls.add_content_redirect_stubs(Path("/nonexistent/redirects"))
         self.assertEqual(set(site_urls.blog_names), {"inspected-by-pudicus"})
+
+
+class ProjectedContentRedirectStubs(unittest.TestCase):
+    """The committed stubs of web/content-redirects reach the redirect store of a projection."""
+
+    def test_the_stub_of_a_published_article_redirects_to_its_page(self):
+        redirects = support.project_fixture().redirects
+        self.assertEqual(redirects["/blog/inspected-by-sticker/"], "/articles/inspected-by-pudicus/")
+        self.assertEqual(redirects["/blog/inspected-by-sticker/index.html"], "/articles/inspected-by-pudicus/")
+
+    def test_a_stub_whose_article_is_not_in_the_corpus_redirects_nowhere(self):
+        redirects = support.project_fixture().redirects
+        self.assertEqual(redirects["/blog/pudicus/"], "/articles/inspected-by-pudicus/")
+        self.assertNotIn("/blog/an-agent-skill-for-not-sounding-like-ai/", redirects)  # its article is not in the corpus
 
 
 if __name__ == "__main__":

@@ -1,3 +1,7 @@
+> **Historical.** The Gatsby-parity shell described here was replaced by the arcade design (DESIGN.md) and the modules it names
+> (`build_via_papyrus.py`, `anthus_pages.py`, `anthus_mdx.py`, `site_env.py`) are gone; the site now runs on Papyrus's standard
+> front end with hooks (README.md, AGENTS.md).
+
 # Design parity with the production Anth.us site
 
 Goal: the port's front end looks exactly like production Anth.us, proven by
@@ -62,7 +66,7 @@ end.
 Reference: `/Users/home/Projects/Anth.us-live/public/` (a build of the deployed
 commit, stylesheet byte-identical to live), served on 8081; tag pages and
 `/posts/page/4/` against `/Users/home/Projects/Anth.us-live-mirror/html/`
-(listing order differs between builds). Harness: `bin/shoot.js` +
+(listing order differs between builds). Harness: `bin/shoot.cjs` +
 `bin/compare.py`. The new build is the submodule pin (ab15f2b); production
 builds content 4b80f02. To separate content drift from design drift I built
 4b80f02 into a scratch tree (`ANTHUS_CONTENT_DIR`, `ANTHUS_BUILD_DIR`) and
@@ -188,8 +192,8 @@ constructs only have their final heights after hydration:
 ```bash
 python3 -m http.server 8081 --directory /Users/home/Projects/Anth.us-live/public &
 python3 bin/dev-server.py --port 8082 &
-node bin/shoot.js --base http://localhost:8081 --out /tmp/shots/old --pages old.json --widths 1440,390
-node bin/shoot.js --base http://localhost:8082 --out /tmp/shots/new --pages new.json --widths 1440,390
+node bin/shoot.cjs --base http://localhost:8081 --out /tmp/shots/old --pages old.json --widths 1440,390
+node bin/shoot.cjs --base http://localhost:8082 --out /tmp/shots/new --pages new.json --widths 1440,390
 python3 bin/compare.py /tmp/shots/old /tmp/shots/new --diff-out /tmp/shots/diff
 python3 bin/simulate-redirects.py --sitemap sitemap-0.xml
 ```

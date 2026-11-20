@@ -15,10 +15,3 @@ customHeaders:
     headers:
       - key: Cache-Control
         value: "public, max-age=0, s-maxage=60, must-revalidate"
-  # Asset filenames are NOT content-hashed (an image keeps its authored name),
-  # so `immutable` would pin a stale image for a year. One hour is enough to
-  # help a browse session without fighting iteration.
-  - pattern: "assets/**"
-    headers:
-      - key: Cache-Control
-        value: "public, max-age=3600"

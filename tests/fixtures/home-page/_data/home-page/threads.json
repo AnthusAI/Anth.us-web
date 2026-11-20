@@ -1,0 +1,13 @@
+{
+ "generatedAt": "2026-10-31T00:00:00.000Z",
+ "threads": [
+  {
+   "key": "aaaaaaaaaaa1",
+   "title": "Is this source worth keeping?",
+   "anchor": {"kind": "reference", "key": "000000000001", "title": "Fixture anchored source"},
+   "messages": 2,
+   "lastAt": "2026-10-30T12:00:00.000Z",
+   "latest": {"key": "bbbbbbbbbbb2", "at": "2026-10-30T12:00:00.000Z", "edited": false, "text": "Yes, the method section holds up.", "author": {"handle": "fixturehandle"}}
+  }
+ ]
+}

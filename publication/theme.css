@@ -1,66 +1,26 @@
-/* Anthus theme pack — colors only.
-   Hex values are read off the live Gatsby site at AnthusAI/Anth.us
-   (`src/styles/variables.scss` `:root`). That file is not loaded at runtime.
-   Shadcn owns typography. Do not set a font stack here.
+@font-face { font-family: "Jersey 25"; src: url("./fonts/Jersey25-Regular.ttf") format("truetype"); font-weight: 400 900; font-display: swap; }
 
-   Slot-by-slot provenance (including the three derived values) is documented
-   on ANTH_US_THEME_PACK_TOKENS in lib/site-stack.ts — keep the two in sync.
-
-   NO DARK BLOCK ON PURPOSE. The source site has no dark mode: its only
-   `prefers-color-scheme: dark` rule swaps two code-highlight tints. Porting a
-   light-only publication means pinning `color-scheme: light` rather than
-   inventing a dark palette. If Anthus later designs one, add it here and to
-   `ANTH_US_THEME_PACK_TOKENS.dark` together. */
-
-:root[data-theme-pack="anth-us"],
-:root[data-site-brand="anth-us"] {
-  color-scheme: light;
-  --theme-ink: #333333;
-  --theme-muted: #5f6b73;
-  --theme-paper: #f1f9fe;
-  --theme-card: #ffffff;
-  --theme-line: #cccccc;
-  --theme-moss: #dc5497;
-  --theme-ochre: #ff57b4;
-  --theme-quote: #9b165d;
-  --theme-tip: #0389d7;
-  --theme-caution: #e95800;
-  --theme-stage: #fedded;
-  --background: var(--theme-paper);
-  --foreground: var(--theme-ink);
-  --foreground-strong: var(--theme-ink);
-  --foreground-muted: var(--theme-muted);
-  --card: var(--theme-card);
-  --card-foreground: var(--theme-ink);
-  --popover: var(--theme-card);
-  --popover-foreground: var(--theme-ink);
-  --primary: var(--theme-moss);
-  --primary-foreground: var(--theme-card);
-  --secondary: var(--theme-stage);
-  --secondary-foreground: var(--theme-ink);
-  --muted: var(--theme-stage);
-  --muted-foreground: var(--theme-muted);
-  --accent: var(--theme-ochre);
-  --accent-foreground: var(--theme-card);
-  --border: var(--theme-line);
-  --input: var(--theme-line);
-  --ring: var(--theme-moss);
-  --destructive: var(--theme-caution);
-  --destructive-foreground: var(--theme-card);
-  --danger: var(--theme-caution);
-  --danger-foreground: var(--theme-card);
-  --surface: var(--theme-card);
-  --surface-foreground: var(--theme-ink);
-  --paper: var(--theme-paper);
-  --ink: var(--theme-ink);
+/* Anth.us newsroom: the newspaper-gothic Kanbus theme as shipped (cool paper, ink blue, Libre Franklin).
+   Colour and type come from the --kb-theme-* tokens (see components/newsroom-theme.css); this file only
+   carries the brand mark. Override a token here, scoped like
+   `:root[data-site-brand="anth-us"] [data-kanbus-theme] { --kb-theme-accent: ... }`, to retune the theme.
+   Light and dark both follow the editor's mode setting; the theme's dark palette is complete. */
+:root[data-site-brand="anth-us"] .newsroom-organizer :is(.organizer-brand, .organizer-masthead) {
+  --logo-tile: #f9c9e1;
+  --logo-glyph: #1b1426;
 }
-
-/* The source site is light-only, so a dark-preferring browser must not be
-   handed a half-dark Anthus. Re-assert the light tokens inside the dark media
-   query for parity with how the other packs are structured. */
-@media (prefers-color-scheme: dark) {
-  :root[data-theme-pack="anth-us"],
-  :root[data-site-brand="anth-us"] {
-    color-scheme: light;
-  }
+:root[data-site-brand="anth-us"] .newsroom-organizer .organizer-brand {
+  display: block;
 }
+:root[data-site-brand="anth-us"] .newsroom-organizer .organizer-masthead-logo {
+  height: 30px;
+}
+:root[data-site-brand="anth-us"] .newsroom-organizer .organizer-brand-logo {
+  display: block;
+  height: 36px;
+  width: auto;
+  overflow: visible;
+}
+:root[data-site-brand="anth-us"] .newsroom-organizer .anth-us-logo-tile { fill: var(--logo-tile); }
+:root[data-site-brand="anth-us"] .newsroom-organizer .anth-us-logo-a { fill: var(--logo-glyph); }
+:root[data-site-brand="anth-us"] .newsroom-organizer .anth-us-logo-word { fill: var(--kb-theme-ink); }

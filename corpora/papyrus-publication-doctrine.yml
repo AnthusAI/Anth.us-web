@@ -1,0 +1,16 @@
+schemaVersion: 1
+doctrine:
+- kind: mission
+  body:
+  - 'Anth.us is where Anthus shows its work: how we build, measure and run AI systems, and what the wider field''s evidence means for people who put AI into production.'
+  - 'Coverage is the practice behind that: agent harnesses and software factories, decision models and evaluation loops, open-weight and self-run models, knowledge bases and ontologies, and what AI changes for work and society, each reported from systems Anthus has built, run or measured.'
+  - Every piece should leave readers with something they can reuse or check in their own setup, such as a worked example, a measurement, a failure case or a primary source.
+- kind: policy
+  body:
+  - Lead with evidence from running systems. Prefer worked examples, numbers and failure stories over commentary, and prefer primary sources (papers, model cards, source code, official documentation, datasets) over coverage of them.
+  - A source belongs here if it shows how an AI system is built, evaluated, run or kept aligned, or measures what AI changes for work and society. Reject generic AI commentary, vendor comparisons without measurements, and pieces that restate a headline without a new example or result.
+  - Analysis and commentary must be notable and substantive. Novelty, a famous vendor or an AI label is not a reason to publish, and a claim that a model made a discovery needs the evidence behind it.
+  - Product announcements are in scope only when they ship something a reader can inspect or run, such as open weights, code or a published evaluation. Describe what exists today, and do not promise what has not shipped.
+  - Every source must be traceable, with a stable link or identifier and clear provenance. Cite every external claim.
+  - Label illustrative figures, composites and pilot results as such. Separate what a study shows from what is conjecture, state sample sizes and limits, and keep opinion apart from evidence.
+  - Publication doctrine is the global inclusion standard; each desk's editorial policy sets its local priorities and framing.
